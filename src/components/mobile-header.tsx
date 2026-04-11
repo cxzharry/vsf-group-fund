@@ -22,9 +22,9 @@ export function MobileHeader({ title }: { title: string }) {
     .toUpperCase();
 
   return (
-    <header className="sticky top-0 z-40 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-      <div className="mx-auto flex h-14 max-w-md items-center justify-between px-4">
-        <h1 className="text-lg font-semibold">{title}</h1>
+    <header className="sticky top-0 z-40 bg-white shadow-sm">
+      <div className="mx-auto flex h-[52px] max-w-md items-center justify-between px-4">
+        <h1 className="text-[17px] font-semibold text-[#1C1C1E]">{title}</h1>
         <DropdownMenu>
           <DropdownMenuTrigger className="rounded-full outline-none ring-offset-background focus-visible:ring-2 focus-visible:ring-ring">
             <Avatar className="h-8 w-8">

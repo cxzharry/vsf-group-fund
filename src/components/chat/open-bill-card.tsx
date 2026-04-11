@@ -44,24 +44,24 @@ export function OpenBillCard({
 
   return (
     <div className="mx-4 my-1">
-      <div className="rounded-[14px] bg-[#FFF8EC] p-3 shadow-sm border border-orange-100">
+      <div className="rounded-2xl bg-[#FFF8EC] p-3 shadow-sm border border-[#FFE0B2]">
         {/* Badge */}
         <div className="mb-2 flex items-center gap-2">
-          <span className="rounded-full bg-orange-400 px-2 py-0.5 text-[10px] font-semibold text-white">
+          <span className="rounded-full bg-[#FF9500] px-2 py-0.5 text-[10px] font-semibold text-white">
             Bill mở
           </span>
-          <span className="text-[10px] text-orange-500">
+          <span className="text-[10px] text-[#FF9500]">
             {checkinCount} người đã check-in
           </span>
         </div>
 
         {/* Header */}
         <div className="flex items-center gap-2 mb-3">
-          <div className="flex h-[34px] w-[34px] shrink-0 items-center justify-center rounded-full bg-orange-300 text-xs font-semibold text-white">
+          <div className="flex h-[34px] w-[34px] shrink-0 items-center justify-center rounded-full bg-[#FFB74D] text-xs font-semibold text-white">
             {initials}
           </div>
           <div className="min-w-0 flex-1">
-            <p className="text-xs text-orange-600">
+            <p className="text-xs text-[#FF9500]">
               {isMe ? "Bạn" : payerName} đã tạo
             </p>
             <p className="truncate text-sm font-semibold text-gray-900">
@@ -84,7 +84,7 @@ export function OpenBillCard({
               const isGuest = !c.member_id;
               return (
                 <div key={c.id} className="flex items-center gap-2">
-                  <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-orange-200 text-[9px] font-bold text-orange-700">
+                  <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#FFE0B2] text-[9px] font-bold text-[#E65100]">
                     {getInitials(name)}
                   </div>
                   <p className="text-xs text-gray-700">{name}</p>
@@ -107,7 +107,7 @@ export function OpenBillCard({
           <button
             type="button"
             onClick={() => onCheckin(bill.id)}
-            className="w-full rounded-xl bg-orange-400 py-2 text-sm font-semibold text-white transition-opacity active:opacity-80"
+            className="w-full rounded-xl bg-[#FF9500] py-2 text-sm font-semibold text-white transition-opacity active:opacity-80"
           >
             Tôi có ăn
           </button>
@@ -122,7 +122,7 @@ export function OpenBillCard({
           <button
             type="button"
             onClick={() => onAddPeople(bill.id)}
-            className="text-xs font-medium text-orange-500 underline-offset-2 hover:underline"
+            className="text-xs font-medium text-[#FF9500] underline-offset-2 hover:underline"
           >
             + Thêm người
           </button>

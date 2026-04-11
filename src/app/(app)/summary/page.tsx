@@ -26,6 +26,7 @@ export default function SummaryPage() {
 
   const [debts, setDebts] = useState<DebtWithNames[]>([]);
   const [loading, setLoading] = useState(true);
+  const [confirmDebt, setConfirmDebt] = useState<DebtWithNames | null>(null);
 
   useEffect(() => {
     if (!member) return;
@@ -95,7 +96,7 @@ export default function SummaryPage() {
       <main className="space-y-4 p-4">
         {loading ? (
           <div className="flex justify-center py-12">
-            <div className="h-6 w-6 animate-spin rounded-full border-2 border-orange-600 border-t-transparent" />
+            <div className="h-6 w-6 animate-spin rounded-full border-2 border-[#3A5CCC] border-t-transparent" />
           </div>
         ) : debts.length === 0 ? (
           <div className="flex flex-col items-center gap-3 py-16 text-center">
@@ -157,7 +158,7 @@ export default function SummaryPage() {
                         </div>
                         <Button
                           size="sm"
-                          className="h-7 bg-orange-600 text-xs hover:bg-orange-700"
+                          className="h-7 bg-[#3A5CCC] text-xs hover:bg-[#2d4aaa]"
                           onClick={() => router.push(`/transfer/${d.id}`)}
                         >
                           Trả tiền
@@ -186,7 +187,7 @@ export default function SummaryPage() {
                         </div>
                         <Button
                           size="sm" variant="outline" className="h-7 text-xs"
-                          onClick={() => handleCreditorConfirm(d)}
+                          onClick={() => setConfirmDebt(d)}
                         >
                           Đã nhận
                         </Button>
@@ -200,6 +201,45 @@ export default function SummaryPage() {
           </>
         )}
       </main>
+
+      {/* Creditor confirm dialog */}
+      {confirmDebt && (
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-4">
+          <div className="w-full max-w-sm rounded-2xl bg-white p-5 shadow-xl">
+            <h3 className="mb-2 text-center text-base font-bold text-gray-900">Xác nhận</h3>
+            <p className="mb-5 text-center text-sm text-gray-500">
+              Xác nhận đã nhận{" "}
+              <span className="font-semibold text-gray-900">
+                {formatVND(confirmDebt.remaining)}đ
+              </span>{" "}
+              từ{" "}
+              <span className="font-semibold text-gray-900">
+                {confirmDebt.debtor?.display_name ?? "?"}
+              </span>
+              ?
+            </p>
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={() => setConfirmDebt(null)}
+                className="flex-1 rounded-2xl border border-gray-200 py-3 text-sm font-semibold text-gray-700"
+              >
+                Hủy
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  handleCreditorConfirm(confirmDebt);
+                  setConfirmDebt(null);
+                }}
+                className="flex-1 rounded-2xl bg-[#34C759] py-3 text-sm font-semibold text-white"
+              >
+                Xác nhận
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }

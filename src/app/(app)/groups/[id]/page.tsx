@@ -325,21 +325,34 @@ export default function GroupDetailPage() {
       return;
     }
 
-    // 2. Create equal debts for standard bills (non-open)
+    // 2. Create equal debts + bill_participants for standard bills (non-open)
     if (data.billType === "standard" && data.splitType === "equal" && data.peopleCount > 1) {
       const perPerson = Math.floor(data.amount / data.peopleCount);
-      // Create debt: current members owe the payer
-      const debtInserts = memberList
+      // Participants: payer + up to (peopleCount-1) other members
+      const otherParticipants = memberList
         .filter((m) => m.id !== data.payerId)
-        .slice(0, data.peopleCount - 1)
-        .map((m) => ({
+        .slice(0, data.peopleCount - 1);
+
+      // Insert bill_participants (payer + others)
+      const participantInserts = [
+        { bill_id: newBill.id, member_id: data.payerId, amount: perPerson },
+        ...otherParticipants.map((m) => ({
           bill_id: newBill.id,
-          debtor_id: m.id,
-          creditor_id: data.payerId,
+          member_id: m.id,
           amount: perPerson,
-          remaining: perPerson,
-          status: "pending" as const,
-        }));
+        })),
+      ];
+      await supabase.from("bill_participants").insert(participantInserts);
+
+      // Create debts: others owe the payer
+      const debtInserts = otherParticipants.map((m) => ({
+        bill_id: newBill.id,
+        debtor_id: m.id,
+        creditor_id: data.payerId,
+        amount: perPerson,
+        remaining: perPerson,
+        status: "pending" as const,
+      }));
       if (debtInserts.length > 0) {
         await supabase.from("debts").insert(debtInserts);
       }
@@ -354,7 +367,22 @@ export default function GroupDetailPage() {
       metadata: { bill_id: newBill.id },
     });
 
-    // 4. Update local state
+    // 4. Send Telegram notification (fire-and-forget)
+    fetch("/api/notify", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        type: "new_bill",
+        payload: {
+          billId: newBill.id,
+          billTitle: data.description,
+          totalAmount: data.amount,
+          paidById: data.payerId,
+        },
+      }),
+    }).catch(() => {});
+
+    // 5. Update local state
     setTimeout(() => {
       setBills((prev) => [...prev, newBill as Bill]);
       setShowConfirmSheet(false);
@@ -450,10 +478,11 @@ export default function GroupDetailPage() {
 
     if (error) { toast.error("Lỗi đóng bill"); return; }
 
-    // Create equal debts for all checked-in members
-    const perPerson = Math.floor(bill.total_amount / checkins.length);
-    const debtInserts = checkins
-      .filter((c) => c.member_id && c.member_id !== bill.paid_by)
+    // Create equal debts for all checked-in members (excluding payer)
+    const debtors = checkins.filter((c) => c.member_id && c.member_id !== bill.paid_by);
+    const totalParticipants = checkins.length; // everyone splits including payer
+    const perPerson = Math.floor(bill.total_amount / totalParticipants);
+    const debtInserts = debtors
       .map((c) => ({
         bill_id: billId,
         debtor_id: c.member_id!,

@@ -12,7 +12,7 @@ interface BillCardBubbleProps {
 // Generate consistent avatar color from a string
 function avatarColor(name: string): string {
   const colors = [
-    "bg-orange-400",
+    "bg-[#FF9500]",
     "bg-blue-400",
     "bg-green-400",
     "bg-purple-400",

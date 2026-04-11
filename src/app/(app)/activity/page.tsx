@@ -166,7 +166,7 @@ export default function ActivityPage() {
       <main className="p-4">
         {loading ? (
           <div className="flex justify-center py-12">
-            <div className="h-6 w-6 animate-spin rounded-full border-2 border-orange-600 border-t-transparent" />
+            <div className="h-6 w-6 animate-spin rounded-full border-2 border-[#3A5CCC] border-t-transparent" />
           </div>
         ) : activities.length === 0 ? (
           <div className="flex flex-col items-center gap-3 py-16 text-center">

@@ -124,7 +124,7 @@ export function ScreenshotUpload({
               <div className="space-y-1">
                 <div className="h-2 overflow-hidden rounded-full bg-secondary">
                   <div
-                    className="h-full bg-orange-600 transition-all"
+                    className="h-full bg-[#3A5CCC] transition-all"
                     style={{ width: `${progress}%` }}
                   />
                 </div>

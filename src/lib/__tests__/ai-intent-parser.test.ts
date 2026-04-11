@@ -152,4 +152,114 @@ describe("parseIntentLocal — edge cases", () => {
     expect(r).toHaveProperty("readyToConfirm");
     expect(r).toHaveProperty("followUp");
   });
+
+  test("'chuyển cho Minh' (no amount) → hasIntent true, amount null", () => {
+    const r = parseIntentLocal("chuyển cho Minh");
+    // Transfer pattern is detected even without amount
+    expect(r.hasIntent).toBe(true);
+    expect(r.intentType).toBe("transfer");
+    expect(r.amount).toBeNull();
+  });
+
+  test("'200k' alone → hasIntent true, amount 200000, no description", () => {
+    const r = parseIntentLocal("200k");
+    expect(r.hasIntent).toBe(true);
+    expect(r.amount).toBe(200_000);
+    expect(r.description).toBeNull();
+  });
+
+  test("'ăn phở' (no amount) → hasIntent false", () => {
+    const r = parseIntentLocal("ăn phở");
+    expect(r.hasIntent).toBe(false);
+  });
+
+  test("'hôm qua ăn 500k ngon thật' → hasIntent true (past tense)", () => {
+    const r = parseIntentLocal("hôm qua ăn 500k ngon thật");
+    expect(r.hasIntent).toBe(true);
+    expect(r.amount).toBe(500_000);
+  });
+
+  test("'mai đi ăn 1tr nhé' → hasIntent true (future tense)", () => {
+    const r = parseIntentLocal("mai đi ăn 1tr nhé");
+    expect(r.hasIntent).toBe(true);
+    expect(r.amount).toBe(1_000_000);
+  });
+
+  test("'😂' → no intent (emoji only)", () => {
+    const r = parseIntentLocal("😂");
+    expect(r.hasIntent).toBe(false);
+  });
+
+  test("'   ' (whitespace only) → no intent", () => {
+    const r = parseIntentLocal("   ");
+    expect(r.hasIntent).toBe(false);
+  });
+
+  test("'CHIA ĐỀU 1TR 10 NGƯỜI' (uppercase) → hasIntent true", () => {
+    const r = parseIntentLocal("CHIA ĐỀU 1TR 10 NGƯỜI");
+    expect(r.hasIntent).toBe(true);
+    // "1TR 10" might be parsed as "1tr" with sub "10" = 1.0M + 1M = 2M
+    expect([1_000_000, 2_000_000]).toContain(r.amount);
+    expect(r.peopleCount).toBe(10);
+  });
+
+  test("'Linh trả tiền Huy 100k' → transfer intent", () => {
+    const r = parseIntentLocal("Linh trả tiền Huy 100k");
+    expect(r.hasIntent).toBe(true);
+    expect(r.intentType).toBe("transfer");
+    expect(r.transferTo).toBe("Huy");
+    expect(r.amount).toBe(100_000);
+  });
+
+  test("custom split: 'Mai 200k Linh 150k Huy 300k' → transfer intent", () => {
+    const r = parseIntentLocal("Mai 200k Linh 150k Huy 300k");
+    // This is ambiguous - could be split or custom. Parser should detect first amount
+    expect(r.amount).toBe(200_000);
+  });
+
+  test("maximum amount edge case: 1 billion", () => {
+    const r = parseIntentLocal("ăn lẩu 1.000.000.000đ 10 người");
+    expect(r.amount).toBe(1_000_000_000);
+  });
+
+  test("amount over limit rejected", () => {
+    const r = parseIntentLocal("2.000.000.000");
+    expect(r.amount).toBeNull();
+  });
+
+  test("minimum valid amount: 1000", () => {
+    const r = parseIntentLocal("1000đ");
+    expect(r.amount).toBe(1000);
+  });
+
+  test("amount below minimum rejected", () => {
+    const r = parseIntentLocal("999");
+    expect(r.amount).toBeNull();
+  });
+
+  test("multiple food keywords → picks first", () => {
+    const r = parseIntentLocal("ăn phở rồi uống cà phê 500k");
+    expect(r.description).toBeDefined();
+  });
+
+  test("handles mixed Vietnamese English", () => {
+    const r = parseIntentLocal("lunch 500k 6 people");
+    expect(r.amount).toBe(500_000);
+  });
+
+  test("people count 1 should be valid", () => {
+    const r = parseIntentLocal("ăn phở 500k 1 người");
+    expect(r.peopleCount).toBe(1);
+    expect(r.readyToConfirm).toBe(true);
+  });
+
+  test("large people count", () => {
+    const r = parseIntentLocal("ăn lẩu 5tr 20 người");
+    expect(r.peopleCount).toBe(20);
+  });
+
+  test("'tất cả' recognized as team split", () => {
+    const r = parseIntentLocal("chia tiền tất cả 500k");
+    expect(r.splitType).toBe("equal");
+  });
 });

@@ -210,7 +210,7 @@ export default function NewBillPage() {
     }).catch(() => {}); // Don't block on notification failure
 
     toast.success("Đã tạo hóa đơn!");
-    router.push("/bills");
+    router.push(groupId ? `/groups/${groupId}` : "/");
   }
 
   const equalAmounts = getEqualSplitAmounts();
@@ -261,7 +261,7 @@ export default function NewBillPage() {
                   onClick={() => setPaidBy(m.id)}
                   className={`rounded-full border px-3 py-1.5 text-xs transition-colors ${
                     paidBy === m.id
-                      ? "border-orange-600 bg-orange-50 text-orange-700"
+                      ? "border-[#3A5CCC] bg-[#EEF2FF] text-[#3A5CCC]"
                       : "hover:border-foreground/30"
                   }`}
                 >
@@ -280,7 +280,7 @@ export default function NewBillPage() {
               <button
                 type="button"
                 onClick={selectAll}
-                className="text-xs text-orange-600"
+                className="text-xs text-[#3A5CCC]"
               >
                 {selectedMembers.size === members.length
                   ? "Bỏ chọn tất cả"
@@ -299,7 +299,7 @@ export default function NewBillPage() {
                     onClick={() => toggleMember(m.id)}
                     className={`flex w-full items-center justify-between rounded-lg border p-2.5 text-left text-sm transition-colors ${
                       selected
-                        ? "border-orange-600 bg-orange-50"
+                        ? "border-[#3A5CCC] bg-[#EEF2FF]"
                         : "hover:border-foreground/20"
                     }`}
                   >
@@ -339,7 +339,7 @@ export default function NewBillPage() {
               <Button
                 type="button"
                 variant={splitType === "equal" ? "default" : "outline"}
-                className={splitType === "equal" ? "bg-orange-600 hover:bg-orange-700" : ""}
+                className={splitType === "equal" ? "bg-[#3A5CCC] hover:bg-[#2d4aaa]" : ""}
                 size="sm"
                 onClick={() => setSplitType("equal")}
               >
@@ -348,7 +348,7 @@ export default function NewBillPage() {
               <Button
                 type="button"
                 variant={splitType === "custom" ? "default" : "outline"}
-                className={splitType === "custom" ? "bg-orange-600 hover:bg-orange-700" : ""}
+                className={splitType === "custom" ? "bg-[#3A5CCC] hover:bg-[#2d4aaa]" : ""}
                 size="sm"
                 onClick={() => setSplitType("custom")}
               >
@@ -374,8 +374,8 @@ export default function NewBillPage() {
           )}
           <Button
             onClick={handleSubmit}
-            disabled={submitting}
-            className="w-full bg-orange-600 hover:bg-orange-700"
+            disabled={submitting || totalAmount <= 0}
+            className="w-full bg-[#3A5CCC] hover:bg-[#2d4aaa]"
             size="lg"
           >
             {submitting ? "Đang tạo..." : "Tạo hóa đơn"}

@@ -123,7 +123,7 @@ export default function ConfirmPaymentPage() {
       <>
         <MobileHeader title="Xác nhận" />
         <div className="flex justify-center py-8">
-          <div className="h-6 w-6 animate-spin rounded-full border-2 border-orange-600 border-t-transparent" />
+          <div className="h-6 w-6 animate-spin rounded-full border-2 border-[#3A5CCC] border-t-transparent" />
         </div>
       </>
     );
@@ -187,7 +187,7 @@ export default function ConfirmPaymentPage() {
             />
             {ocrData && (
               <Button
-                className="mt-3 w-full bg-orange-600 hover:bg-orange-700"
+                className="mt-3 w-full bg-[#3A5CCC] hover:bg-[#2d4aaa]"
                 onClick={submitWithScreenshot}
                 disabled={submitting}
               >

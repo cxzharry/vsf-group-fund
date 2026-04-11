@@ -162,7 +162,7 @@ export default function GroupsPage() {
       <main className="p-4 space-y-4">
         <div className="flex gap-2">
           <Button
-            className="flex-1 bg-orange-600 hover:bg-orange-700"
+            className="flex-1 bg-[#3A5CCC] hover:bg-[#2d4aaa]"
             onClick={() => setShowCreate(true)}
           >
             + Tạo nhóm
@@ -178,7 +178,7 @@ export default function GroupsPage() {
 
         {loading ? (
           <div className="flex justify-center py-8">
-            <div className="h-6 w-6 animate-spin rounded-full border-2 border-orange-600 border-t-transparent" />
+            <div className="h-6 w-6 animate-spin rounded-full border-2 border-[#3A5CCC] border-t-transparent" />
           </div>
         ) : groups.length === 0 ? (
           <p className="py-8 text-center text-muted-foreground">
@@ -226,7 +226,7 @@ export default function GroupsPage() {
               />
             </div>
             <Button
-              className="w-full bg-orange-600 hover:bg-orange-700"
+              className="w-full bg-[#3A5CCC] hover:bg-[#2d4aaa]"
               onClick={handleCreate}
               disabled={submitting || !newName.trim()}
             >
@@ -253,7 +253,7 @@ export default function GroupsPage() {
               />
             </div>
             <Button
-              className="w-full bg-orange-600 hover:bg-orange-700"
+              className="w-full bg-[#3A5CCC] hover:bg-[#2d4aaa]"
               onClick={handleJoin}
               disabled={submitting || !joinCode.trim()}
             >

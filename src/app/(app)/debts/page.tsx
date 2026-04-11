@@ -31,6 +31,7 @@ export default function DebtsPage() {
   const [debts, setDebts] = useState<DebtWithNames[]>([]);
   const [loading, setLoading] = useState(true);
   const [qrDebt, setQrDebt] = useState<DebtWithNames | null>(null);
+  const [confirmDebt, setConfirmDebt] = useState<DebtWithNames | null>(null);
 
   const loadDebts = useCallback(async () => {
     if (!member) return;
@@ -174,7 +175,7 @@ export default function DebtsPage() {
       <main className="space-y-4 p-4">
         {loading ? (
           <div className="flex justify-center py-8">
-            <div className="h-6 w-6 animate-spin rounded-full border-2 border-orange-600 border-t-transparent" />
+            <div className="h-6 w-6 animate-spin rounded-full border-2 border-[#3A5CCC] border-t-transparent" />
           </div>
         ) : (
           <>
@@ -298,7 +299,7 @@ export default function DebtsPage() {
                           size="sm"
                           variant="outline"
                           className="h-7 text-xs"
-                          onClick={() => handleCreditorConfirm(d)}
+                          onClick={() => setConfirmDebt(d)}
                         >
                           Đã nhận tiền
                         </Button>
@@ -318,6 +319,45 @@ export default function DebtsPage() {
           </>
         )}
       </main>
+
+      {/* Creditor confirm dialog */}
+      {confirmDebt && (
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-4">
+          <div className="w-full max-w-sm rounded-2xl bg-white p-5 shadow-xl">
+            <h3 className="mb-2 text-center text-base font-bold text-gray-900">Xác nhận</h3>
+            <p className="mb-5 text-center text-sm text-gray-500">
+              Xác nhận đã nhận{" "}
+              <span className="font-semibold text-gray-900">
+                {formatVND(confirmDebt.remaining)}đ
+              </span>{" "}
+              từ{" "}
+              <span className="font-semibold text-gray-900">
+                {confirmDebt.debtor?.display_name ?? "?"}
+              </span>
+              ?
+            </p>
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={() => setConfirmDebt(null)}
+                className="flex-1 rounded-2xl border border-gray-200 py-3 text-sm font-semibold text-gray-700"
+              >
+                Hủy
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  handleCreditorConfirm(confirmDebt);
+                  setConfirmDebt(null);
+                }}
+                className="flex-1 rounded-2xl bg-[#34C759] py-3 text-sm font-semibold text-white"
+              >
+                Xác nhận
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* VietQR Dialog */}
       <Dialog open={!!qrDebt} onOpenChange={() => setQrDebt(null)}>
@@ -410,7 +450,7 @@ export default function DebtsPage() {
               </p>
             )}
             <Button
-              className="w-full bg-orange-600 hover:bg-orange-700"
+              className="w-full bg-[#3A5CCC] hover:bg-[#2d4aaa]"
               onClick={() => {
                 if (qrDebt) handleConfirmPaid(qrDebt);
                 setQrDebt(null);

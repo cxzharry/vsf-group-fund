@@ -35,7 +35,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="vi" className={`${inter.variable} h-full antialiased`}>
-      <body className="min-h-full bg-[#E5E5EA]">
+      <body className="min-h-full bg-[#F2F2F7]">
         {children}
         <Toaster position="top-center" />
       </body>
