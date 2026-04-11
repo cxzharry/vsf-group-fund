@@ -19,7 +19,8 @@ import type { Group } from "@/lib/types";
 
 interface GroupItem extends Group {
   member_count: number;
-  last_bill_title?: string;
+  netDebt: number; // negative = I owe, positive = owed to me
+  debtLabel: string;
 }
 
 export default function HomePage() {
@@ -81,10 +82,40 @@ export default function HomePage() {
       countMap[g.group_id] = (countMap[g.group_id] ?? 0) + 1;
     });
 
+    // Calculate net debt per group
+    const { data: myDebts } = await supabase
+      .from("debts")
+      .select("remaining, creditor_id, bill_id, bills!inner(group_id)")
+      .eq("debtor_id", member.id)
+      .in("status", ["pending", "partial"]);
+
+    const { data: owedToMe } = await supabase
+      .from("debts")
+      .select("remaining, debtor_id, bill_id, bills!inner(group_id)")
+      .eq("creditor_id", member.id)
+      .in("status", ["pending", "partial"]);
+
+    const debtPerGroup: Record<string, { net: number; label: string }> = {};
+    for (const gId of groupIds) {
+      const owing = (myDebts ?? [])
+        .filter((d: Record<string, unknown>) => (d.bills as Record<string, unknown>)?.group_id === gId)
+        .reduce((s: number, d: { remaining: number }) => s + d.remaining, 0);
+      const owed = (owedToMe ?? [])
+        .filter((d: Record<string, unknown>) => (d.bills as Record<string, unknown>)?.group_id === gId)
+        .reduce((s: number, d: { remaining: number }) => s + d.remaining, 0);
+      const net = owed - owing;
+      let label = "";
+      if (owing > 0) label = `Bạn đang nợ ${owing.toLocaleString("vi-VN")}đ`;
+      else if (owed > 0) label = `Bạn được nợ ${owed.toLocaleString("vi-VN")}đ`;
+      debtPerGroup[gId] = { net, label };
+    }
+
     setGroups(
       (groupData ?? []).map((g) => ({
         ...g,
         member_count: countMap[g.id] ?? 0,
+        netDebt: debtPerGroup[g.id]?.net ?? 0,
+        debtLabel: debtPerGroup[g.id]?.label ?? "",
       }))
     );
     setLoading(false);
@@ -123,39 +154,20 @@ export default function HomePage() {
     if (!joinCode.trim() || !member) return;
     setSubmitting(true);
 
-    const { data: group } = await supabase
-      .from("groups")
-      .select("id, name")
-      .eq("invite_code", joinCode.trim().toLowerCase())
-      .single();
-
-    if (!group) {
-      toast.error("Mã mời không hợp lệ");
-      setSubmitting(false);
-      return;
-    }
-
-    const { data: existing } = await supabase
-      .from("group_members")
-      .select("id")
-      .eq("group_id", group.id)
-      .eq("member_id", member.id)
-      .maybeSingle();
-
-    if (existing) {
-      toast.info("Bạn đã trong nhóm này rồi");
-      setSubmitting(false);
-      setShowJoin(false);
-      return;
-    }
-
-    await supabase.from("group_members").insert({
-      group_id: group.id,
-      member_id: member.id,
-      role: "member",
+    const res = await fetch("/api/groups/join", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ inviteCode: joinCode.trim(), memberId: member.id }),
     });
+    const result = await res.json();
 
-    toast.success(`Đã tham gia "${group.name}"!`);
+    if (!res.ok) {
+      toast.error(result.error ?? "Không thể tham gia nhóm");
+      setSubmitting(false);
+      return;
+    }
+
+    toast.success(`Đã tham gia "${result.group?.name}"!`);
     setShowJoin(false);
     setJoinCode("");
     setSubmitting(false);
@@ -172,77 +184,102 @@ export default function HomePage() {
 
   return (
     <>
-      {/* Header like chat app */}
-      <header className="sticky top-0 z-40 border-b bg-background/95 backdrop-blur">
-        <div className="mx-auto flex h-14 max-w-md items-center justify-between px-4">
-          <h1 className="text-lg font-bold">Group Fund</h1>
-          <div className="flex gap-1.5">
-            <Button
-              size="sm"
-              variant="ghost"
-              className="h-8 text-xs"
+      {/* Header — matches Pencil design */}
+      <header className="sticky top-0 z-40 bg-[#F2F2F7] px-5 pt-3 pb-2">
+        <div className="mx-auto flex max-w-md items-center justify-between">
+          <h1 className="text-[28px] font-bold text-[#1C1C1E]">Nhóm</h1>
+          <div className="flex gap-2">
+            <button
               onClick={() => setShowJoin(true)}
+              className="text-sm font-medium text-[#3A5CCC]"
             >
               Tham gia
-            </Button>
-            <Button
-              size="sm"
-              className="h-8 bg-orange-600 text-xs hover:bg-orange-700"
+            </button>
+            <button
               onClick={() => setShowCreate(true)}
+              className="flex h-9 w-9 items-center justify-center rounded-full bg-[#3A5CCC] text-white shadow-sm"
             >
-              + Tạo nhóm
-            </Button>
+              <span className="text-lg leading-none">+</span>
+            </button>
           </div>
         </div>
+        {/* Total debt summary */}
+        {groups.length > 0 && (
+          <div className="mx-auto mt-2 max-w-md">
+            <div className="flex items-center gap-1.5 rounded-xl bg-white px-4 py-2.5 text-xs">
+              {(() => {
+                const totalOwe = groups.filter(g => g.netDebt < 0).reduce((s, g) => s + Math.abs(g.netDebt), 0);
+                const totalOwed = groups.filter(g => g.netDebt > 0).reduce((s, g) => s + g.netDebt, 0);
+                return (
+                  <>
+                    {totalOwe > 0 && (
+                      <span>Tổng: <span className="font-semibold text-[#FF3B30]">Bạn đang nợ {totalOwe.toLocaleString("vi-VN")}đ</span></span>
+                    )}
+                    {totalOwe > 0 && totalOwed > 0 && <span className="text-[#C7C7CC]">·</span>}
+                    {totalOwed > 0 && (
+                      <span>Bạn được nợ <span className="font-semibold text-[#34C759]">{totalOwed.toLocaleString("vi-VN")}đ</span></span>
+                    )}
+                    {totalOwe === 0 && totalOwed === 0 && (
+                      <span className="text-[#8E8E93]">Không có khoản nợ</span>
+                    )}
+                  </>
+                );
+              })()}
+            </div>
+          </div>
+        )}
       </header>
 
-      <main className="p-4">
+      <main className="px-5 py-3">
         {loading ? (
           <div className="flex justify-center py-12">
-            <div className="h-6 w-6 animate-spin rounded-full border-2 border-orange-600 border-t-transparent" />
+            <div className="h-6 w-6 animate-spin rounded-full border-2 border-[#3A5CCC] border-t-transparent" />
           </div>
         ) : groups.length === 0 ? (
-          /* Empty state */
           <div className="flex flex-col items-center gap-4 py-16 text-center">
             <span className="text-5xl">👥</span>
-            <div>
-              <p className="font-medium">Chưa có nhóm nào</p>
-              <p className="mt-1 text-sm text-muted-foreground">
-                Tạo nhóm mới hoặc tham gia bằng mã mời
-              </p>
-            </div>
+            <p className="font-medium">Chưa có nhóm nào</p>
+            <p className="text-sm text-[#8E8E93]">Tạo nhóm mới hoặc tham gia bằng mã mời</p>
             <div className="flex gap-2">
-              <Button
-                className="bg-orange-600 hover:bg-orange-700"
-                onClick={() => setShowCreate(true)}
-              >
-                Tạo nhóm
-              </Button>
-              <Button variant="outline" onClick={() => setShowJoin(true)}>
-                Nhập mã mời
-              </Button>
+              <Button className="bg-[#3A5CCC]" onClick={() => setShowCreate(true)}>Tạo nhóm</Button>
+              <Button variant="outline" onClick={() => setShowJoin(true)}>Nhập mã mời</Button>
             </div>
           </div>
         ) : (
-          /* Groups list - chat app style */
-          <div className="space-y-1">
-            {groups.map((g) => (
-              <button
-                key={g.id}
-                onClick={() => router.push(`/groups/${g.id}`)}
-                className="flex w-full items-center gap-3 rounded-xl p-3 text-left transition-colors hover:bg-muted/50 active:scale-[0.98]"
-              >
-                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-orange-100 text-lg">
-                  {g.name.charAt(0).toUpperCase()}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="font-medium truncate">{g.name}</p>
-                  <p className="text-xs text-muted-foreground">
-                    {g.member_count} thành viên
-                  </p>
-                </div>
-              </button>
-            ))}
+          <div className="space-y-3">
+            {groups.map((g) => {
+              const colors = ["#3A5CCC", "#FF9500", "#34C759", "#AF52DE", "#FF3B30", "#5AC8FA"];
+              const color = colors[g.name.charCodeAt(0) % colors.length];
+              const initials = g.name.split(" ").map(w => w[0]).join("").slice(0, 2).toUpperCase();
+              return (
+                <button
+                  key={g.id}
+                  onClick={() => router.push(`/groups/${g.id}`)}
+                  className="flex w-full items-center gap-3 rounded-2xl bg-white p-4 text-left shadow-sm transition-all active:scale-[0.98]"
+                >
+                  <div
+                    className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full text-sm font-bold text-white"
+                    style={{ backgroundColor: color }}
+                  >
+                    {initials}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-semibold text-[#1C1C1E] truncate">{g.name}</p>
+                    <p className="text-xs text-[#8E8E93]">{g.debtLabel || `${g.member_count} thành viên`}</p>
+                  </div>
+                  {g.netDebt !== 0 && (
+                    <span className={`text-sm font-bold ${g.netDebt < 0 ? "text-[#FF3B30]" : "text-[#34C759]"}`}>
+                      {g.netDebt < 0 ? "-" : "+"}{Math.abs(g.netDebt).toLocaleString("vi-VN")}đ
+                    </span>
+                  )}
+                  {g.netDebt < 0 && (
+                    <span className="rounded-lg bg-[#3A5CCC] px-3 py-1.5 text-xs font-semibold text-white">
+                      Trả nợ
+                    </span>
+                  )}
+                </button>
+              );
+            })}
           </div>
         )}
       </main>

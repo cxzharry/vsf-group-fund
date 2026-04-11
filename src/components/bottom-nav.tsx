@@ -6,8 +6,6 @@ import { cn } from "@/lib/utils";
 
 const navItems = [
   { href: "/", label: "Nhóm", icon: ChatIcon },
-  { href: "/summary", label: "Tổng kết", icon: WalletIcon },
-  { href: "/activity", label: "Hoạt động", icon: ActivityIcon },
   { href: "/account", label: "Tài khoản", icon: UserIcon },
 ];
 
