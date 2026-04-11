@@ -137,7 +137,7 @@ export default function AccountPage() {
                   Gửi <code className="rounded bg-muted px-1">/start {member?.email}</code> cho bot Telegram để nhận thông báo
                 </p>
                 <a
-                  href={`https://t.me/group_bill_bot?start=${encodeURIComponent(member?.email ?? "")}`}
+                  href={`https://t.me/vsf_product_bot?start=${encodeURIComponent(member?.email ?? "")}`}
                   target="_blank" rel="noopener noreferrer"
                 >
                   <Button variant="outline" size="sm" className="w-full gap-1">
