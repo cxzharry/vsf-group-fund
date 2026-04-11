@@ -177,7 +177,7 @@ export default function HomePage() {
   if (authLoading) {
     return (
       <div className="flex min-h-dvh items-center justify-center">
-        <div className="h-8 w-8 animate-spin rounded-full border-2 border-orange-600 border-t-transparent" />
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-[#3A5CCC] border-t-transparent" />
       </div>
     );
   }
@@ -236,13 +236,30 @@ export default function HomePage() {
             <div className="h-6 w-6 animate-spin rounded-full border-2 border-[#3A5CCC] border-t-transparent" />
           </div>
         ) : groups.length === 0 ? (
-          <div className="flex flex-col items-center gap-4 py-16 text-center">
-            <span className="text-5xl">👥</span>
-            <p className="font-medium">Chưa có nhóm nào</p>
-            <p className="text-sm text-[#8E8E93]">Tạo nhóm mới hoặc tham gia bằng mã mời</p>
-            <div className="flex gap-2">
-              <Button className="bg-[#3A5CCC]" onClick={() => setShowCreate(true)}>Tạo nhóm</Button>
-              <Button variant="outline" onClick={() => setShowJoin(true)}>Nhập mã mời</Button>
+          <div className="flex flex-col items-center gap-3 py-16 text-center">
+            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-white shadow-sm">
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#8E8E93" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round">
+                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+                <circle cx="9" cy="7" r="4" />
+                <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+                <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+              </svg>
+            </div>
+            <p className="font-semibold text-[#1C1C1E]">Chưa có nhóm nào</p>
+            <p className="text-sm text-[#8E8E93]">Tạo nhóm để bắt đầu chia bill với bạn bè</p>
+            <div className="mt-1 flex gap-2">
+              <button
+                onClick={() => setShowCreate(true)}
+                className="rounded-xl border border-[#3A5CCC] px-5 py-2.5 text-sm font-semibold text-[#3A5CCC]"
+              >
+                Tạo nhóm mới
+              </button>
+              <button
+                onClick={() => setShowJoin(true)}
+                className="rounded-xl border border-[#E5E5EA] px-5 py-2.5 text-sm font-semibold text-[#1C1C1E]"
+              >
+                Nhập mã mời
+              </button>
             </div>
           </div>
         ) : (
@@ -302,7 +319,7 @@ export default function HomePage() {
               />
             </div>
             <Button
-              className="w-full bg-orange-600 hover:bg-orange-700"
+              className="w-full bg-[#3A5CCC] hover:bg-[#2f4fb0]"
               onClick={handleCreate}
               disabled={submitting || !newName.trim()}
             >
@@ -330,7 +347,7 @@ export default function HomePage() {
               />
             </div>
             <Button
-              className="w-full bg-orange-600 hover:bg-orange-700"
+              className="w-full bg-[#3A5CCC] hover:bg-[#2f4fb0]"
               onClick={handleJoin}
               disabled={submitting || !joinCode.trim()}
             >

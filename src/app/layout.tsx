@@ -1,11 +1,12 @@
 import type { Metadata, Viewport } from "next";
-import { Geist } from "next/font/google";
+import { Inter } from "next/font/google";
 import { Toaster } from "@/components/ui/sonner";
 import "./globals.css";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+const inter = Inter({
+  variable: "--font-inter",
   subsets: ["latin"],
+  display: "swap",
 });
 
 export const metadata: Metadata = {
@@ -33,8 +34,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="vi" className={`${geistSans.variable} h-full antialiased`}>
-      <body className="min-h-full">
+    <html lang="vi" className={`${inter.variable} h-full antialiased`}>
+      <body className="min-h-full bg-[#E5E5EA]">
         {children}
         <Toaster position="top-center" />
       </body>

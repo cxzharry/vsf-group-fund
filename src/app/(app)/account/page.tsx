@@ -4,12 +4,6 @@ import { useState, useMemo, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { createBrowserClient } from "@supabase/ssr";
 import { useAuth } from "@/components/auth-provider";
-import { MobileHeader } from "@/components/mobile-header";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
   Dialog,
   DialogContent,
@@ -36,13 +30,11 @@ export default function AccountPage() {
   const [bankAccountNo, setBankAccountNo] = useState("");
   const [bankAccountName, setBankAccountName] = useState("");
   const [saving, setSaving] = useState(false);
-  const [editing, setEditing] = useState(false);
+  const [editing, setEditing] = useState<"profile" | "bank" | null>(null);
   const [showSignOutConfirm, setShowSignOutConfirm] = useState(false);
 
-  // Track if user has saved bank info before
-  const hasSavedBankInfo = !!(member?.bank_name && member?.bank_account_no);
+  const hasBankInfo = !!(member?.bank_name && member?.bank_account_no);
 
-  // Sync form state when member loads
   useEffect(() => {
     if (!member) return;
     const t = setTimeout(() => {
@@ -54,17 +46,8 @@ export default function AccountPage() {
     return () => clearTimeout(t);
   }, [member]);
 
-  // Check if anything changed from saved values
-  const hasChanges =
-    displayName !== (member?.display_name ?? "") ||
-    bankName !== (member?.bank_name ?? "") ||
-    bankAccountNo !== (member?.bank_account_no ?? "") ||
-    bankAccountName !== (member?.bank_account_name ?? "");
-
-  const formDisabled = hasSavedBankInfo && !editing;
-
   const initials = member?.display_name
-    ?.split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase();
+    ?.split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase() ?? "?";
 
   async function handleSave() {
     if (!member) return;
@@ -85,19 +68,17 @@ export default function AccountPage() {
       toast.error("Lỗi lưu thông tin");
     } else {
       toast.success("Đã lưu!");
-      setEditing(false);
-      // Force reload member data
+      setEditing(null);
       window.location.reload();
     }
   }
 
   function handleCancelEdit() {
-    // Reset to saved values
     setDisplayName(member?.display_name ?? "");
     setBankName(member?.bank_name ?? "");
     setBankAccountNo(member?.bank_account_no ?? "");
     setBankAccountName(member?.bank_account_name ?? "");
-    setEditing(false);
+    setEditing(null);
   }
 
   async function handleSignOut() {
@@ -105,182 +86,280 @@ export default function AccountPage() {
     router.push("/login");
   }
 
+  const maskedAccount = member?.bank_account_no
+    ? `****${member.bank_account_no.slice(-4)}`
+    : "";
+
   return (
     <>
-      <MobileHeader title="Tài khoản" />
-      <main className="space-y-4 p-4">
-        {/* Avatar & Name */}
-        <div className="flex flex-col items-center gap-3 py-4">
-          <Avatar className="h-20 w-20">
-            <AvatarImage src={member?.avatar_url ?? undefined} />
-            <AvatarFallback className="text-xl">{initials ?? "?"}</AvatarFallback>
-          </Avatar>
-          <div className="text-center">
-            <p className="font-semibold text-lg">{member?.display_name}</p>
-            <p className="text-sm text-muted-foreground">{member?.email}</p>
+      {/* Nav bar */}
+      <header className="flex h-[52px] items-center justify-center bg-[#F2F2F7] px-4">
+        <h1 className="text-[17px] font-semibold text-[#1C1C1E]">Tài khoản</h1>
+      </header>
+
+      <main className="space-y-6 px-4 py-4">
+        {/* Profile section */}
+        <div className="flex flex-col items-center gap-3 py-2">
+          <div
+            className="flex h-20 w-20 items-center justify-center rounded-full text-2xl font-bold text-white"
+            style={{ backgroundColor: "#3A5CCC" }}
+          >
+            {initials}
+          </div>
+          <div className="flex items-center gap-2 text-center">
+            <div>
+              <p className="text-[17px] font-semibold text-[#1C1C1E]">
+                {member?.display_name ?? "Chưa đặt tên"}
+              </p>
+              <p className="text-sm text-[#8E8E93]">{member?.email}</p>
+            </div>
+            <button
+              onClick={() => setEditing("profile")}
+              className="ml-1 text-sm font-medium text-[#3A5CCC]"
+            >
+              Sửa
+            </button>
           </div>
         </div>
 
-        {/* Edit name */}
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm">Tên hiển thị</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <Input
-              value={displayName}
-              onChange={(e) => setDisplayName(e.target.value)}
-              placeholder="Tên của bạn"
-              disabled={formDisabled}
-            />
-          </CardContent>
-        </Card>
-
-        {/* Bank info */}
-        <Card>
-          <CardHeader className="pb-2">
-            <div className="flex items-center justify-between">
-              <div>
-                <CardTitle className="text-sm">Thông tin ngân hàng</CardTitle>
-                <p className="text-xs text-muted-foreground">
-                  Dùng để tạo QR khi người khác trả tiền cho bạn
-                </p>
-              </div>
-              {hasSavedBankInfo && !editing && (
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  className="h-7 text-xs text-orange-600"
-                  onClick={() => setEditing(true)}
-                >
-                  Sửa
-                </Button>
-              )}
-            </div>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {!formDisabled && (
-              <div className="flex flex-wrap gap-1.5">
-                {BANKS.map((b) => (
-                  <button
-                    key={b} type="button"
-                    onClick={() => setBankName(b)}
-                    className={`rounded-full border px-2.5 py-1 text-xs transition-colors ${
-                      bankName === b
-                        ? "border-orange-600 bg-orange-50 text-orange-700"
-                        : "hover:border-foreground/30"
-                    }`}
-                  >
-                    {b}
-                  </button>
-                ))}
-              </div>
-            )}
-            <div className="space-y-2">
-              <Label className="text-xs text-muted-foreground">Ngân hàng</Label>
-              <Input value={bankName} onChange={(e) => setBankName(e.target.value)} placeholder="Ngân hàng" disabled={formDisabled} />
-            </div>
-            <div className="space-y-2">
-              <Label className="text-xs text-muted-foreground">Số tài khoản</Label>
-              <Input value={bankAccountNo} onChange={(e) => setBankAccountNo(e.target.value)} placeholder="Số tài khoản" inputMode="numeric" disabled={formDisabled} />
-            </div>
-            <div className="space-y-2">
-              <Label className="text-xs text-muted-foreground">Tên chủ tài khoản</Label>
-              <Input
-                value={bankAccountName}
-                onChange={(e) => setBankAccountName(e.target.value.toUpperCase())}
-                placeholder="Tên chủ tài khoản" className="uppercase" disabled={formDisabled}
-              />
-            </div>
-
-            {/* Save / Cancel buttons — only show when editable and has changes */}
-            {!formDisabled && (
-              <div className="flex gap-2 pt-1">
-                {editing && (
-                  <Button
-                    variant="outline"
-                    className="flex-1"
-                    onClick={handleCancelEdit}
-                  >
-                    Hủy
-                  </Button>
+        {/* Bank section */}
+        <div>
+          <p className="mb-1 px-1 text-xs font-semibold uppercase tracking-wide text-[#8E8E93]">
+            Ngân hàng
+          </p>
+          <div className="overflow-hidden rounded-2xl bg-white">
+            <button
+              onClick={() => setEditing("bank")}
+              className="flex w-full items-center justify-between px-4 py-3.5"
+            >
+              <span className="text-[15px] text-[#1C1C1E]">Tài khoản ngân hàng</span>
+              <div className="flex items-center gap-2">
+                {hasBankInfo ? (
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm text-[#8E8E93]">
+                      {member?.bank_name} {maskedAccount}
+                    </span>
+                    <span className="rounded-full bg-[#E8F9EF] px-2 py-0.5 text-xs font-medium text-[#34C759]">
+                      Đã liên kết
+                    </span>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm text-[#8E8E93]">Chưa liên kết</span>
+                    <span className="text-sm font-medium text-[#3A5CCC]">Liên kết ngay</span>
+                  </div>
                 )}
-                <Button
-                  className="flex-1 bg-orange-600 hover:bg-orange-700"
-                  onClick={handleSave}
-                  disabled={saving || !hasChanges}
-                >
-                  {saving ? "Đang lưu..." : "Lưu thay đổi"}
-                </Button>
+                <ChevronRight />
               </div>
-            )}
-          </CardContent>
-        </Card>
+            </button>
+          </div>
+        </div>
 
-        {/* Telegram */}
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm">Thông báo Telegram</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {member?.telegram_chat_id ? (
-              <p className="text-sm text-green-600">✅ Đã liên kết</p>
-            ) : (
-              <div className="space-y-2">
-                <p className="text-xs text-muted-foreground">
-                  Gửi <code className="rounded bg-muted px-1">/start {member?.email}</code> cho bot Telegram
-                </p>
+        {/* Telegram section */}
+        <div>
+          <p className="mb-1 px-1 text-xs font-semibold uppercase tracking-wide text-[#8E8E93]">
+            Liên kết
+          </p>
+          <div className="overflow-hidden rounded-2xl bg-white">
+            <div className="flex items-center justify-between px-4 py-3.5">
+              <div className="flex items-center gap-3">
+                <TelegramIcon />
+                <span className="text-[15px] text-[#1C1C1E]">Telegram</span>
+              </div>
+              {member?.telegram_chat_id ? (
+                <span className="rounded-full bg-[#E8F9EF] px-2 py-0.5 text-xs font-medium text-[#34C759]">
+                  Đã liên kết
+                </span>
+              ) : (
                 <a
                   href={`https://t.me/vsf_product_bot?start=${encodeURIComponent(member?.email ?? "")}`}
-                  target="_blank" rel="noopener noreferrer"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-sm font-medium text-[#3A5CCC]"
                 >
-                  <Button variant="outline" size="sm" className="w-full gap-1">
-                    📱 Liên kết Telegram
-                  </Button>
+                  Liên kết
                 </a>
-              </div>
-            )}
-          </CardContent>
-        </Card>
+              )}
+            </div>
+          </div>
+        </div>
 
-        {/* Sign out - subtle */}
-        <div className="pt-4">
+        {/* Sign out */}
+        <div className="pt-2">
           <button
             onClick={() => setShowSignOutConfirm(true)}
-            className="w-full text-center text-sm text-muted-foreground hover:text-red-600 transition-colors"
+            className="flex w-full items-center justify-center gap-2 text-sm font-medium text-[#FF3B30]"
           >
+            <LogoutIcon />
             Đăng xuất
           </button>
         </div>
       </main>
 
-      {/* Sign out confirmation */}
+      {/* Edit profile dialog */}
+      <Dialog open={editing === "profile"} onOpenChange={(o) => !o && handleCancelEdit()}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Sửa tên hiển thị</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="overflow-hidden rounded-xl border border-[#E5E5EA]">
+              <input
+                type="text"
+                value={displayName}
+                onChange={(e) => setDisplayName(e.target.value)}
+                placeholder="Tên của bạn"
+                className="w-full px-4 py-3 text-[15px] text-[#1C1C1E] placeholder-[#AEAEB2] outline-none"
+                autoFocus
+              />
+            </div>
+            <div className="flex gap-2">
+              <button
+                onClick={handleCancelEdit}
+                className="flex-1 rounded-xl border border-[#E5E5EA] py-3 text-[15px] font-semibold text-[#1C1C1E]"
+              >
+                Hủy
+              </button>
+              <button
+                onClick={handleSave}
+                disabled={saving || !displayName.trim()}
+                className="flex-1 rounded-xl py-3 text-[15px] font-semibold text-white disabled:opacity-50"
+                style={{ backgroundColor: "#3A5CCC" }}
+              >
+                {saving ? "Đang lưu..." : "Lưu"}
+              </button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit bank dialog */}
+      <Dialog open={editing === "bank"} onOpenChange={(o) => !o && handleCancelEdit()}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Thông tin ngân hàng</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            {/* Bank quick-select chips */}
+            <div className="flex flex-wrap gap-1.5">
+              {BANKS.map((b) => (
+                <button
+                  key={b}
+                  type="button"
+                  onClick={() => setBankName(b)}
+                  className={`rounded-full border px-2.5 py-1 text-xs transition-colors ${
+                    bankName === b
+                      ? "border-[#3A5CCC] bg-[#EEF2FF] text-[#3A5CCC]"
+                      : "border-[#E5E5EA] text-[#1C1C1E] hover:border-[#3A5CCC]"
+                  }`}
+                >
+                  {b}
+                </button>
+              ))}
+            </div>
+            <div className="overflow-hidden rounded-xl border border-[#E5E5EA]">
+              <div className="border-b border-[#E5E5EA] px-4">
+                <input
+                  value={bankName}
+                  onChange={(e) => setBankName(e.target.value)}
+                  placeholder="Ngân hàng"
+                  className="w-full bg-transparent py-3 text-[15px] text-[#1C1C1E] placeholder-[#AEAEB2] outline-none"
+                />
+              </div>
+              <div className="border-b border-[#E5E5EA] px-4">
+                <input
+                  value={bankAccountNo}
+                  onChange={(e) => setBankAccountNo(e.target.value)}
+                  placeholder="Số tài khoản"
+                  inputMode="numeric"
+                  className="w-full bg-transparent py-3 text-[15px] text-[#1C1C1E] placeholder-[#AEAEB2] outline-none"
+                />
+              </div>
+              <div className="px-4">
+                <input
+                  value={bankAccountName}
+                  onChange={(e) => setBankAccountName(e.target.value.toUpperCase())}
+                  placeholder="Tên chủ tài khoản"
+                  className="w-full bg-transparent py-3 text-[15px] uppercase text-[#1C1C1E] placeholder-[#AEAEB2] outline-none"
+                />
+              </div>
+            </div>
+            <div className="flex gap-2">
+              <button
+                onClick={handleCancelEdit}
+                className="flex-1 rounded-xl border border-[#E5E5EA] py-3 text-[15px] font-semibold text-[#1C1C1E]"
+              >
+                Hủy
+              </button>
+              <button
+                onClick={handleSave}
+                disabled={saving}
+                className="flex-1 rounded-xl py-3 text-[15px] font-semibold text-white disabled:opacity-50"
+                style={{ backgroundColor: "#3A5CCC" }}
+              >
+                {saving ? "Đang lưu..." : "Lưu"}
+              </button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Sign out confirm dialog */}
       <Dialog open={showSignOutConfirm} onOpenChange={setShowSignOutConfirm}>
         <DialogContent className="max-w-sm">
           <DialogHeader>
             <DialogTitle>Đăng xuất?</DialogTitle>
           </DialogHeader>
-          <p className="text-sm text-muted-foreground">
+          <p className="text-sm text-[#8E8E93]">
             Bạn sẽ cần đăng nhập lại để sử dụng app.
           </p>
           <div className="flex gap-2 pt-2">
-            <Button
-              variant="outline"
-              className="flex-1"
+            <button
               onClick={() => setShowSignOutConfirm(false)}
+              className="flex-1 rounded-xl border border-[#E5E5EA] py-3 text-[15px] font-semibold text-[#1C1C1E]"
             >
               Hủy
-            </Button>
-            <Button
-              variant="destructive"
-              className="flex-1"
+            </button>
+            <button
               onClick={handleSignOut}
+              className="flex-1 rounded-xl py-3 text-[15px] font-semibold text-white"
+              style={{ backgroundColor: "#FF3B30" }}
             >
               Đăng xuất
-            </Button>
+            </button>
           </div>
         </DialogContent>
       </Dialog>
     </>
+  );
+}
+
+function ChevronRight() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#C7C7CC" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M9 18l6-6-6-6" />
+    </svg>
+  );
+}
+
+function TelegramIcon() {
+  return (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+      <circle cx="12" cy="12" r="12" fill="#29B6F6" />
+      <path
+        d="M17.607 6.24l-2.37 11.178c-.178.8-.643 1-.303 1-.337 0-.53-.213-.737-.417l-2.05-1.676-1.01.97c-.111.11-.205.203-.42.203l.15-2.133 3.863-3.49c.168-.15-.037-.233-.26-.083L6.33 14.967l-2.03-.634c-.44-.138-.45-.44.093-.65l11.117-4.28c.367-.133.687.09.567.65-.57 2.65-1.47-.643z"
+        fill="white"
+      />
+    </svg>
+  );
+}
+
+function LogoutIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+      <polyline points="16 17 21 12 16 7" />
+      <line x1="21" y1="12" x2="9" y2="12" />
+    </svg>
   );
 }

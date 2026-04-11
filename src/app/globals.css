@@ -123,11 +123,12 @@
   }
   body {
     @apply bg-background text-foreground;
+    font-family: var(--font-inter), Inter, -apple-system, BlinkMacSystemFont, sans-serif;
     -webkit-tap-highlight-color: transparent;
     overscroll-behavior-y: contain;
   }
   html {
-    @apply font-sans;
+    font-family: var(--font-inter), Inter, -apple-system, BlinkMacSystemFont, sans-serif;
     scroll-behavior: smooth;
   }
 }
