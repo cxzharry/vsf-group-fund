@@ -270,12 +270,12 @@ export default function DebtsPage() {
                           </Button>
                           <Button
                             size="sm"
-                            className="h-7 bg-orange-600 text-xs hover:bg-orange-700"
+                            className="h-7 bg-[#3A5CCC] text-xs hover:bg-[#2d4aaa]"
                             onClick={() =>
-                              router.push(`/debts/${d.id}/confirm`)
+                              router.push(`/transfer/${d.id}`)
                             }
                           >
-                            Xác nhận
+                            Trả nợ
                           </Button>
                         </div>
                       </div>

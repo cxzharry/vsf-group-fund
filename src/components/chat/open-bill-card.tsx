@@ -1,14 +1,19 @@
 // Open bill card with check-in CTA (bill_type = "open", status = "active")
+// Enhanced: member list, add people link, close bill link
 import { formatVND } from "@/lib/format-vnd";
-import type { Bill, Member } from "@/lib/types";
+import type { Bill, Member, BillCheckin } from "@/lib/types";
 
 interface OpenBillCardProps {
   bill: Bill;
   payer: Member | null;
-  checkinCount: number;
+  checkins: BillCheckin[];
+  memberMap: Record<string, Member>;
   hasCheckedIn: boolean;
   onCheckin: (billId: string) => void;
+  onAddPeople: (billId: string) => void;
+  onCloseBill: (billId: string) => void;
   currentMemberId: string | null;
+  isPayerOrAdmin: boolean;
 }
 
 function getInitials(name: string): string {
@@ -23,14 +28,19 @@ function getInitials(name: string): string {
 export function OpenBillCard({
   bill,
   payer,
-  checkinCount,
+  checkins,
+  memberMap,
   hasCheckedIn,
   onCheckin,
+  onAddPeople,
+  onCloseBill,
   currentMemberId,
+  isPayerOrAdmin,
 }: OpenBillCardProps) {
   const payerName = payer?.display_name ?? "Ai đó";
   const isMe = payer?.id === currentMemberId;
   const initials = getInitials(payerName);
+  const checkinCount = checkins.length;
 
   return (
     <div className="mx-4 my-1">
@@ -65,6 +75,33 @@ export function OpenBillCard({
           </div>
         </div>
 
+        {/* Checked-in member list */}
+        {checkinCount > 0 && (
+          <div className="mb-2 space-y-1">
+            {checkins.slice(0, 5).map((c) => {
+              const m = c.member_id ? memberMap[c.member_id] : null;
+              const name = m?.display_name ?? c.guest_name ?? "Khách";
+              const isGuest = !c.member_id;
+              return (
+                <div key={c.id} className="flex items-center gap-2">
+                  <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-orange-200 text-[9px] font-bold text-orange-700">
+                    {getInitials(name)}
+                  </div>
+                  <p className="text-xs text-gray-700">{name}</p>
+                  {isGuest && (
+                    <span className="text-[9px] text-gray-400">• Khách</span>
+                  )}
+                </div>
+              );
+            })}
+            {checkinCount > 5 && (
+              <p className="text-[10px] text-gray-400">
+                +{checkinCount - 5} người khác
+              </p>
+            )}
+          </div>
+        )}
+
         {/* Check-in button */}
         {!hasCheckedIn ? (
           <button
@@ -79,6 +116,27 @@ export function OpenBillCard({
             Đã check-in
           </div>
         )}
+
+        {/* Secondary actions */}
+        <div className="mt-2 flex items-center justify-between">
+          <button
+            type="button"
+            onClick={() => onAddPeople(bill.id)}
+            className="text-xs font-medium text-orange-500 underline-offset-2 hover:underline"
+          >
+            + Thêm người
+          </button>
+
+          {isPayerOrAdmin && (
+            <button
+              type="button"
+              onClick={() => onCloseBill(bill.id)}
+              className="text-xs font-medium text-gray-400 underline-offset-2 hover:underline"
+            >
+              Đóng bill
+            </button>
+          )}
+        </div>
       </div>
     </div>
   );

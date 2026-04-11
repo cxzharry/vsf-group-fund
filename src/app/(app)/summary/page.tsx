@@ -158,7 +158,7 @@ export default function SummaryPage() {
                         <Button
                           size="sm"
                           className="h-7 bg-orange-600 text-xs hover:bg-orange-700"
-                          onClick={() => router.push(`/debts/${d.id}/confirm`)}
+                          onClick={() => router.push(`/transfer/${d.id}`)}
                         >
                           Trả tiền
                         </Button>

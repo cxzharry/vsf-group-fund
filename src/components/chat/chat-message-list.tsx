@@ -23,9 +23,10 @@ interface ChatMessageListProps {
   billCheckins: Record<string, BillCheckin[]>;
   currentMemberId: string | null;
   onCheckin: (billId: string) => void;
+  onAddPeople: (billId: string) => void;
+  onCloseBill: (billId: string) => void;
 }
 
-// Format date for Vietnamese locale divider
 function formatDateDivider(dateStr: string): string {
   const d = new Date(dateStr);
   return d.toLocaleDateString("vi-VN", {
@@ -46,10 +47,11 @@ export function ChatMessageList({
   billCheckins,
   currentMemberId,
   onCheckin,
+  onAddPeople,
+  onCloseBill,
 }: ChatMessageListProps) {
   const bottomRef = useRef<HTMLDivElement>(null);
 
-  // Scroll to bottom on new messages
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [items.length]);
@@ -66,7 +68,6 @@ export function ChatMessageList({
   let lastDate = "";
 
   for (const item of items) {
-    // Date divider
     if (!isSameDay(item.createdAt, lastDate || "")) {
       lastDate = item.createdAt;
       rendered.push(
@@ -84,6 +85,8 @@ export function ChatMessageList({
       const hasCheckedIn = currentMemberId
         ? checkins.some((c) => c.member_id === currentMemberId)
         : false;
+      // Payer or any member is considered admin for closing (simplification)
+      const isPayerOrAdmin = bill.paid_by === currentMemberId;
 
       if (bill.bill_type === "open" && bill.status === "active") {
         rendered.push(
@@ -91,10 +94,14 @@ export function ChatMessageList({
             key={item.id}
             bill={bill}
             payer={payer}
-            checkinCount={checkins.length}
+            checkins={checkins}
+            memberMap={members}
             hasCheckedIn={hasCheckedIn}
             onCheckin={onCheckin}
+            onAddPeople={onAddPeople}
+            onCloseBill={onCloseBill}
             currentMemberId={currentMemberId}
+            isPayerOrAdmin={isPayerOrAdmin}
           />
         );
       } else {
@@ -117,23 +124,23 @@ export function ChatMessageList({
           to_member_id?: string;
           amount?: number;
         };
-        const fromName =
-          members[meta.from_member_id ?? ""]?.display_name ?? "Ai đó";
-        const toName =
-          members[meta.to_member_id ?? ""]?.display_name ?? "Ai đó";
+        const fromName = members[meta.from_member_id ?? ""]?.display_name ?? "Ai đó";
+        const toName = members[meta.to_member_id ?? ""]?.display_name ?? "Ai đó";
         const amount = meta.amount ?? 0;
         rendered.push(
-          <TransferPill
-            key={item.id}
-            fromName={fromName}
-            toName={toName}
-            amount={amount}
-          />
+          <TransferPill key={item.id} fromName={fromName} toName={toName} amount={amount} />
         );
-      } else if (msg.message_type === "text" || msg.message_type === "system") {
-        // Basic text bubble
+      } else if (
+        msg.message_type === "text" ||
+        msg.message_type === "system" ||
+        msg.message_type === "bill_card" ||
+        msg.message_type === "ai_response"
+      ) {
         const sender = msg.sender_id ? members[msg.sender_id] : null;
         const isMe = msg.sender_id === currentMemberId;
+        // Skip bill_card system messages — the bill itself renders in feed
+        if (msg.message_type === "bill_card") continue;
+
         rendered.push(
           <div
             key={item.id}
