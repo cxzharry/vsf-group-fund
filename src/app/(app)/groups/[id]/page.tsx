@@ -8,6 +8,7 @@ import { ChatMessageList } from "@/components/chat/chat-message-list";
 import { ChatInputBar } from "@/components/chat/chat-input-bar";
 import { BillConfirmSheet } from "@/components/chat/bill-confirm-sheet";
 import { AddPeopleSheet } from "@/components/chat/add-people-sheet";
+import { AiFollowupCard } from "@/components/chat/ai-followup-card";
 import { formatVND } from "@/lib/format-vnd";
 import { toast } from "sonner";
 import type {
@@ -60,6 +61,8 @@ export default function GroupDetailPage() {
   // Sprint 4: AI intent state
   const [pendingIntent, setPendingIntent] = useState<ParsedBillIntent | null>(null);
   const [showConfirmSheet, setShowConfirmSheet] = useState(false);
+  // Sprint 7: show follow-up card inline when AI needs more info
+  const [showFollowupCard, setShowFollowupCard] = useState(false);
 
   // Sprint 5: open bill sheet state
   const [addPeopleBillId, setAddPeopleBillId] = useState<string | null>(null);
@@ -260,12 +263,40 @@ export default function GroupDetailPage() {
       setTimeout(() => {
         setPendingIntent(parsed);
         if (parsed.readyToConfirm) {
+          setShowFollowupCard(false);
           setShowConfirmSheet(true);
+        } else if (parsed.followUp) {
+          setShowFollowupCard(true);
         }
       }, 0);
     } catch {
       // Silent fail — chat still works
     }
+  }
+
+  // ─── Sprint 7: handle follow-up option selection ──────────────────────────
+
+  function handleFollowupSelect(value: string) {
+    if (!pendingIntent) return;
+    // Merge user answer into pending intent
+    const updated: ParsedBillIntent = { ...pendingIntent };
+    // Map common follow-up values into intent fields
+    if (value === "open" || value === "equal" || value === "custom") {
+      updated.splitType = value as "open" | "equal" | "custom";
+    } else if (!isNaN(Number(value))) {
+      updated.peopleCount = Number(value);
+    }
+    // After user answered, mark as readyToConfirm if we have the minimum info
+    updated.readyToConfirm = !!(updated.amount && updated.intentType !== "unknown");
+    updated.followUp = null;
+
+    setTimeout(() => {
+      setPendingIntent(updated);
+      setShowFollowupCard(false);
+      if (updated.readyToConfirm) {
+        setShowConfirmSheet(true);
+      }
+    }, 0);
   }
 
   // ─── Sprint 4: create bill from confirm sheet ──────────────────────────────
@@ -585,6 +616,16 @@ export default function GroupDetailPage() {
           onCloseBill={handleCloseBill}
         />
       </div>
+
+      {/* Sprint 7: AI follow-up card shown inline when AI needs more info */}
+      {showFollowupCard && pendingIntent?.followUp && (
+        <div className="shrink-0 bg-[#F2F2F7] pb-1">
+          <AiFollowupCard
+            followUp={pendingIntent.followUp}
+            onSelectOption={(value) => handleFollowupSelect(value)}
+          />
+        </div>
+      )}
 
       {/* Input bar */}
       <ChatInputBar

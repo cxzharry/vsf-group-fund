@@ -15,7 +15,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { formatVND } from "@/lib/format-vnd";
-import { generateVietQRUrl, generateTransferDescription, generateBankDeepLink } from "@/lib/vietqr";
+import { generateVietQRUrl, generateTransferDescription } from "@/lib/vietqr";
 import type { Debt, Member } from "@/lib/types";
 
 interface DebtWithNames extends Debt {
@@ -118,19 +118,7 @@ export default function DebtsPage() {
         })
       : null;
 
-  // Deep link to open banking app directly
-  const bankDeepLink =
-    qrDebt?.creditor?.bank_name && qrDebt?.creditor?.bank_account_no
-      ? generateBankDeepLink({
-          bankName: qrDebt.creditor.bank_name,
-          accountNo: qrDebt.creditor.bank_account_no,
-          amount: qrDebt.remaining,
-          description: generateTransferDescription(
-            qrDebt.bill_id,
-            member?.display_name ?? ""
-          ),
-        })
-      : null;
+
 
   async function handleConfirmPaid(debt: DebtWithNames) {
     // Debtor self-confirm (Path 2: manual without screenshot)

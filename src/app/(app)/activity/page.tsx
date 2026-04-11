@@ -11,7 +11,7 @@ import type { Member } from "@/lib/types";
 
 interface ActivityItem {
   id: string;
-  type: "bill" | "payment";
+  type: "bill" | "payment" | "bill_card" | "transfer_card";
   title: string;
   description: string;
   amount: number;
@@ -100,6 +100,44 @@ export default function ActivityPage() {
       });
     });
 
+    // Load bill_card and transfer_card messages from user's groups
+    if (groupIds.length > 0) {
+      const { data: chatMsgs } = await supabase
+        .from("chat_messages")
+        .select("*")
+        .in("group_id", groupIds)
+        .in("message_type", ["bill_card", "transfer_card"])
+        .order("created_at", { ascending: false })
+        .limit(50);
+
+      chatMsgs?.forEach((m) => {
+        const meta = (m.metadata ?? {}) as Record<string, unknown>;
+        if (m.message_type === "bill_card") {
+          items.push({
+            id: `msg-${m.id}`,
+            type: "bill_card",
+            title: m.content || "Bill mới",
+            description: "Đã tạo bill trong nhóm",
+            amount: (meta.amount as number) ?? 0,
+            created_at: m.created_at,
+          });
+        } else if (m.message_type === "transfer_card") {
+          const fromId = meta.from_member_id as string | undefined;
+          const toId = meta.to_member_id as string | undefined;
+          const fromName = fromId ? (memberMap[fromId]?.display_name ?? "?") : "?";
+          const toName = toId ? (memberMap[toId]?.display_name ?? "?") : "?";
+          items.push({
+            id: `msg-${m.id}`,
+            type: "transfer_card",
+            title: `${fromName} → ${toName}`,
+            description: "Chuyển khoản",
+            amount: (meta.amount as number) ?? 0,
+            created_at: m.created_at,
+          });
+        }
+      });
+    }
+
     // Sort by date desc
     items.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
 
@@ -141,7 +179,7 @@ export default function ActivityPage() {
               <Card key={a.id} className="border-0 shadow-none">
                 <CardContent className="flex items-center gap-3 p-3">
                   <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-muted text-lg">
-                    {a.type === "bill" ? "🧾" : "💸"}
+                    {a.type === "bill" || a.type === "bill_card" ? "🧾" : "💸"}
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium truncate">{a.title}</p>

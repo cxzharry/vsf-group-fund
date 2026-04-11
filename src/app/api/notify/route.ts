@@ -5,6 +5,9 @@ import {
   notifyNewDebt,
   notifyPaymentClaim,
   notifyPaymentConfirmed,
+  notifyOpenBillCreated,
+  notifyOpenBillCheckin,
+  notifyOpenBillClosed,
 } from "@/lib/notifications";
 
 function getSupabase() {
@@ -133,6 +136,113 @@ export async function POST(request: Request) {
           creditorName: creditor?.display_name ?? "?",
           amount: debt.amount,
         });
+      }
+      break;
+    }
+
+    case "open_bill_created": {
+      // Notify all group members that an open bill was created
+      const { billTitle: obTitle, totalAmount: obAmount, creatorId, groupId } = payload;
+
+      const { data: creator } = await supabase
+        .from("members")
+        .select("display_name")
+        .eq("id", creatorId)
+        .single();
+
+      const { data: groupMembers } = await supabase
+        .from("group_members")
+        .select("member_id")
+        .eq("group_id", groupId);
+
+      if (groupMembers && groupMembers.length > 0) {
+        const memberIds = groupMembers.map((gm: { member_id: string }) => gm.member_id);
+        const { data: members } = await supabase
+          .from("members")
+          .select("id, telegram_chat_id")
+          .in("id", memberIds);
+
+        for (const m of members ?? []) {
+          if (m.id === creatorId) continue;
+          await notifyOpenBillCreated({
+            memberChatId: m.telegram_chat_id ?? null,
+            creatorName: creator?.display_name ?? "?",
+            billTitle: obTitle,
+            totalAmount: obAmount,
+          });
+        }
+      }
+      break;
+    }
+
+    case "open_bill_checkin": {
+      // Notify bill creator when someone checks in
+      const { billId: cisBillId, memberName, totalCheckins } = payload;
+
+      const { data: bill } = await supabase
+        .from("bills")
+        .select("title, paid_by")
+        .eq("id", cisBillId)
+        .single();
+
+      if (bill) {
+        const { data: payer } = await supabase
+          .from("members")
+          .select("telegram_chat_id")
+          .eq("id", bill.paid_by)
+          .single();
+
+        await notifyOpenBillCheckin({
+          creatorChatId: payer?.telegram_chat_id ?? null,
+          memberName,
+          billTitle: bill.title,
+          totalCheckins,
+        });
+      }
+      break;
+    }
+
+    case "open_bill_closed": {
+      // Notify all participants about bill closure and their share
+      const { billId: closedBillId } = payload;
+
+      const { data: bill } = await supabase
+        .from("bills")
+        .select("title, paid_by")
+        .eq("id", closedBillId)
+        .single();
+
+      if (bill) {
+        const { data: payer } = await supabase
+          .from("members")
+          .select("display_name")
+          .eq("id", bill.paid_by)
+          .single();
+
+        const { data: debts } = await supabase
+          .from("debts")
+          .select("debtor_id, amount")
+          .eq("bill_id", closedBillId);
+
+        if (debts && debts.length > 0) {
+          const debtorIds = debts.map((d: { debtor_id: string }) => d.debtor_id);
+          const { data: debtors } = await supabase
+            .from("members")
+            .select("id, telegram_chat_id")
+            .in("id", debtorIds);
+
+          for (const debtor of debtors ?? []) {
+            const debt = debts.find(
+              (d: { debtor_id: string; amount: number }) => d.debtor_id === debtor.id
+            );
+            await notifyOpenBillClosed({
+              memberChatId: debtor.telegram_chat_id ?? null,
+              billTitle: bill.title,
+              perPersonAmount: debt?.amount ?? 0,
+              creditorName: payer?.display_name ?? "?",
+            });
+          }
+        }
       }
       break;
     }
