@@ -123,8 +123,26 @@
   }
   body {
     @apply bg-background text-foreground;
+    -webkit-tap-highlight-color: transparent;
+    overscroll-behavior-y: contain;
   }
   html {
     @apply font-sans;
+    scroll-behavior: smooth;
+  }
+}
+
+/* Mobile-first: smooth touch interactions */
+@layer utilities {
+  .touch-bounce {
+    transition: transform 0.1s ease;
+  }
+  .touch-bounce:active {
+    transform: scale(0.97);
+  }
+
+  /* iOS safe area padding for bottom nav */
+  .pb-safe {
+    padding-bottom: env(safe-area-inset-bottom, 0px);
   }
 }
