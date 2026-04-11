@@ -349,26 +349,56 @@ export default function DebtsPage() {
                   alt="VietQR"
                   className="h-64 w-64 rounded-lg"
                 />
-                {/* Deep link button to open banking app */}
-                {bankDeepLink && (
-                  <a
-                    href={bankDeepLink}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="w-full"
+                {/* Save & Share QR buttons */}
+                <div className="flex w-full gap-2">
+                  <Button
+                    variant="outline"
+                    className="flex-1 gap-1.5 text-xs"
+                    onClick={async () => {
+                      if (!qrUrl) return;
+                      try {
+                        const resp = await fetch(qrUrl);
+                        const blob = await resp.blob();
+                        const url = URL.createObjectURL(blob);
+                        const a = document.createElement("a");
+                        a.href = url;
+                        a.download = `qr-${qrDebt?.creditor?.display_name ?? "payment"}.png`;
+                        a.click();
+                        URL.revokeObjectURL(url);
+                      } catch { /* ignore */ }
+                    }}
                   >
-                    <Button
-                      variant="outline"
-                      className="w-full gap-2 border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100"
-                    >
-                      🏦 Mở app {qrDebt?.creditor?.bank_name}
-                    </Button>
-                  </a>
-                )}
+                    💾 Lưu QR
+                  </Button>
+                  <Button
+                    variant="outline"
+                    className="flex-1 gap-1.5 border-blue-200 bg-blue-50 text-xs text-blue-700"
+                    onClick={async () => {
+                      if (!qrUrl) return;
+                      try {
+                        const resp = await fetch(qrUrl);
+                        const blob = await resp.blob();
+                        const file = new File([blob], "qr-payment.png", { type: "image/png" });
+                        if (navigator.share && navigator.canShare?.({ files: [file] })) {
+                          await navigator.share({
+                            files: [file],
+                            title: "QR Chuyển khoản",
+                            text: `Chuyển ${formatVND(qrDebt?.remaining ?? 0)}đ cho ${qrDebt?.creditor?.display_name}`,
+                          });
+                        } else {
+                          // Fallback: copy bank info
+                          const info = `${qrDebt?.creditor?.bank_name} - ${qrDebt?.creditor?.bank_account_no} - ${qrDebt?.creditor?.bank_account_name} - ${formatVND(qrDebt?.remaining ?? 0)}đ`;
+                          await navigator.clipboard.writeText(info);
+                          alert("Đã copy thông tin CK. Mở app ngân hàng và paste.");
+                        }
+                      } catch { /* ignore */ }
+                    }}
+                  >
+                    📤 Chia sẻ
+                  </Button>
+                </div>
                 <p className="text-center text-xs text-muted-foreground">
-                  {bankDeepLink
-                    ? "Bấm nút trên hoặc scan QR bằng app ngân hàng"
-                    : "Scan QR bằng app ngân hàng để chuyển khoản"}
+                  Lưu QR → mở app ngân hàng → scan từ ảnh trong máy
                 </p>
                 <div className="text-center text-xs">
                   <p>
