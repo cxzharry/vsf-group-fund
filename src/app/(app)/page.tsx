@@ -125,23 +125,18 @@ export default function HomePage() {
     if (!newName.trim() || !member) return;
     setSubmitting(true);
 
-    const { data: group, error } = await supabase
-      .from("groups")
-      .insert({ name: newName.trim(), created_by: member.id })
-      .select()
-      .single();
+    const res = await fetch("/api/groups/create", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: newName.trim(), memberId: member.id }),
+    });
+    const result = await res.json();
 
-    if (error || !group) {
-      toast.error("Lỗi tạo nhóm");
+    if (!res.ok) {
+      toast.error(result.error ?? "Lỗi tạo nhóm");
       setSubmitting(false);
       return;
     }
-
-    await supabase.from("group_members").insert({
-      group_id: group.id,
-      member_id: member.id,
-      role: "admin",
-    });
 
     toast.success("Đã tạo nhóm!");
     setShowCreate(false);
