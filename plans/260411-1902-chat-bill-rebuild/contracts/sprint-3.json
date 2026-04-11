@@ -1,0 +1,35 @@
+{
+  "sprint": 3,
+  "name": "AI Intent Engine",
+  "features": [
+    "API route /api/ai/parse-intent that uses Claude Haiku to parse Vietnamese chat messages",
+    "Vietnamese amount parser (1tr2, 500k, 1.200.000đ)",
+    "Intent detection: split bill vs money transfer",
+    "Follow-up question generation when info is missing",
+    "AI response card component in chat"
+  ],
+  "success_criteria": [
+    { "id": "SC-1", "description": "parseVietnameseAmount('1tr2') returns 1200000", "testable": true },
+    { "id": "SC-2", "description": "parseVietnameseAmount('500k') returns 500000", "testable": true },
+    { "id": "SC-3", "description": "parseVietnameseAmount('1.200.000đ') returns 1200000", "testable": true },
+    { "id": "SC-4", "description": "AI detects intent='split' from '1tr phở 8 người'", "testable": true },
+    { "id": "SC-5", "description": "AI detects intent='transfer' from 'Mai chuyển cho Hai 200k'", "testable": true },
+    { "id": "SC-6", "description": "When amount missing, AI generates follow-up asking for amount", "testable": true },
+    { "id": "SC-7", "description": "When split type unclear, AI offers options A/B/C", "testable": true },
+    { "id": "SC-8", "description": "Minimum to confirm: amount + intent detected", "testable": true },
+    { "id": "SC-9", "description": "API route returns structured JSON with parsed fields", "testable": true }
+  ],
+  "edge_cases": [
+    "'hôm qua ăn 500k ngon' — past tense, still create bill?",
+    "'ok' or 'hello' — no intent, should not trigger bill",
+    "'chia đều cả team' — no amount, ask for amount",
+    "'1tr2 bún bò' — no people count, suggest bill mở",
+    "Mixed: 'Mai 200k Linh 150k' — custom split amounts"
+  ],
+  "constraints": [
+    "Use Claude Haiku for cost efficiency",
+    "Vietnamese amount parser must work WITHOUT LLM (pure regex/logic)",
+    "API response under 2 seconds",
+    "Graceful fallback if API key missing or LLM fails"
+  ]
+}

@@ -1,7 +1,7 @@
 {
   "total_sprints": 7,
-  "current_sprint": 1,
-  "completed_sprints": [],
+  "current_sprint": 2,
+  "completed_sprints": [1],
   "failed_sprints": [],
   "status": "in_progress"
 }
