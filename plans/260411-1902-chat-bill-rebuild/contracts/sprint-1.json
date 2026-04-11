@@ -1,0 +1,33 @@
+{
+  "sprint": 1,
+  "name": "Database Migration",
+  "features": [
+    "chat_messages table for group chat",
+    "bill_checkins table for open bill check-ins",
+    "bills table alterations (bill_type, status, photo_url, chat_message_id)",
+    "TypeScript types matching schema",
+    "RLS policies for new tables",
+    "Supabase Realtime for chat_messages and bill_checkins"
+  ],
+  "success_criteria": [
+    { "id": "SC-1", "description": "Migration SQL file creates chat_messages table with correct columns and types", "testable": true },
+    { "id": "SC-2", "description": "Migration SQL creates bill_checkins with unique constraint on (bill_id, member_id) when member_id not null", "testable": true },
+    { "id": "SC-3", "description": "bills table gets bill_type (default 'standard'), status (default 'active'), photo_url, chat_message_id columns", "testable": true },
+    { "id": "SC-4", "description": "RLS policies: chat_messages viewable/insertable by group members only", "testable": true },
+    { "id": "SC-5", "description": "RLS policies: bill_checkins viewable by auth, insertable by group members, deletable by bill creator", "testable": true },
+    { "id": "SC-6", "description": "TypeScript interfaces in types.ts match all new/modified tables", "testable": true },
+    { "id": "SC-7", "description": "Indexes exist for chat_messages(group_id, created_at) and bill_checkins(bill_id)", "testable": true },
+    { "id": "SC-8", "description": "Existing bills unaffected — bill_type defaults to 'standard', status defaults to 'active'", "testable": true }
+  ],
+  "edge_cases": [
+    "Guest check-in: member_id is null, guest_name must be provided",
+    "Unique constraint on bill_checkins should allow multiple guest entries (member_id null)",
+    "chat_messages.content can be plain text OR JSON string for card payloads",
+    "Migration must be idempotent (add column IF NOT EXISTS)"
+  ],
+  "constraints": [
+    "Must be a single SQL migration file: 005-chat-and-open-bills.sql",
+    "Must not break existing data or queries",
+    "RLS must use auth.uid() pattern consistent with existing policies"
+  ]
+}

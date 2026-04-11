@@ -33,9 +33,34 @@ export interface Bill {
   total_amount: number;
   paid_by: string;
   split_type: "equal" | "custom";
+  bill_type: "standard" | "open";
+  status: "active" | "closed";
   group_id: string | null;
+  chat_message_id: string | null;
+  photo_url: string | null;
   created_by: string;
   created_at: string;
+}
+
+export type ChatMessageType = "text" | "bill_card" | "transfer_card" | "ai_response" | "system";
+
+export interface ChatMessage {
+  id: string;
+  group_id: string;
+  sender_id: string | null;
+  message_type: ChatMessageType;
+  content: string;
+  metadata: Record<string, unknown> | null;
+  created_at: string;
+}
+
+export interface BillCheckin {
+  id: string;
+  bill_id: string;
+  member_id: string | null;
+  guest_name: string | null;
+  added_by: string;
+  checked_in_at: string;
 }
 
 export interface BillParticipant {
