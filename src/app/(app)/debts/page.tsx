@@ -15,7 +15,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { formatVND } from "@/lib/format-vnd";
-import { generateVietQRUrl, generateTransferDescription } from "@/lib/vietqr";
+import { generateVietQRUrl, generateTransferDescription, generateBankDeepLink } from "@/lib/vietqr";
 import type { Debt, Member } from "@/lib/types";
 
 interface DebtWithNames extends Debt {
@@ -110,6 +110,20 @@ export default function DebtsPage() {
           bankName: qrDebt.creditor.bank_name,
           accountNo: qrDebt.creditor.bank_account_no,
           accountName: qrDebt.creditor.bank_account_name ?? "",
+          amount: qrDebt.remaining,
+          description: generateTransferDescription(
+            qrDebt.bill_id,
+            member?.display_name ?? ""
+          ),
+        })
+      : null;
+
+  // Deep link to open banking app directly
+  const bankDeepLink =
+    qrDebt?.creditor?.bank_name && qrDebt?.creditor?.bank_account_no
+      ? generateBankDeepLink({
+          bankName: qrDebt.creditor.bank_name,
+          accountNo: qrDebt.creditor.bank_account_no,
           amount: qrDebt.remaining,
           description: generateTransferDescription(
             qrDebt.bill_id,
@@ -335,8 +349,26 @@ export default function DebtsPage() {
                   alt="VietQR"
                   className="h-64 w-64 rounded-lg"
                 />
+                {/* Deep link button to open banking app */}
+                {bankDeepLink && (
+                  <a
+                    href={bankDeepLink}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="w-full"
+                  >
+                    <Button
+                      variant="outline"
+                      className="w-full gap-2 border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100"
+                    >
+                      🏦 Mở app {qrDebt?.creditor?.bank_name}
+                    </Button>
+                  </a>
+                )}
                 <p className="text-center text-xs text-muted-foreground">
-                  Scan QR bằng app ngân hàng để chuyển khoản
+                  {bankDeepLink
+                    ? "Bấm nút trên hoặc scan QR bằng app ngân hàng"
+                    : "Scan QR bằng app ngân hàng để chuyển khoản"}
                 </p>
                 <div className="text-center text-xs">
                   <p>
