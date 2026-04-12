@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useMemo } from "react";
-import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { createBrowserClient } from "@supabase/ssr";
 import { useAuth } from "@/components/auth-provider";
 import { Button } from "@/components/ui/button";
@@ -25,7 +25,6 @@ interface GroupItem extends Group {
 
 export default function HomePage() {
   const { member, loading: authLoading } = useAuth();
-  const router = useRouter();
   const supabase = useMemo(
     () =>
       createBrowserClient(
@@ -264,9 +263,9 @@ export default function HomePage() {
               const color = colors[g.name.charCodeAt(0) % colors.length];
               const initials = g.name.split(" ").map(w => w[0]).join("").slice(0, 2).toUpperCase();
               return (
-                <button
+                <Link
                   key={g.id}
-                  onClick={() => router.push(`/groups/${g.id}`)}
+                  href={`/groups/${g.id}`}
                   className="flex w-full items-center gap-3 rounded-2xl bg-white p-4 text-left shadow-sm transition-all active:scale-[0.98]"
                 >
                   <div
@@ -284,12 +283,7 @@ export default function HomePage() {
                       {g.netDebt < 0 ? "-" : "+"}{Math.abs(g.netDebt).toLocaleString("vi-VN")}đ
                     </span>
                   )}
-                  {g.netDebt < 0 && (
-                    <span className="rounded-lg bg-[#3A5CCC] px-3 py-1.5 text-xs font-semibold text-white">
-                      Trả nợ
-                    </span>
-                  )}
-                </button>
+                </Link>
               );
             })}
           </div>

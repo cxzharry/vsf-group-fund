@@ -93,7 +93,7 @@ export default function AccountPage() {
 
   return (
     <>
-      <PageHeader title="Tài khoản" backHref="/" />
+      <PageHeader title="Tài khoản" showBack={false} />
 
       <main className="space-y-6 px-4 py-4">
         {/* Profile section */}

@@ -32,7 +32,7 @@ export function ChatInputBar({ groupId, value, onChange, onSend }: ChatInputBarP
         type="button"
         onClick={() => router.push(`/bills/new?group=${groupId}`)}
         aria-label="Tạo bill"
-        className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#3A5CCC] text-white shadow transition-opacity active:opacity-80"
+        className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[#3A5CCC] text-white shadow transition-opacity active:opacity-80"
       >
         {/* Receipt icon */}
         <svg

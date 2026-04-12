@@ -22,6 +22,9 @@ const navItems = [
 export function BottomNav() {
   const pathname = usePathname();
 
+  // Only show on root tab pages; hide on drill-down pages (group detail, bills, transfer, etc.)
+  if (pathname !== "/" && pathname !== "/account") return null;
+
   return (
     // Hidden on desktop — desktop uses sidebar nav instead
     <nav

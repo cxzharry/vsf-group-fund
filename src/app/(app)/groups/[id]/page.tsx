@@ -634,16 +634,59 @@ export default function GroupDetailPage() {
 
       {/* Chat feed */}
       <div className="flex-1 overflow-y-auto">
-        <ChatMessageList
-          items={feedItems}
-          members={members}
-          billParticipantCounts={billParticipantCounts}
-          billCheckins={billCheckins}
-          currentMemberId={currentMember?.id ?? null}
-          onCheckin={handleCheckin}
-          onAddPeople={(billId) => setAddPeopleBillId(billId)}
-          onCloseBill={handleCloseBill}
-        />
+        {feedItems.length === 0 ? (
+          /* Empty state: shown when group has no bills or messages yet */
+          <div className="flex flex-col items-center justify-center gap-3 px-6 py-16 text-center">
+            <svg
+              width="48"
+              height="48"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="#C7C7CC"
+              strokeWidth={1.5}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+              <circle cx="9" cy="7" r="4" />
+              <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+              <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+            </svg>
+            <p className="text-base font-bold text-[#1C1C1E]">Chưa có hoạt động nào</p>
+            <p className="text-sm text-[#8E8E93]">Mời thêm thành viên hoặc gõ bill để bắt đầu</p>
+            {group.invite_code && (
+              <button
+                type="button"
+                onClick={() => {
+                  navigator.clipboard.writeText(group.invite_code).then(() => {
+                    toast.success(`Đã sao chép mã mời: ${group.invite_code}`);
+                  }).catch(() => {
+                    toast.info(`Mã mời: ${group.invite_code}`);
+                  });
+                }}
+                className="mt-1 flex items-center gap-2 rounded-xl border border-[#3A5CCC] px-5 py-2.5 text-sm font-semibold text-[#3A5CCC] transition-colors active:bg-[#EEF2FF]"
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8" />
+                  <polyline points="16 6 12 2 8 6" />
+                  <line x1="12" y1="2" x2="12" y2="15" />
+                </svg>
+                Chia sẻ mã mời
+              </button>
+            )}
+          </div>
+        ) : (
+          <ChatMessageList
+            items={feedItems}
+            members={members}
+            billParticipantCounts={billParticipantCounts}
+            billCheckins={billCheckins}
+            currentMemberId={currentMember?.id ?? null}
+            onCheckin={handleCheckin}
+            onAddPeople={(billId) => setAddPeopleBillId(billId)}
+            onCloseBill={handleCloseBill}
+          />
+        )}
       </div>
 
       {/* Sprint 7: AI follow-up card shown inline when AI needs more info */}
