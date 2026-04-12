@@ -6,7 +6,7 @@
 
 ## 1. Product Vision
 
-App chia bill cho nhom ban be tai Viet Nam. Tao bill nhanh qua chat, theo doi no, chuyen tien qua QR.
+App chia bill cho nhóm bạn bè tại Việt Nam. Tạo bill nhanh qua chat, theo dõi nợ, chuyển tiền qua QR.
 
 **URL:** https://nopay-freelunch.vercel.app
 
@@ -14,10 +14,10 @@ App chia bill cho nhom ban be tai Viet Nam. Tao bill nhanh qua chat, theo doi no
 
 ## 2. Navigation
 
-- **2 tabs only:** "Nhom" (Home) + "Tai khoan" (Account)
+- **2 tabs only:** "Nhóm" (Home) + "Tài khoản" (Account)
 - Mobile: bottom tab bar | Desktop: left sidebar
-- Bills, debts, transfers accessed from **within group detail** — NOT top-level tabs
-- Back button on all sub-pages
+- Bills, debts, transfers truy cập từ **trong group detail** — KHÔNG phải top-level tabs
+- Nút back trên tất cả sub-pages
 
 ---
 
@@ -25,386 +25,386 @@ App chia bill cho nhom ban be tai Viet Nam. Tao bill nhanh qua chat, theo doi no
 
 ### 3.1 Login (Auth)
 
-**Screen:** Full-page, centered vertically on mobile
+**Màn hình:** Full-page, căn giữa dọc trên mobile
 
-**Elements:**
-- App icon: blue rounded square (#3A5CCC) with people icon, 72x72px
-- Title: "NoPay" (line 1) + "FreeLunch" (line 2), 28px bold, centered
-- Subtitle: "Nhap email de dang nhap" (line 1) + "hoac tao tai khoan moi." (line 2), 15px gray, centered
-- Email input field
-- "Gui ma OTP" button (primary blue, full width)
-- Divider: "hoac"
-- "Nhap mat khau" button (secondary gray, full width)
+**Thành phần:**
+- App icon: hình vuông bo tròn xanh (#3A5CCC) với people icon, 72x72px
+- Tiêu đề: "NoPay" (dòng 1) + "FreeLunch" (dòng 2), 28px bold, căn giữa
+- Phụ đề: "Nhập email để đăng nhập" (dòng 1) + "hoặc tạo tài khoản mới." (dòng 2), 15px gray, căn giữa
+- Ô nhập email
+- Nút "Gửi mã OTP" (primary blue, full width)
+- Đường kẻ phân cách: "hoặc"
+- Nút "Nhập mật khẩu" (secondary gray, full width)
 
-**OTP Flow:**
-1. User nhap email -> tap "Gui ma OTP"
-2. Supabase gui **ma 6 so** ve email (KHONG phai magic link)
-3. Hien form nhap 6 so OTP
-4. Verify thanh cong -> redirect ve Home
+**Luồng OTP:**
+1. User nhập email → tap "Gửi mã OTP"
+2. Supabase gửi **mã 6 số** về email (KHÔNG phải magic link)
+3. Hiện form nhập 6 số OTP
+4. Verify thành công → redirect về Home
 
-**Password Flow:**
-1. Tap "Nhap mat khau" -> hien form email + password
-2. Login thanh cong -> redirect ve Home
+**Luồng Password:**
+1. Tap "Nhập mật khẩu" → hiện form email + password
+2. Login thành công → redirect về Home
 
-**Success criteria:**
-- [ ] OTP gui **ma so**, khong gui link
-- [ ] Login thanh cong redirect ve "/"
-- [ ] Branding dung: "NoPay\nFreeLunch"
+**Tiêu chí thành công:**
+- [ ] OTP gửi **mã số**, không gửi link
+- [ ] Login thành công redirect về "/"
+- [ ] Branding đúng: "NoPay\nFreeLunch"
 
 ---
 
-### 3.2 Home / Nhom (Groups List)
+### 3.2 Home / Nhóm (Groups List)
 
-**Screen:** Tab 1, default screen after login
+**Màn hình:** Tab 1, màn hình mặc định sau login
 
 **Header:**
-- Title: "Nhom" (28-30px bold, left-aligned)
-- Right: blue "+" button (create group) + "Tham gia" text
+- Tiêu đề: "Nhóm" (28-30px bold, căn trái)
+- Phải: nút "+" xanh (tạo nhóm) + chữ "Tham gia"
 
-**Content:**
-- Debt summary chip: "Tong: Ban dang no X | Ban duoc no Y"
-- Group cards (list, rounded 14px, white bg):
-  - Left: colored avatar circle with group initials
-  - Center: group name (bold) + "X thanh vien" (gray)
-  - Right: net debt amount (red if owe, green if owed) + "Tra no" link if applicable
+**Nội dung:**
+- Chip tổng nợ: "Tổng: Bạn đang nợ X | Bạn được nợ Y"
+- Card nhóm (list, rounded 14px, white bg):
+  - Trái: avatar tròn màu với chữ cái đầu nhóm
+  - Giữa: tên nhóm (bold) + "X thành viên" (gray)
+  - Phải: số nợ ròng (đỏ nếu nợ, xanh nếu được nợ) + link "Trả nợ" nếu có
 
 **Bottom tab bar:**
-- 2 tabs: Nhom (people icon, active blue) + Tai khoan (person icon, gray)
+- 2 tabs: Nhóm (people icon, active blue) + Tài khoản (person icon, gray)
 
-**Empty state:**
-- Large people icon (gray)
-- "Chua co nhom nao" (20px bold)
-- "Tao nhom de bat dau chia bill voi ban be." (15px gray)
-- "Tao nhom moi" button (outline, blue border)
+**Trạng thái trống:**
+- Icon người lớn (gray)
+- "Chưa có nhóm nào" (20px bold)
+- "Tạo nhóm để bắt đầu chia bill với bạn bè." (15px gray)
+- Nút "Tạo nhóm mới" (outline, blue border)
 
-**Actions:**
-- Tap group card -> Group Detail
-- Tap "+" -> Create Group dialog
-- Tap "Tham gia" -> Join Group dialog
+**Hành động:**
+- Tap card nhóm → Group Detail
+- Tap "+" → Dialog tạo nhóm
+- Tap "Tham gia" → Dialog tham gia nhóm
 
-**Success criteria:**
-- [ ] Chi hien 2 tabs
-- [ ] Group cards hien dung debt amount
-- [ ] Empty state khi chua co group
+**Tiêu chí thành công:**
+- [ ] Chỉ hiện 2 tabs
+- [ ] Card nhóm hiện đúng số nợ
+- [ ] Trạng thái trống khi chưa có group
 
 ---
 
 ### 3.3 Group Detail (Chat View)
 
-**Screen:** Main interaction screen, chat-based
+**Màn hình:** Màn hình tương tác chính, dạng chat
 
-**Nav bar:**
-- Back button "<" (blue)
-- Center: group name (bold) + "X thanh vien" (gray, smaller)
-- Right: settings gear icon (gray circle)
+**Thanh nav:**
+- Nút back "<" (xanh)
+- Giữa: tên nhóm (bold) + "X thành viên" (gray, nhỏ hơn)
+- Phải: icon cài đặt hình bánh răng (vòng tròn xám)
 
-**Debt banner (conditional):**
-- Red bg (#FFF3F0) if user owes: "Ban no [Name] [Amount]" + "Tra no" button
-- Green bg (#F0FFF4) if user is owed: "[Name] no ban [Amount]" + "Nhan tien" button
-- Hidden if no debt
+**Banner nợ (có điều kiện):**
+- Nền đỏ (#FFF3F0) nếu user nợ: "Bạn nợ [Tên] [Số tiền]" + nút "Trả nợ"
+- Nền xanh (#F0FFF4) nếu user được nợ: "[Tên] nợ bạn [Số tiền]" + nút "Nhận tiền"
+- Ẩn nếu không có nợ
 
-**Chat feed:**
-- Date dividers: "28 thang 1, 2026" (gray, centered)
-- Bill cards (white bubble, rounded 14px):
-  - Sender avatar (left, 34px circle)
-  - Card: sender name + time, bill title, date, total amount
-  - Net amount for current user (red/green)
-- Transfer events: centered pill "#E8EDFF", "[Name] da chuyen [Amount] cho [Name]"
-- Text messages: standard chat bubbles
+**Feed chat:**
+- Dải phân cách ngày: "28 tháng 1, 2026" (gray, căn giữa)
+- Card bill (bubble trắng, rounded 14px):
+  - Avatar người gửi (trái, vòng tròn 34px)
+  - Card: tên người gửi + giờ, tiêu đề bill, ngày, tổng tiền
+  - Số tiền ròng cho user hiện tại (đỏ/xanh)
+- Sự kiện chuyển tiền: pill căn giữa "#E8EDFF", "[Tên] đã chuyển [Số tiền] cho [Tên]"
+- Tin nhắn văn bản: bubble chat tiêu chuẩn
 
-**FAB (Floating Action Button):**
-- Bottom right, blue (#3A5CCC), rounded, shadow
-- "+ Them hoa don" text with receipt icon
-- Tap -> triggers bill creation flow
+**FAB (Nút hành động nổi):**
+- Dưới phải, xanh (#3A5CCC), bo tròn, có shadow
+- Chữ "+ Thêm hoá đơn" với icon receipt
+- Tap → kích hoạt luồng tạo bill
 
-**Success criteria:**
-- [ ] Chat feed hien bill cards, transfers, text messages
-- [ ] Debt banner hien dung net debt
-- [ ] FAB luon hien o bottom right
-- [ ] Real-time: bill moi tu nguoi khac hien ngay
+**Tiêu chí thành công:**
+- [ ] Feed chat hiện bill cards, transfers, tin nhắn văn bản
+- [ ] Banner nợ hiện đúng số nợ ròng
+- [ ] FAB luôn hiện ở dưới phải
+- [ ] Real-time: bill mới từ người khác hiện ngay
 
 ---
 
-### 3.4 Bill Creation - Chat Intent (Primary Flow)
+### 3.4 Tạo Bill - Chat Intent (Luồng chính)
 
-**Trigger:** User go tin nhan trong group chat, VD: "500k an trua 6 nguoi"
+**Kích hoạt:** User gõ tin nhắn trong group chat, VD: "500k ăn trưa 6 người"
 
-**AI Parser (local regex, khong dung LLM):**
-- Detect amount: "500k" -> 500,000d
-- Detect description: "an trua" -> "an trua"
-- Detect people: "6 nguoi" -> 6
-- If du info -> hien Bill Confirm Sheet
-- If thieu info -> hien AI Follow-up Card
+**AI Parser (regex local, không dùng LLM):**
+- Phát hiện số tiền: "500k" → 500.000đ
+- Phát hiện mô tả: "ăn trưa" → "ăn trưa"
+- Phát hiện số người: "6 người" → 6
+- Nếu đủ thông tin → hiện Bill Confirm Sheet
+- Nếu thiếu thông tin → hiện AI Follow-up Card
 
 **AI Follow-up Card:**
-- Inline trong chat, truoc input bar
-- Question: "Chia 500k cho an trua. Ban muon chia nhu nao?"
-- 3 options:
-  - A: "Bill mo" (chua biet may nguoi)
-  - B: "Chia deu" (nhap so nguoi)
-  - C: "Tuy chinh" (nhap tung nguoi)
+- Inline trong chat, trước thanh nhập
+- Câu hỏi: "Chia 500k cho ăn trưa. Bạn muốn chia như nào?"
+- 3 lựa chọn:
+  - A: "Bill mở" (chưa biết mấy người)
+  - B: "Chia đều" (nhập số người)
+  - C: "Tuỳ chỉnh" (nhập từng người)
 
-**Success criteria:**
-- [ ] "500k bun bo 6 nguoi" -> parse dung amount, description, people
-- [ ] Hien follow-up khi thieu split type
-- [ ] Tap option -> hien Bill Confirm Sheet
+**Tiêu chí thành công:**
+- [ ] "500k bún bò 6 người" → parse đúng amount, description, people
+- [ ] Hiện follow-up khi thiếu split type
+- [ ] Tap option → hiện Bill Confirm Sheet
 
 ---
 
 ### 3.5 Bill Confirm Sheet (Half-Sheet Bottom Modal)
 
-**Trigger:** Sau khi AI parse du info hoac user chon follow-up option
+**Kích hoạt:** Sau khi AI parse đủ info hoặc user chọn follow-up option
 
-**Design:** Half-sheet tu duoi len, rounded top 20px, shadow, backdrop 40% black
+**Thiết kế:** Half-sheet từ dưới lên, rounded top 20px, shadow, backdrop 40% đen
 
-**Elements (from top to bottom):**
-- Drag handle (gray bar, centered, 36x4px)
-- Header: "* Xac nhan bill" (bold) + "X" close button (gray)
-- Row: "Mo ta" | description text
-- Row: "Chia cho" | member avatars (up to 5, 22px circles) + "+N" if more
-- Row: "Moi nguoi" | per-person amount (blue, bold)
-- Row: "Nguoi tra" | payer avatar + name ("Ban" if current user)
-- Divider line (#E5E5EA)
-- Upload row: "Them anh bill" button (gray bg, centered)
-- "Tao bill" button (blue, full width, 48px height, rounded 12px)
+**Thành phần (từ trên xuống):**
+- Drag handle (thanh xám, căn giữa, 36x4px)
+- Header: "✦ Xác nhận bill" (bold) + nút "✕" đóng (xám)
+- Dòng: "Mô tả" | nội dung mô tả
+- Dòng: "Chia cho" | avatar thành viên (tối đa 5, vòng tròn 22px) + "+N" nếu nhiều hơn
+- Dòng: "Mỗi người" | số tiền mỗi người (xanh, bold)
+- Dòng: "Người trả" | avatar người trả + tên ("Bạn" nếu là user hiện tại)
+- Đường kẻ phân cách (#E5E5EA)
+- Dòng upload: nút "📎 Thêm ảnh bill" (nền xám, căn giữa)
+- Nút "Tạo bill" (xanh, full width, cao 48px, rounded 12px)
 
-**On confirm:**
-1. Create bill + participants + debts
-2. Insert bill_card message in chat
-3. Close sheet
-4. Toast "Da tao bill!"
-5. Notify participants via Telegram
+**Khi xác nhận:**
+1. Tạo bill + participants + debts
+2. Chèn tin nhắn bill_card trong chat
+3. Đóng sheet
+4. Toast "Đã tạo bill!"
+5. Thông báo participants qua Telegram
 
-**Success criteria:**
-- [ ] Sheet hien member avatars dung
-- [ ] Per-person amount = floor(total / people)
-- [ ] Confirm tao bill + debts + chat message
-- [ ] Sheet dong sau khi confirm
+**Tiêu chí thành công:**
+- [ ] Sheet hiện avatar thành viên đúng
+- [ ] Số tiền mỗi người = floor(tổng / số người)
+- [ ] Xác nhận tạo bill + debts + chat message
+- [ ] Sheet đóng sau khi xác nhận
 
 ---
 
-### 3.6 Bill People & Amount Sheet (Full Bottom Sheet)
+### 3.6 Sheet Chọn Người & Số Tiền (Full Bottom Sheet)
 
-**Trigger:** Khi user muon chon nguoi va so tien chi tiet
+**Kích hoạt:** Khi user muốn chọn người và số tiền chi tiết
 
-**Design:** Full-height bottom sheet voi dim overlay
+**Thiết kế:** Bottom sheet full-height với dim overlay
 
-**Elements:**
+**Thành phần:**
 - Drag handle
-- Header: "Chon nguoi & so tien" + "Xong" (blue text, right)
-- Split mode tabs (pill buttons, gap 8px):
-  - "Chia deu" (active: blue bg #EEF2FF, blue text)
-  - "Chia %" (inactive: gray bg #F2F2F7)
-  - "Tuy chinh" (inactive: gray bg #F2F2F7)
-- Total row: "Tong" | "500.000d" (bold)
-- Member list (each row 60px height):
-  - Avatar circle (36px, colored) with initial letter
-  - Name (bold 14px) + subtitle if applicable
-  - Amount pill (gray bg, blue text, rounded 8px)
-  - Checkbox circle (22px, blue if checked, gray if unchecked)
-- Separator line
-- Remainder row: "Con lai chua chia" | "0d" (green if 0)
-- "Xac nhan" button (blue, full width, 52px, rounded 14px)
+- Header: "Chọn người & số tiền" + "Xong" (chữ xanh, bên phải)
+- Tabs chế độ chia (pill buttons, gap 8px):
+  - "Chia đều" (active: nền xanh nhạt #EEF2FF, chữ xanh)
+  - "Chia %" (inactive: nền xám #F2F2F7)
+  - "Tuỳ chỉnh" (inactive: nền xám #F2F2F7)
+- Dòng tổng: "Tổng" | "500.000đ" (bold)
+- Danh sách thành viên (mỗi dòng cao 60px):
+  - Avatar tròn (36px, có màu) với chữ cái đầu
+  - Tên (bold 14px) + phụ đề nếu có
+  - Pill số tiền (nền xám, chữ xanh, rounded 8px)
+  - Checkbox tròn (22px, xanh nếu chọn, xám nếu không)
+- Đường kẻ phân cách
+- Dòng còn lại: "Còn lại chưa chia" | "0đ" (xanh lá nếu = 0)
+- Nút "Xác nhận" (xanh, full width, 52px, rounded 14px)
 
-**Split logic:**
-- **Chia deu:** total / selected_count, remainder distributed +1 to first N
-- **Chia %:** each person's % of total (sum must = 100%)
-- **Tuy chinh:** manual input per person (sum must = total)
+**Logic chia:**
+- **Chia đều:** tổng / số người chọn, phần dư phân bổ +1 cho N người đầu
+- **Chia %:** % của tổng mỗi người (tổng phải = 100%)
+- **Tuỳ chỉnh:** nhập thủ công mỗi người (tổng phải = tổng bill)
 
-**Success criteria:**
-- [ ] Toggle split modes thay doi UI tuong ung
-- [ ] Chia deu: auto-calculate per person
-- [ ] Remainder row hien "0d" khi chia het
-- [ ] Xac nhan chi khi sum = total
-
----
-
-### 3.7 Open Bill (Bill Mo)
-
-**Use case:** An trua, chua biet ai tham gia. Moi nguoi check-in khi den.
-
-**Creation:** Via chat intent (chon "Bill mo") hoac form
-
-**Open Bill Card (trong chat):**
-- Orange theme (#FF9500 avatar, #FFF8EC background)
-- Badge: "Bill mo - N nguoi da check-in"
-- Info: payer, title, total
-- Button: "Toi co an" (check-in) hoac "Da check-in" (disabled)
-- Admin actions: "+ Them nguoi", "Dong bill"
-
-**Check-in flow:**
-1. Tap "Toi co an" -> insert bill_checkins record
-2. Button changes to "Da check-in"
-3. Notify payer
-
-**Close bill flow:**
-1. Payer/admin tap "Dong bill"
-2. Calculate: total / checkin_count
-3. Create debts for all checked-in members (except payer)
-4. Bill status -> "closed"
-5. Notify all debtors
-
-**Add people sheet:**
-- Bottom sheet with group member list
-- Search input: "Tim thanh vien..."
-- Members: tap to add/remove with "Them" badge
-- Section: "Nguoi ngoai nhom" -> add by name (no account needed)
-
-**Success criteria:**
-- [ ] Check-in tao record va update UI
-- [ ] Close bill tao debts dung per-person amount
-- [ ] Guests (khong co account) van check-in duoc
-- [ ] Chi payer/admin thay "Dong bill"
+**Tiêu chí thành công:**
+- [ ] Chuyển đổi chế độ chia thay đổi UI tương ứng
+- [ ] Chia đều: tự tính số tiền mỗi người
+- [ ] Dòng còn lại hiện "0đ" khi chia hết
+- [ ] Xác nhận chỉ khi tổng = tổng bill
 
 ---
 
-### 3.8 Debt Tracking (trong Group Detail)
+### 3.7 Bill Mở (Open Bill)
 
-**Hien thi:** Debt banner o top cua group detail
+**Trường hợp:** Ăn trưa, chưa biết ai tham gia. Mọi người check-in khi đến.
 
-**Debt banner logic:**
-- Query all debts trong group where current user la debtor hoac creditor
-- Net per person: sum(debts I owe them) - sum(debts they owe me)
-- Show largest net debt
-- Red if I owe, green if owed to me
+**Tạo bill:** Qua chat intent (chọn "Bill mở") hoặc form
 
-**Tra no flow:**
-1. Tap "Tra no" tren debt banner
-2. Navigate to Transfer page (/transfer/[debtId])
-3. Hien QR code + bank info
-4. User chuyen tien qua bank app
-5. Tap "Da chuyen tien" -> mark payment pending
-6. Creditor nhan Telegram notification
-7. Creditor confirm -> debt status = "confirmed"
+**Card Bill Mở (trong chat):**
+- Giao diện cam (#FF9500 avatar, #FFF8EC nền)
+- Badge: "Bill mở · N người đã check-in"
+- Thông tin: người trả, tiêu đề, tổng tiền
+- Nút: "Tôi có ăn" (check-in) hoặc "Đã check-in" (disabled)
+- Hành động admin: "+ Thêm người", "Đóng bill"
 
-**Success criteria:**
-- [ ] Debt banner hien dung net debt amount
-- [ ] Transfer page hien QR + bank info
-- [ ] Payment confirmation 2 chieu (debtor claim + creditor confirm)
+**Luồng check-in:**
+1. Tap "Tôi có ăn" → tạo bản ghi bill_checkins
+2. Nút đổi thành "Đã check-in"
+3. Thông báo người trả
 
----
+**Luồng đóng bill:**
+1. Người trả/admin tap "Đóng bill"
+2. Tính: tổng / số người check-in
+3. Tạo debts cho tất cả thành viên đã check-in (trừ người trả)
+4. Trạng thái bill → "closed"
+5. Thông báo tất cả người nợ
 
-### 3.9 Transfer / Payment Page
+**Sheet thêm người:**
+- Bottom sheet với danh sách thành viên nhóm
+- Ô tìm kiếm: "Tìm thành viên..."
+- Thành viên: tap để thêm/bỏ với badge "Thêm"
+- Mục: "Người ngoài nhóm" → thêm bằng tên (không cần tài khoản)
 
-**Screen:** Full page, accessible from debt "Tra no" button
-
-**Elements:**
-- Header: "Chuyen tien" + back button
-- Bill info: title + date
-- Amount display: large bold amount + "cho" + creditor name/avatar
-- QR Card (if creditor has bank info):
-  - QR code image (VietQR standard)
-  - Bank name
-  - Account number (with copy button)
-  - Account holder name
-  - Action buttons: "Luu QR" | "Chia se" | Bank app deep link
-- CTA: "Da chuyen tien" button (blue, full width)
-
-**No bank info state:**
-- Message: "Nguoi nhan chua lien ket ngan hang"
-- Manual transfer instructions
-
-**Success criteria:**
-- [ ] QR generate dung voi bank info cua creditor
-- [ ] Copy account number hoat dong
-- [ ] "Da chuyen tien" tao payment_confirmation record
-- [ ] Notify creditor qua Telegram
+**Tiêu chí thành công:**
+- [ ] Check-in tạo bản ghi và cập nhật UI
+- [ ] Đóng bill tạo debts đúng số tiền mỗi người
+- [ ] Khách (không có tài khoản) vẫn check-in được
+- [ ] Chỉ người trả/admin thấy "Đóng bill"
 
 ---
 
-### 3.10 Tai khoan (Account)
+### 3.8 Theo Dõi Nợ (trong Group Detail)
 
-**Screen:** Tab 2
+**Hiển thị:** Banner nợ ở đầu group detail
 
-**Header:** "Tai khoan" (20px bold, centered)
+**Logic banner nợ:**
+- Query tất cả debts trong nhóm mà user hiện tại là debtor hoặc creditor
+- Nợ ròng mỗi người: sum(nợ tôi nợ họ) - sum(nợ họ nợ tôi)
+- Hiện khoản nợ ròng lớn nhất
+- Đỏ nếu tôi nợ, xanh nếu được nợ
 
-**Profile section:**
-- Avatar circle (large, colored bg, initials)
-- Display name (bold) + email (gray)
-- Phone icon + "Sua" button
+**Luồng trả nợ:**
+1. Tap "Trả nợ" trên banner nợ
+2. Chuyển đến trang Transfer (/transfer/[debtId])
+3. Hiện mã QR + thông tin ngân hàng
+4. User chuyển tiền qua app ngân hàng
+5. Tap "Đã chuyển tiền" → đánh dấu payment pending
+6. Chủ nợ nhận thông báo Telegram
+7. Chủ nợ xác nhận → trạng thái nợ = "confirmed"
 
-**Bank section:**
-- Label: "NGAN HANG" (gray, 11px, uppercase)
-- Bank card (white, rounded 14px):
-  - Bank icon + "Tai khoan ngan hang" + chevron
-  - Sub-row: bank name + masked account (****XXXX) + "Da lien ket" badge
-  - OR: "Chua lien ket" + "Lien ket ngay" button (blue)
-
-**Link section:**
-- Label: "LIEN KET" (gray, 11px, uppercase)
-- Telegram card: Telegram icon + "Telegram" + "Lien ket" button
-  - If linked: "Da lien ket" badge
-
-**Sign out:**
-- Bottom: red text "Dang xuat" with logout icon
-
-**Success criteria:**
-- [ ] Hien dung profile info
-- [ ] Edit name hoat dong
-- [ ] Bank linking: save bank_name, account_no, account_name
-- [ ] Telegram linking: redirect to bot
-- [ ] Sign out clears session
+**Tiêu chí thành công:**
+- [ ] Banner nợ hiện đúng số nợ ròng
+- [ ] Trang transfer hiện QR + thông tin ngân hàng
+- [ ] Xác nhận thanh toán 2 chiều (người nợ báo + chủ nợ xác nhận)
 
 ---
 
-## 4. Bill Splitting Logic (Core Business Rules)
+### 3.9 Trang Chuyển Tiền / Thanh Toán
 
-### 4.1 Standard Bill (Chia deu)
+**Màn hình:** Full page, truy cập từ nút "Trả nợ"
+
+**Thành phần:**
+- Header: "Chuyển tiền" + nút back
+- Thông tin bill: tiêu đề + ngày
+- Hiển thị số tiền: số tiền lớn bold + "cho" + tên/avatar chủ nợ
+- Card QR (nếu chủ nợ có thông tin ngân hàng):
+  - Hình ảnh mã QR (chuẩn VietQR)
+  - Tên ngân hàng
+  - Số tài khoản (có nút sao chép)
+  - Tên chủ tài khoản
+  - Nút hành động: "Lưu QR" | "Chia sẻ" | Deep link app ngân hàng
+- CTA: Nút "Đã chuyển tiền" (xanh, full width)
+
+**Trạng thái không có thông tin ngân hàng:**
+- Thông báo: "Người nhận chưa liên kết ngân hàng"
+- Hướng dẫn chuyển tiền thủ công
+
+**Tiêu chí thành công:**
+- [ ] QR tạo đúng với thông tin ngân hàng của chủ nợ
+- [ ] Sao chép số tài khoản hoạt động
+- [ ] "Đã chuyển tiền" tạo bản ghi payment_confirmation
+- [ ] Thông báo chủ nợ qua Telegram
+
+---
+
+### 3.10 Tài Khoản (Account)
+
+**Màn hình:** Tab 2
+
+**Header:** "Tài khoản" (20px bold, căn giữa)
+
+**Phần hồ sơ:**
+- Avatar tròn (lớn, nền màu, chữ cái đầu)
+- Tên hiển thị (bold) + email (gray)
+- Icon điện thoại + nút "Sửa"
+
+**Phần ngân hàng:**
+- Nhãn: "NGÂN HÀNG" (gray, 11px, uppercase)
+- Card ngân hàng (trắng, rounded 14px):
+  - Icon ngân hàng + "Tài khoản ngân hàng" + chevron
+  - Dòng phụ: tên ngân hàng + tài khoản ẩn (****XXXX) + badge "Đã liên kết"
+  - HOẶC: "Chưa liên kết" + nút "Liên kết ngay" (xanh)
+
+**Phần liên kết:**
+- Nhãn: "LIÊN KẾT" (gray, 11px, uppercase)
+- Card Telegram: icon Telegram + "Telegram" + nút "Liên kết"
+  - Nếu đã liên kết: badge "Đã liên kết"
+
+**Đăng xuất:**
+- Dưới cùng: chữ đỏ "Đăng xuất" với icon logout
+
+**Tiêu chí thành công:**
+- [ ] Hiện đúng thông tin hồ sơ
+- [ ] Sửa tên hoạt động
+- [ ] Liên kết ngân hàng: lưu bank_name, account_no, account_name
+- [ ] Liên kết Telegram: chuyển đến bot
+- [ ] Đăng xuất xoá session
+
+---
+
+## 4. Logic Chia Bill (Quy tắc nghiệp vụ cốt lõi)
+
+### 4.1 Bill Tiêu Chuẩn (Chia đều)
 ```
 Input: total_amount, paid_by, participants[]
-Per person = floor(total_amount / participants.length)
-Remainder = total_amount - (per_person * participants.length)
-First [remainder] participants get +1 VND
+Mỗi người = floor(total_amount / participants.length)
+Phần dư = total_amount - (mỗi_người * participants.length)
+[phần dư] người đầu tiên được +1 VND
 
-Debts created:
-  For each participant (except payer):
-    debt = { debtor: participant, creditor: payer, amount: their_share }
+Nợ tạo ra:
+  Với mỗi participant (trừ người trả):
+    debt = { debtor: participant, creditor: payer, amount: phần_của_họ }
 ```
 
-### 4.2 Custom Split (Tuy chinh)
+### 4.2 Chia Tuỳ Chỉnh (Custom Split)
 ```
 Input: total_amount, paid_by, amounts: { member_id: amount }
-Validation: sum(amounts) MUST equal total_amount
-Debts: same as above but with custom amounts
+Validation: sum(amounts) PHẢI bằng total_amount
+Debts: tương tự nhưng với số tiền tuỳ chỉnh
 ```
 
-### 4.3 Open Bill
+### 4.3 Bill Mở (Open Bill)
 ```
-Creation: bill_type = "open", status = "active"
-Check-in: members tap "Toi co an" -> bill_checkins record
-Close: per_person = floor(total / checkin_count)
-Debts: created for all checked-in members except payer
+Tạo: bill_type = "open", status = "active"
+Check-in: thành viên tap "Tôi có ăn" → bản ghi bill_checkins
+Đóng: mỗi_người = floor(tổng / số_checkin)
+Nợ: tạo cho tất cả thành viên đã check-in trừ người trả
 ```
 
-### 4.4 Net Debt Calculation
+### 4.4 Tính Nợ Ròng
 ```
-For user A and user B:
-  a_owes_b = sum(debts where debtor=A, creditor=B, status=pending)
-  b_owes_a = sum(debts where debtor=B, creditor=A, status=pending)
-  net = b_owes_a - a_owes_b
-  If net > 0: "B owes A [net]"
-  If net < 0: "A owes B [abs(net)]"
+Với user A và user B:
+  a_nợ_b = sum(debts where debtor=A, creditor=B, status=pending)
+  b_nợ_a = sum(debts where debtor=B, creditor=A, status=pending)
+  ròng = b_nợ_a - a_nợ_b
+  Nếu ròng > 0: "B nợ A [ròng]"
+  Nếu ròng < 0: "A nợ B [abs(ròng)]"
 ```
 
 ---
 
-## 5. Notifications (Telegram)
+## 5. Thông Báo (Telegram)
 
-| Event | Recipient | Message |
-|-------|-----------|---------|
-| Bill created | All debtors | "Ban no [Payer] [Amount] cho [Title]" |
-| Payment claimed | Creditor | "[Debtor] bao da chuyen [Amount]" |
-| Payment confirmed | Debtor | "[Creditor] da xac nhan nhan [Amount]" |
-| Open bill created | Group members | "[Creator] tao bill mo: [Title]" |
-| Check-in | Payer | "[Member] da check-in vao [Title]" |
-| Bill closed | All debtors | "Bill [Title] da dong. Moi nguoi: [Amount]" |
+| Sự kiện | Người nhận | Tin nhắn |
+|---------|------------|----------|
+| Tạo bill | Tất cả người nợ | "Bạn nợ [Người trả] [Số tiền] cho [Tiêu đề]" |
+| Báo đã chuyển | Chủ nợ | "[Người nợ] báo đã chuyển [Số tiền]" |
+| Xác nhận nhận tiền | Người nợ | "[Chủ nợ] đã xác nhận nhận [Số tiền]" |
+| Tạo bill mở | Thành viên nhóm | "[Người tạo] tạo bill mở: [Tiêu đề]" |
+| Check-in | Người trả | "[Thành viên] đã check-in vào [Tiêu đề]" |
+| Đóng bill | Tất cả người nợ | "Bill [Tiêu đề] đã đóng. Mỗi người: [Số tiền]" |
 
 ---
 
 ## 6. Design Tokens
 
-| Token | Value |
-|-------|-------|
+| Token | Giá trị |
+|-------|---------|
 | Primary Blue | #3A5CCC |
 | Success Green | #34C759 |
 | Error Red | #FF3B30 |
@@ -419,35 +419,35 @@ For user A and user B:
 | Corner Radius (card) | 14px |
 | Corner Radius (sheet) | 20px |
 | Corner Radius (avatar) | 50% |
-| Tab bar height | 56px + safe-area |
+| Chiều cao tab bar | 56px + safe-area |
 
 ---
 
-## 7. QC Verification Checklist
+## 7. Checklist QC
 
-Evaluator MUST verify ALL items below via Playwright:
+Evaluator PHẢI verify TẤT CẢ mục dưới đây qua Playwright:
 
-### P0 - Critical
-- [ ] Login voi OTP (ma 6 so, KHONG phai link)
-- [ ] Login voi password
-- [ ] Chi 2 tabs: Nhom + Tai khoan
-- [ ] Tao group
-- [ ] Tham gia group bang invite code
-- [ ] Tao bill qua chat ("500k bun bo 6 nguoi")
-- [ ] Bill confirm sheet hien dung va tao bill
-- [ ] Debt hien trong group detail
-- [ ] Transfer page hien QR
+### P0 - Quan trọng
+- [ ] Login với OTP (mã 6 số, KHÔNG phải link)
+- [ ] Login với password
+- [ ] Chỉ 2 tabs: Nhóm + Tài khoản
+- [ ] Tạo group
+- [ ] Tham gia group bằng invite code
+- [ ] Tạo bill qua chat ("500k bún bò 6 người")
+- [ ] Bill confirm sheet hiện đúng và tạo bill
+- [ ] Nợ hiện trong group detail
+- [ ] Trang transfer hiện QR
 
-### P1 - Important
-- [ ] Open bill: check-in + close
-- [ ] Payment confirmation 2 chieu
-- [ ] Telegram notification gui dung
-- [ ] Bank linking trong Account
-- [ ] Edit display name
-- [ ] Sign out
+### P1 - Cần có
+- [ ] Bill mở: check-in + đóng bill
+- [ ] Xác nhận thanh toán 2 chiều
+- [ ] Thông báo Telegram gửi đúng
+- [ ] Liên kết ngân hàng trong Tài khoản
+- [ ] Sửa tên hiển thị
+- [ ] Đăng xuất
 
-### P2 - Nice to have
-- [ ] Empty states (no groups, no debts)
-- [ ] Loading skeletons
-- [ ] Error handling (network, invalid input)
-- [ ] Real-time updates (bill tu nguoi khac)
+### P2 - Nên có
+- [ ] Trạng thái trống (không có nhóm, không có nợ)
+- [ ] Skeleton loading
+- [ ] Xử lý lỗi (mạng, input không hợp lệ)
+- [ ] Cập nhật real-time (bill từ người khác)
