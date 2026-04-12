@@ -25,8 +25,17 @@ export default function ActivityPage() {
     []
   );
 
-  const [activities, setActivities] = useState<ActivityItem[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [activities, setActivities] = useState<ActivityItem[]>(() => {
+    if (typeof window === "undefined") return [];
+    try {
+      const cached = sessionStorage.getItem("activity_list");
+      return cached ? JSON.parse(cached) : [];
+    } catch { return []; }
+  });
+  const [loading, setLoading] = useState(() => {
+    if (typeof window === "undefined") return true;
+    return !sessionStorage.getItem("activity_list");
+  });
 
   useEffect(() => {
     if (!member) return;
@@ -143,6 +152,7 @@ export default function ActivityPage() {
 
     setActivities(items);
     setLoading(false);
+    try { sessionStorage.setItem("activity_list", JSON.stringify(items)); } catch {}
   }
 
   function formatTime(dateStr: string) {

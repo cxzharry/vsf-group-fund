@@ -28,10 +28,31 @@ export default function TransferPage() {
     []
   );
 
-  const [debt, setDebt] = useState<Debt | null>(null);
-  const [creditor, setCreditor] = useState<Member | null>(null);
-  const [bill, setBill] = useState<Bill | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [debt, setDebt] = useState<Debt | null>(() => {
+    if (typeof window === "undefined") return null;
+    try {
+      const cached = sessionStorage.getItem(`transfer_${debtId}`);
+      return cached ? JSON.parse(cached).debt : null;
+    } catch { return null; }
+  });
+  const [creditor, setCreditor] = useState<Member | null>(() => {
+    if (typeof window === "undefined") return null;
+    try {
+      const cached = sessionStorage.getItem(`transfer_${debtId}`);
+      return cached ? JSON.parse(cached).creditor : null;
+    } catch { return null; }
+  });
+  const [bill, setBill] = useState<Bill | null>(() => {
+    if (typeof window === "undefined") return null;
+    try {
+      const cached = sessionStorage.getItem(`transfer_${debtId}`);
+      return cached ? JSON.parse(cached).bill : null;
+    } catch { return null; }
+  });
+  const [loading, setLoading] = useState(() => {
+    if (typeof window === "undefined") return true;
+    return !sessionStorage.getItem(`transfer_${debtId}`);
+  });
   const [submitting, setSubmitting] = useState(false);
 
   const load = useCallback(async () => {
@@ -51,6 +72,7 @@ export default function TransferPage() {
 
     setCreditor(creditorData);
     setBill(billData);
+    try { sessionStorage.setItem(`transfer_${debtId}`, JSON.stringify({ debt: debtData, creditor: creditorData, bill: billData })); } catch {}
     setLoading(false);
   }, [debtId, supabase]);
 
@@ -95,6 +117,7 @@ export default function TransferPage() {
       status: "pending",
     });
 
+    try { sessionStorage.removeItem(`transfer_${debtId}`); } catch {}
     toast.success("Đã xác nhận! Chờ người nhận xác nhận.");
     setSubmitting(false);
     router.back();

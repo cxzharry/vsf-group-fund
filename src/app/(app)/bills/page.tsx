@@ -19,8 +19,17 @@ interface BillWithPayer extends Bill {
 
 export default function BillsPage() {
   const { member } = useAuth();
-  const [bills, setBills] = useState<BillWithPayer[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [bills, setBills] = useState<BillWithPayer[]>(() => {
+    if (typeof window === "undefined") return [];
+    try {
+      const cached = sessionStorage.getItem("bills_list");
+      return cached ? JSON.parse(cached) : [];
+    } catch { return []; }
+  });
+  const [loading, setLoading] = useState(() => {
+    if (typeof window === "undefined") return true;
+    return !sessionStorage.getItem("bills_list");
+  });
   const supabase = createClient();
 
   useEffect(() => {
@@ -64,6 +73,7 @@ export default function BillsPage() {
 
       setBills(enriched);
       setLoading(false);
+      try { sessionStorage.setItem("bills_list", JSON.stringify(enriched)); } catch {}
     }
     load();
   }, [member]); // eslint-disable-line react-hooks/exhaustive-deps

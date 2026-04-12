@@ -38,12 +38,30 @@ export default function GroupDetailPage() {
     []
   );
 
-  const [group, setGroup] = useState<Group | null>(null);
+  const [group, setGroup] = useState<Group | null>(() => {
+    if (typeof window === "undefined") return null;
+    try {
+      const cached = sessionStorage.getItem(`group_detail_${id}`);
+      return cached ? JSON.parse(cached).group : null;
+    } catch { return null; }
+  });
   const [members, setMembers] = useState<Record<string, Member>>({});
   const [memberList, setMemberList] = useState<Member[]>([]);
   const [memberCount, setMemberCount] = useState(0);
-  const [bills, setBills] = useState<Bill[]>([]);
-  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
+  const [bills, setBills] = useState<Bill[]>(() => {
+    if (typeof window === "undefined") return [];
+    try {
+      const cached = sessionStorage.getItem(`group_detail_${id}`);
+      return cached ? JSON.parse(cached).bills : [];
+    } catch { return []; }
+  });
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>(() => {
+    if (typeof window === "undefined") return [];
+    try {
+      const cached = sessionStorage.getItem(`group_detail_${id}`);
+      return cached ? JSON.parse(cached).chatMessages : [];
+    } catch { return []; }
+  });
   const [billParticipantCounts, setBillParticipantCounts] = useState<
     Record<string, number>
   >({});
@@ -55,7 +73,10 @@ export default function GroupDetailPage() {
     otherMemberId: string;
     debtId?: string;
   } | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(() => {
+    if (typeof window === "undefined") return true;
+    return !sessionStorage.getItem(`group_detail_${id}`);
+  });
   const [inputText, setInputText] = useState("");
 
   // Sprint 4: AI intent state
@@ -184,6 +205,7 @@ export default function GroupDetailPage() {
       }
     }
 
+    try { sessionStorage.setItem(`group_detail_${id}`, JSON.stringify({ group: groupData, bills: fetchedBills, chatMessages: msgData ?? [] })); } catch {}
     setLoading(false);
   }, [id, supabase, currentMember]);
 
@@ -383,6 +405,7 @@ export default function GroupDetailPage() {
     }).catch(() => {});
 
     // 5. Update local state
+    try { sessionStorage.removeItem(`group_detail_${id}`); } catch {}
     setTimeout(() => {
       setBills((prev) => [...prev, newBill as Bill]);
       setShowConfirmSheet(false);

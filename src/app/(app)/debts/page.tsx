@@ -28,8 +28,17 @@ export default function DebtsPage() {
   const router = useRouter();
   const supabase = createClient();
 
-  const [debts, setDebts] = useState<DebtWithNames[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [debts, setDebts] = useState<DebtWithNames[]>(() => {
+    if (typeof window === "undefined") return [];
+    try {
+      const cached = sessionStorage.getItem("debts_list");
+      return cached ? JSON.parse(cached) : [];
+    } catch { return []; }
+  });
+  const [loading, setLoading] = useState(() => {
+    if (typeof window === "undefined") return true;
+    return !sessionStorage.getItem("debts_list");
+  });
   const [qrDebt, setQrDebt] = useState<DebtWithNames | null>(null);
   const [confirmDebt, setConfirmDebt] = useState<DebtWithNames | null>(null);
 
@@ -46,14 +55,14 @@ export default function DebtsPage() {
       .or(`debtor_id.eq.${member.id},creditor_id.eq.${member.id}`)
       .order("created_at", { ascending: false });
 
-    setDebts(
-      (debtData ?? []).map((d) => ({
-        ...d,
-        debtor: memberMap[d.debtor_id],
-        creditor: memberMap[d.creditor_id],
-      }))
-    );
+    const enriched = (debtData ?? []).map((d) => ({
+      ...d,
+      debtor: memberMap[d.debtor_id],
+      creditor: memberMap[d.creditor_id],
+    }));
+    setDebts(enriched);
     setLoading(false);
+    try { sessionStorage.setItem("debts_list", JSON.stringify(enriched)); } catch {}
   }, [member, supabase]);
 
   useEffect(() => {
@@ -140,6 +149,7 @@ export default function DebtsPage() {
       }),
     }).catch(() => {});
 
+    try { sessionStorage.removeItem("debts_list"); } catch {}
     loadDebts();
   }
 
@@ -166,6 +176,7 @@ export default function DebtsPage() {
       }),
     }).catch(() => {});
 
+    try { sessionStorage.removeItem("debts_list"); } catch {}
     loadDebts();
   }
 

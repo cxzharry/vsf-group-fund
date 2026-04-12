@@ -25,10 +25,25 @@ export default function GroupSettingsPage() {
     []
   );
 
-  const [group, setGroup] = useState<Group | null>(null);
-  const [members, setMembers] = useState<MemberWithRole[]>([]);
+  const [group, setGroup] = useState<Group | null>(() => {
+    if (typeof window === "undefined") return null;
+    try {
+      const cached = sessionStorage.getItem(`group_settings_${id}`);
+      return cached ? JSON.parse(cached).group : null;
+    } catch { return null; }
+  });
+  const [members, setMembers] = useState<MemberWithRole[]>(() => {
+    if (typeof window === "undefined") return [];
+    try {
+      const cached = sessionStorage.getItem(`group_settings_${id}`);
+      return cached ? JSON.parse(cached).members : [];
+    } catch { return []; }
+  });
   const [isAdmin, setIsAdmin] = useState(false);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(() => {
+    if (typeof window === "undefined") return true;
+    return !sessionStorage.getItem(`group_settings_${id}`);
+  });
   const [editingName, setEditingName] = useState(false);
   const [nameInput, setNameInput] = useState("");
   const [savingName, setSavingName] = useState(false);
@@ -63,20 +78,21 @@ export default function GroupSettingsPage() {
       setIsAdmin(roleMap.get(currentMember.id) === "admin");
     }
 
+    let enrichedMembers: MemberWithRole[] = [];
     if (memberIds.length > 0) {
       const { data: memberData } = await supabase
         .from("members")
         .select("*")
         .in("id", memberIds);
 
-      setMembers(
-        (memberData ?? []).map((m: Member) => ({
-          ...m,
-          role: roleMap.get(m.id) ?? "member",
-        }))
-      );
+      enrichedMembers = (memberData ?? []).map((m: Member) => ({
+        ...m,
+        role: roleMap.get(m.id) ?? "member",
+      }));
+      setMembers(enrichedMembers);
     }
 
+    try { sessionStorage.setItem(`group_settings_${id}`, JSON.stringify({ group: groupData, members: enrichedMembers })); } catch {}
     setLoading(false);
   }, [id, supabase, currentMember]);
 
@@ -96,6 +112,7 @@ export default function GroupSettingsPage() {
     if (error) {
       toast.error("Lỗi cập nhật tên nhóm");
     } else {
+      try { sessionStorage.removeItem(`group_settings_${id}`); } catch {}
       setGroup((prev) => prev ? { ...prev, name: nameInput.trim() } : prev);
       setEditingName(false);
       toast.success("Đã cập nhật tên nhóm");
@@ -125,6 +142,7 @@ export default function GroupSettingsPage() {
       return;
     }
 
+    try { sessionStorage.removeItem(`group_settings_${id}`); } catch {}
     toast.success("Đã rời nhóm");
     router.push("/groups");
   }
