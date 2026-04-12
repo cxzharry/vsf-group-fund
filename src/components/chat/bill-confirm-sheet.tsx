@@ -3,6 +3,7 @@
 // Bottom sheet for confirming bill creation — matches Pencil half-sheet design
 import { useState } from "react";
 import { formatVND } from "@/lib/format-vnd";
+import { SplitSheet } from "@/components/chat/split-sheet";
 import type { ParsedBillIntent } from "@/lib/ai-intent-types";
 import type { Member } from "@/lib/types";
 
@@ -21,6 +22,8 @@ export interface BillConfirmData {
   peopleCount: number;
   payerId: string;
   billType: "standard" | "open";
+  /** Custom per-member splits (member_id → amount). Only set when splitType="custom". */
+  customSplits?: Record<string, number>;
 }
 
 const AVATAR_COLORS = [
@@ -69,6 +72,8 @@ export function BillConfirmSheet({
   );
   const [payerId] = useState<string>(currentMember.id);
   const [submitting, setSubmitting] = useState(false);
+  const [showSplit, setShowSplit] = useState(false);
+  const [customSplits, setCustomSplits] = useState<Record<string, number> | null>(null);
 
   const perPerson =
     splitType !== "open" && peopleCount > 0
@@ -87,10 +92,11 @@ export function BillConfirmSheet({
     await onConfirm({
       amount,
       description: description.trim(),
-      splitType,
-      peopleCount,
+      splitType: customSplits ? "custom" : splitType,
+      peopleCount: customSplits ? Object.keys(customSplits).length : peopleCount,
       payerId,
       billType: splitType === "open" ? "open" : "standard",
+      customSplits: customSplits ?? undefined,
     });
     setSubmitting(false);
   }
@@ -136,9 +142,15 @@ export function BillConfirmSheet({
               <span className="text-[13px] text-[#1C1C1E]">{description || "—"}</span>
             </div>
 
-            {/* Chia cho — member avatars */}
-            <div className="flex items-center justify-between">
-              <span className="text-[13px] text-[#8E8E93]">Chia cho</span>
+            {/* Chia cho — tap to open US-3.3 Split Sheet */}
+            <button
+              type="button"
+              onClick={() => setShowSplit(true)}
+              className="flex w-full items-center justify-between"
+            >
+              <span className="text-[13px] text-[#8E8E93]">
+                Chia cho {customSplits ? `(${Object.keys(customSplits).length} người)` : ""}
+              </span>
               <div className="flex items-center gap-1">
                 {shownMembers.map((m) => (
                   <MiniAvatar key={m.id} member={m} size={22} />
@@ -146,8 +158,9 @@ export function BillConfirmSheet({
                 {extraCount > 0 && (
                   <span className="ml-1 text-xs text-[#8E8E93]">+{extraCount}</span>
                 )}
+                <span className="ml-1 text-xs text-[#3A5CCC]">▸</span>
               </div>
-            </div>
+            </button>
 
             {/* Mỗi người */}
             {perPerson !== null && (
@@ -193,6 +206,20 @@ export function BillConfirmSheet({
           </button>
         </div>
       </div>
+
+      {/* US-3.3 Split Sheet */}
+      {showSplit && (
+        <SplitSheet
+          totalAmount={amount}
+          groupMembers={groupMembers}
+          payerId={payerId}
+          onConfirm={(splits) => {
+            setCustomSplits(splits);
+            setShowSplit(false);
+          }}
+          onClose={() => setShowSplit(false)}
+        />
+      )}
     </>
   );
 }
