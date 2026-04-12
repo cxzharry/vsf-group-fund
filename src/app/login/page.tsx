@@ -91,10 +91,10 @@ export default function LoginPage() {
           </div>
           <div className="text-center">
             <h1 className="text-[28px] font-bold leading-tight text-[#1C1C1E]">
-              NoPay{"\n"}FreeLunch
+              NoPay<br />FreeLunch
             </h1>
             <p className="mt-2 text-[15px] leading-relaxed text-[#8E8E93]">
-              Nhập email để đăng nhập{"\n"}hoặc tạo tài khoản mới.
+              Nhập email để đăng nhập<br />hoặc tạo tài khoản mới.
             </p>
           </div>
         </div>
