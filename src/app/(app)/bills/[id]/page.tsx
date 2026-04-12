@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { createClient } from "@/lib/supabase-client";
-import { MobileHeader } from "@/components/mobile-header";
+import { PageHeader } from "@/components/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
@@ -61,9 +61,17 @@ export default function BillDetailPage() {
   if (loading) {
     return (
       <>
-        <MobileHeader title="Chi tiết" />
-        <div className="flex justify-center py-8">
-          <div className="h-6 w-6 animate-spin rounded-full border-2 border-[#3A5CCC] border-t-transparent" />
+        <PageHeader title="Chi tiết" />
+        <div className="space-y-4 p-4">
+          {[1, 2].map((i) => (
+            <div key={i} className="animate-pulse rounded-2xl bg-white p-4 shadow-sm">
+              <div className="mb-3 h-4 w-1/3 rounded-full bg-[#E5E5EA]" />
+              <div className="space-y-2">
+                <div className="h-3 w-full rounded-full bg-[#F2F2F7]" />
+                <div className="h-3 w-3/4 rounded-full bg-[#F2F2F7]" />
+              </div>
+            </div>
+          ))}
         </div>
       </>
     );
@@ -72,7 +80,7 @@ export default function BillDetailPage() {
   if (!bill) {
     return (
       <>
-        <MobileHeader title="Chi tiết" />
+        <PageHeader title="Chi tiết" />
         <p className="py-8 text-center text-muted-foreground">
           Không tìm thấy hóa đơn
         </p>
@@ -82,7 +90,7 @@ export default function BillDetailPage() {
 
   return (
     <>
-      <MobileHeader title={bill.title} />
+      <PageHeader title={bill.title} />
       <main className="space-y-4 p-4">
         {/* Summary */}
         <Card>

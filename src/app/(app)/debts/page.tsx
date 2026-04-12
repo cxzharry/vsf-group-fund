@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase-client";
 import { useAuth } from "@/components/auth-provider";
-import { MobileHeader } from "@/components/mobile-header";
+import { PageHeader } from "@/components/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
@@ -171,11 +171,27 @@ export default function DebtsPage() {
 
   return (
     <>
-      <MobileHeader title="Nợ" />
+      <PageHeader title="Khoản nợ" backHref="/" />
       <main className="space-y-4 p-4">
         {loading ? (
-          <div className="flex justify-center py-8">
-            <div className="h-6 w-6 animate-spin rounded-full border-2 border-[#3A5CCC] border-t-transparent" />
+          <div className="space-y-3">
+            <div className="grid grid-cols-2 gap-3">
+              {[1, 2].map((i) => (
+                <div key={i} className="animate-pulse rounded-2xl bg-white p-4 shadow-sm">
+                  <div className="mb-2 h-3 w-1/2 rounded-full bg-[#E5E5EA]" />
+                  <div className="h-6 w-3/4 rounded-full bg-[#F2F2F7]" />
+                </div>
+              ))}
+            </div>
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="animate-pulse rounded-2xl bg-white p-4 shadow-sm">
+                <div className="mb-3 h-4 w-1/3 rounded-full bg-[#E5E5EA]" />
+                <div className="space-y-2">
+                  <div className="h-3 w-full rounded-full bg-[#F2F2F7]" />
+                  <div className="h-3 w-2/3 rounded-full bg-[#F2F2F7]" />
+                </div>
+              </div>
+            ))}
           </div>
         ) : (
           <>

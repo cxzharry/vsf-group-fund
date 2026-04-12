@@ -10,6 +10,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { PageHeader } from "@/components/page-header";
 import { toast } from "sonner";
 
 const BANKS = [
@@ -92,10 +93,7 @@ export default function AccountPage() {
 
   return (
     <>
-      {/* Nav bar */}
-      <header className="flex h-[52px] items-center justify-center bg-[#F2F2F7] px-4">
-        <h1 className="text-[17px] font-semibold text-[#1C1C1E]">Tài khoản</h1>
-      </header>
+      <PageHeader title="Tài khoản" backHref="/" />
 
       <main className="space-y-6 px-4 py-4">
         {/* Profile section */}

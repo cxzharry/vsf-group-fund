@@ -4,7 +4,7 @@ import { useEffect, useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { createBrowserClient } from "@supabase/ssr";
 import { useAuth } from "@/components/auth-provider";
-import { MobileHeader } from "@/components/mobile-header";
+import { PageHeader } from "@/components/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
@@ -92,15 +92,35 @@ export default function SummaryPage() {
 
   return (
     <>
-      <MobileHeader title="Tổng kết" />
+      <PageHeader title="Tổng kết" backHref="/" />
       <main className="space-y-4 p-4">
         {loading ? (
-          <div className="flex justify-center py-12">
-            <div className="h-6 w-6 animate-spin rounded-full border-2 border-[#3A5CCC] border-t-transparent" />
+          <div className="space-y-3">
+            <div className="grid grid-cols-2 gap-3">
+              {[1, 2].map((i) => (
+                <div key={i} className="animate-pulse rounded-2xl bg-white p-4 shadow-sm text-center">
+                  <div className="mx-auto mb-2 h-3 w-1/2 rounded-full bg-[#E5E5EA]" />
+                  <div className="mx-auto h-6 w-3/4 rounded-full bg-[#F2F2F7]" />
+                </div>
+              ))}
+            </div>
+            {[1, 2].map((i) => (
+              <div key={i} className="animate-pulse rounded-2xl bg-white p-4 shadow-sm">
+                <div className="mb-3 h-4 w-1/3 rounded-full bg-[#E5E5EA]" />
+                <div className="space-y-2">
+                  <div className="h-3 w-full rounded-full bg-[#F2F2F7]" />
+                  <div className="h-3 w-2/3 rounded-full bg-[#F2F2F7]" />
+                </div>
+              </div>
+            ))}
           </div>
         ) : debts.length === 0 ? (
           <div className="flex flex-col items-center gap-3 py-16 text-center">
-            <span className="text-4xl">✅</span>
+            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-[#E8F9EF]">
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#34C759" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="20 6 9 17 4 12" />
+              </svg>
+            </div>
             <p className="text-muted-foreground">Không có khoản nợ nào</p>
           </div>
         ) : (

@@ -4,10 +4,11 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase-client";
 import { useAuth } from "@/components/auth-provider";
-import { MobileHeader } from "@/components/mobile-header";
+import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { SkeletonList } from "@/components/skeleton-card";
 import { formatVND } from "@/lib/format-vnd";
 import type { Bill, Member } from "@/lib/types";
 
@@ -79,7 +80,7 @@ export default function BillsPage() {
 
   return (
     <>
-      <MobileHeader title="Hóa đơn" />
+      <PageHeader title="Hóa đơn" backHref="/" />
       <main className="p-4">
         <Link href="/bills/new">
           <Button className="mb-4 w-full bg-[#3A5CCC] hover:bg-[#2d4aaa]">
@@ -88,9 +89,7 @@ export default function BillsPage() {
         </Link>
 
         {loading ? (
-          <div className="flex justify-center py-8">
-            <div className="h-6 w-6 animate-spin rounded-full border-2 border-[#3A5CCC] border-t-transparent" />
-          </div>
+          <SkeletonList count={4} />
         ) : bills.length === 0 ? (
           <p className="py-8 text-center text-muted-foreground">
             Chưa có hóa đơn nào

@@ -4,11 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase-client";
 import { useAuth } from "@/components/auth-provider";
-import { MobileHeader } from "@/components/mobile-header";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { PageHeader } from "@/components/page-header";
 import { formatVND, parseVND } from "@/lib/format-vnd";
 import { toast } from "sonner";
 import type { Member } from "@/lib/types";
@@ -35,46 +31,33 @@ export default function NewBillPage() {
   useEffect(() => {
     async function load() {
       if (groupId) {
-        // Load only group members
         const { data: gName } = await supabase
-          .from("groups")
-          .select("name")
-          .eq("id", groupId)
-          .single();
+          .from("groups").select("name").eq("id", groupId).single();
         if (gName) setGroupName(gName.name);
 
         const { data: gm } = await supabase
-          .from("group_members")
-          .select("member_id")
-          .eq("group_id", groupId);
+          .from("group_members").select("member_id").eq("group_id", groupId);
 
         if (gm?.length) {
           const ids = gm.map((m) => m.member_id);
           const { data } = await supabase
-            .from("members")
-            .select("*")
-            .in("id", ids)
-            .order("display_name");
+            .from("members").select("*").in("id", ids).order("display_name");
           if (data) setMembers(data);
         }
       } else {
-        // Load all members
         const { data } = await supabase
-          .from("members")
-          .select("*")
-          .order("display_name");
+          .from("members").select("*").order("display_name");
         if (data) setMembers(data);
       }
       if (member) setPaidBy(member.id);
     }
     load();
-  }, [supabase, member, groupId]);
+  }, [supabase, member, groupId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   function toggleMember(id: string) {
     setSelectedMembers((prev) => {
       const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
+      if (next.has(id)) next.delete(id); else next.add(id);
       return next;
     });
   }
@@ -87,18 +70,14 @@ export default function NewBillPage() {
     }
   }
 
-  // Calculate equal split with integer rounding
   function getEqualSplitAmounts(): Record<string, number> {
     const count = selectedMembers.size;
     if (count === 0 || totalAmount === 0) return {};
-
     const base = Math.floor(totalAmount / count);
     const remainder = totalAmount - base * count;
     const amounts: Record<string, number> = {};
     let i = 0;
-
     for (const id of selectedMembers) {
-      // First N people pay 1 more to cover rounding remainder
       amounts[id] = base + (i < remainder ? 1 : 0);
       i++;
     }
@@ -107,8 +86,7 @@ export default function NewBillPage() {
 
   function getCustomTotal(): number {
     return Array.from(selectedMembers).reduce(
-      (sum, id) => sum + parseVND(customAmounts[id] ?? "0"),
-      0
+      (sum, id) => sum + parseVND(customAmounts[id] ?? "0"), 0
     );
   }
 
@@ -122,10 +100,7 @@ export default function NewBillPage() {
       splitType === "equal"
         ? getEqualSplitAmounts()
         : Object.fromEntries(
-            Array.from(selectedMembers).map((id) => [
-              id,
-              parseVND(customAmounts[id] ?? "0"),
-            ])
+            Array.from(selectedMembers).map((id) => [id, parseVND(customAmounts[id] ?? "0")])
           );
 
     if (splitType === "custom") {
@@ -139,7 +114,6 @@ export default function NewBillPage() {
 
     setSubmitting(true);
 
-    // Create bill
     const { data: bill, error: billError } = await supabase
       .from("bills")
       .insert({
@@ -150,237 +124,221 @@ export default function NewBillPage() {
         group_id: groupId || null,
         created_by: member!.id,
       })
-      .select()
-      .single();
+      .select().single();
 
     if (billError || !bill) {
       setSubmitting(false);
       return toast.error("Lỗi tạo hóa đơn");
     }
 
-    // Create participants
     const participants = Array.from(selectedMembers).map((memberId) => ({
-      bill_id: bill.id,
-      member_id: memberId,
-      amount: amounts[memberId] ?? 0,
+      bill_id: bill.id, member_id: memberId, amount: amounts[memberId] ?? 0,
     }));
+    const { error: partError } = await supabase.from("bill_participants").insert(participants);
+    if (partError) { setSubmitting(false); return toast.error("Lỗi thêm người tham gia"); }
 
-    const { error: partError } = await supabase
-      .from("bill_participants")
-      .insert(participants);
-
-    if (partError) {
-      setSubmitting(false);
-      return toast.error("Lỗi thêm người tham gia");
-    }
-
-    // Create debt records (everyone except the payer owes the payer)
     const debts = Array.from(selectedMembers)
       .filter((id) => id !== paidBy)
       .map((debtorId) => ({
-        bill_id: bill.id,
-        debtor_id: debtorId,
-        creditor_id: paidBy,
-        amount: amounts[debtorId] ?? 0,
-        remaining: amounts[debtorId] ?? 0,
+        bill_id: bill.id, debtor_id: debtorId, creditor_id: paidBy,
+        amount: amounts[debtorId] ?? 0, remaining: amounts[debtorId] ?? 0,
         status: "pending" as const,
       }));
 
     if (debts.length > 0) {
       const { error: debtError } = await supabase.from("debts").insert(debts);
-      if (debtError) {
-        setSubmitting(false);
-        return toast.error("Lỗi tạo khoản nợ");
-      }
+      if (debtError) { setSubmitting(false); return toast.error("Lỗi tạo khoản nợ"); }
     }
 
-    // Send Telegram notifications (fire-and-forget)
     fetch("/api/notify", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         type: "new_bill",
-        payload: {
-          billId: bill.id,
-          billTitle: title.trim(),
-          totalAmount,
-          paidById: paidBy,
-        },
+        payload: { billId: bill.id, billTitle: title.trim(), totalAmount, paidById: paidBy },
       }),
-    }).catch(() => {}); // Don't block on notification failure
+    }).catch(() => {});
 
     toast.success("Đã tạo hóa đơn!");
-    router.push(groupId ? `/groups/${groupId}` : "/");
+    router.push(groupId ? `/groups/${groupId}` : "/bills");
   }
 
   const equalAmounts = getEqualSplitAmounts();
+  const perPerson = selectedMembers.size > 0 && totalAmount > 0
+    ? Math.floor(totalAmount / selectedMembers.size)
+    : 0;
 
   return (
     <>
-      <MobileHeader title={groupName ? `Tạo bill — ${groupName}` : "Tạo hóa đơn"} />
-      <main className="space-y-4 p-4">
-        {/* Bill info */}
-        <Card>
-          <CardContent className="space-y-3 pt-4">
-            <div className="space-y-1.5">
-              <Label htmlFor="title">Tên hóa đơn</Label>
-              <Input
-                id="title"
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                placeholder="VD: Cơm trưa 11/4"
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="total">Tổng tiền (VND)</Label>
-              <Input
-                id="total"
-                value={totalInput}
-                onChange={(e) => {
-                  const raw = e.target.value.replace(/\D/g, "");
-                  setTotalInput(raw ? formatVND(parseInt(raw)) : "");
-                }}
-                placeholder="VD: 500.000"
-                inputMode="numeric"
-              />
-            </div>
-          </CardContent>
-        </Card>
+      <PageHeader title={groupName ? `Tạo bill — ${groupName}` : "Tạo hóa đơn"} />
+
+      <main className="space-y-3 bg-[#F2F2F7] px-4 py-4 pb-8">
+
+        {/* Amount — large centered input */}
+        <div className="rounded-2xl bg-white px-4 py-5 shadow-sm">
+          <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-[#8E8E93]">
+            Số tiền
+          </p>
+          <div className="relative flex items-center">
+            <input
+              type="text"
+              inputMode="numeric"
+              value={totalInput}
+              onChange={(e) => {
+                const raw = e.target.value.replace(/\D/g, "");
+                setTotalInput(raw ? formatVND(parseInt(raw)) : "");
+              }}
+              placeholder="0"
+              className="w-full bg-transparent text-3xl font-bold text-[#1C1C1E] outline-none placeholder-[#C7C7CC]"
+            />
+            <span className="ml-1 text-xl font-semibold text-[#8E8E93]">đ</span>
+          </div>
+          {perPerson > 0 && (
+            <p className="mt-2 text-sm text-[#8E8E93]">
+              {selectedMembers.size} người · {formatVND(perPerson)}đ/người
+            </p>
+          )}
+        </div>
+
+        {/* Title */}
+        <div className="overflow-hidden rounded-2xl bg-white shadow-sm">
+          <input
+            type="text"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            placeholder="Tên hóa đơn (VD: Cơm trưa)"
+            className="w-full px-4 py-4 text-[15px] text-[#1C1C1E] placeholder-[#AEAEB2] outline-none"
+          />
+        </div>
+
+        {/* Split type chips */}
+        <div className="rounded-2xl bg-white px-4 py-3 shadow-sm">
+          <p className="mb-2.5 text-xs font-semibold uppercase tracking-wide text-[#8E8E93]">
+            Cách chia
+          </p>
+          <div className="flex gap-2">
+            {(["equal", "custom"] as const).map((type) => (
+              <button
+                key={type}
+                type="button"
+                onClick={() => setSplitType(type)}
+                className={`rounded-full px-4 py-2 text-sm font-semibold transition-colors ${
+                  splitType === type
+                    ? "bg-[#3A5CCC] text-white"
+                    : "bg-[#F2F2F7] text-[#3C3C43] hover:bg-[#E5E5EA]"
+                }`}
+              >
+                {type === "equal" ? "Chia đều" : "Tuỳ chỉnh"}
+              </button>
+            ))}
+          </div>
+          {splitType === "custom" && selectedMembers.size > 0 && (
+            <p className="mt-2 text-xs text-[#8E8E93]">
+              Đã nhập: {formatVND(getCustomTotal())}đ / {formatVND(totalAmount)}đ
+            </p>
+          )}
+        </div>
 
         {/* Who paid */}
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm">Ai trả tiền?</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex flex-wrap gap-1.5">
-              {members.map((m) => (
+        <div className="rounded-2xl bg-white px-4 py-3 shadow-sm">
+          <p className="mb-2.5 text-xs font-semibold uppercase tracking-wide text-[#8E8E93]">
+            Ai trả tiền?
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {members.map((m) => (
+              <button
+                key={m.id}
+                type="button"
+                onClick={() => setPaidBy(m.id)}
+                className={`rounded-full px-3 py-1.5 text-sm font-medium transition-colors ${
+                  paidBy === m.id
+                    ? "bg-[#3A5CCC] text-white"
+                    : "bg-[#F2F2F7] text-[#3C3C43] hover:bg-[#E5E5EA]"
+                }`}
+              >
+                {m.display_name}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Who participated */}
+        <div className="rounded-2xl bg-white shadow-sm overflow-hidden">
+          <div className="flex items-center justify-between px-4 py-3 border-b border-[#F2F2F7]">
+            <p className="text-xs font-semibold uppercase tracking-wide text-[#8E8E93]">
+              Ai tham gia?
+            </p>
+            <button
+              type="button"
+              onClick={selectAll}
+              className="text-sm font-medium text-[#3A5CCC]"
+            >
+              {selectedMembers.size === members.length ? "Bỏ chọn tất cả" : "Chọn tất cả"}
+            </button>
+          </div>
+          <div className="divide-y divide-[#F2F2F7]">
+            {members.map((m) => {
+              const selected = selectedMembers.has(m.id);
+              return (
                 <button
                   key={m.id}
                   type="button"
-                  onClick={() => setPaidBy(m.id)}
-                  className={`rounded-full border px-3 py-1.5 text-xs transition-colors ${
-                    paidBy === m.id
-                      ? "border-[#3A5CCC] bg-[#EEF2FF] text-[#3A5CCC]"
-                      : "hover:border-foreground/30"
+                  onClick={() => toggleMember(m.id)}
+                  className={`flex w-full items-center justify-between px-4 py-3.5 text-left transition-colors ${
+                    selected ? "bg-[#EEF2FF]" : "hover:bg-[#F9F9FB]"
                   }`}
                 >
-                  {m.display_name}
+                  <div className="flex items-center gap-3">
+                    {/* Checkbox indicator */}
+                    <div className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 transition-colors ${
+                      selected ? "border-[#3A5CCC] bg-[#3A5CCC]" : "border-[#C7C7CC]"
+                    }`}>
+                      {selected && (
+                        <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
+                          <path d="M1.5 5l2.5 2.5L8.5 2" stroke="white" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" />
+                        </svg>
+                      )}
+                    </div>
+                    <span className="text-[15px] text-[#1C1C1E]">{m.display_name}</span>
+                  </div>
+
+                  {selected && splitType === "equal" && totalAmount > 0 && (
+                    <span className="text-sm font-medium text-[#3A5CCC]">
+                      {formatVND(equalAmounts[m.id] ?? 0)}đ
+                    </span>
+                  )}
+                  {selected && splitType === "custom" && (
+                    <input
+                      value={customAmounts[m.id] ?? ""}
+                      onClick={(e) => e.stopPropagation()}
+                      onChange={(e) => {
+                        const raw = e.target.value.replace(/\D/g, "");
+                        setCustomAmounts((prev) => ({
+                          ...prev,
+                          [m.id]: raw ? formatVND(parseInt(raw)) : "",
+                        }));
+                      }}
+                      className="ml-2 h-8 w-28 rounded-lg border border-[#E5E5EA] bg-white px-2 text-right text-sm outline-none focus:border-[#3A5CCC]"
+                      placeholder="Số tiền"
+                      inputMode="numeric"
+                    />
+                  )}
                 </button>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Who ate */}
-        <Card>
-          <CardHeader className="pb-2">
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-sm">Ai ăn?</CardTitle>
-              <button
-                type="button"
-                onClick={selectAll}
-                className="text-xs text-[#3A5CCC]"
-              >
-                {selectedMembers.size === members.length
-                  ? "Bỏ chọn tất cả"
-                  : "Chọn tất cả"}
-              </button>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-1.5">
-              {members.map((m) => {
-                const selected = selectedMembers.has(m.id);
-                return (
-                  <button
-                    key={m.id}
-                    type="button"
-                    onClick={() => toggleMember(m.id)}
-                    className={`flex w-full items-center justify-between rounded-lg border p-2.5 text-left text-sm transition-colors ${
-                      selected
-                        ? "border-[#3A5CCC] bg-[#EEF2FF]"
-                        : "hover:border-foreground/20"
-                    }`}
-                  >
-                    <span>{m.display_name}</span>
-                    {selected && splitType === "equal" && totalAmount > 0 && (
-                      <span className="text-xs text-muted-foreground">
-                        {formatVND(equalAmounts[m.id] ?? 0)}đ
-                      </span>
-                    )}
-                    {selected && splitType === "custom" && (
-                      <Input
-                        value={customAmounts[m.id] ?? ""}
-                        onClick={(e) => e.stopPropagation()}
-                        onChange={(e) => {
-                          const raw = e.target.value.replace(/\D/g, "");
-                          setCustomAmounts((prev) => ({
-                            ...prev,
-                            [m.id]: raw ? formatVND(parseInt(raw)) : "",
-                          }));
-                        }}
-                        className="ml-2 h-7 w-28 text-right text-xs"
-                        placeholder="Số tiền"
-                        inputMode="numeric"
-                      />
-                    )}
-                  </button>
-                );
-              })}
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Split type */}
-        <Card>
-          <CardContent className="pt-4">
-            <div className="flex gap-2">
-              <Button
-                type="button"
-                variant={splitType === "equal" ? "default" : "outline"}
-                className={splitType === "equal" ? "bg-[#3A5CCC] hover:bg-[#2d4aaa]" : ""}
-                size="sm"
-                onClick={() => setSplitType("equal")}
-              >
-                Chia đều
-              </Button>
-              <Button
-                type="button"
-                variant={splitType === "custom" ? "default" : "outline"}
-                className={splitType === "custom" ? "bg-[#3A5CCC] hover:bg-[#2d4aaa]" : ""}
-                size="sm"
-                onClick={() => setSplitType("custom")}
-              >
-                Tùy chỉnh
-              </Button>
-            </div>
-            {splitType === "custom" && selectedMembers.size > 0 && (
-              <p className="mt-2 text-xs text-muted-foreground">
-                Đã nhập: {formatVND(getCustomTotal())}đ / {formatVND(totalAmount)}đ
-              </p>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Summary & submit */}
-        <div className="space-y-2">
-          {totalAmount > 0 && selectedMembers.size > 0 && (
-            <p className="text-center text-sm text-muted-foreground">
-              {formatVND(totalAmount)}đ ÷ {selectedMembers.size} người
-              {splitType === "equal" &&
-                ` = ${formatVND(Math.floor(totalAmount / selectedMembers.size))}đ/người`}
-            </p>
-          )}
-          <Button
-            onClick={handleSubmit}
-            disabled={submitting || totalAmount <= 0}
-            className="w-full bg-[#3A5CCC] hover:bg-[#2d4aaa]"
-            size="lg"
-          >
-            {submitting ? "Đang tạo..." : "Tạo hóa đơn"}
-          </Button>
+              );
+            })}
+          </div>
         </div>
+
+        {/* Submit */}
+        <button
+          type="button"
+          onClick={handleSubmit}
+          disabled={submitting || totalAmount <= 0 || !title.trim() || selectedMembers.size === 0}
+          className="w-full rounded-2xl py-4 text-[15px] font-bold text-white shadow transition-opacity disabled:opacity-50 active:opacity-80"
+          style={{ backgroundColor: "#3A5CCC" }}
+        >
+          {submitting ? "Đang tạo..." : "Tạo hóa đơn"}
+        </button>
       </main>
     </>
   );

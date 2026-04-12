@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase-client";
 import { useAuth } from "@/components/auth-provider";
-import { MobileHeader } from "@/components/mobile-header";
+import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -158,7 +158,7 @@ export default function GroupsPage() {
 
   return (
     <>
-      <MobileHeader title="Nhóm" />
+      <PageHeader title="Nhóm" showBack={false} />
       <main className="p-4 space-y-4">
         <div className="flex gap-2">
           <Button
@@ -177,8 +177,13 @@ export default function GroupsPage() {
         </div>
 
         {loading ? (
-          <div className="flex justify-center py-8">
-            <div className="h-6 w-6 animate-spin rounded-full border-2 border-[#3A5CCC] border-t-transparent" />
+          <div className="space-y-2">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="animate-pulse rounded-2xl bg-white p-4 shadow-sm">
+                <div className="mb-2 h-4 w-2/5 rounded-full bg-[#E5E5EA]" />
+                <div className="h-3 w-1/4 rounded-full bg-[#F2F2F7]" />
+              </div>
+            ))}
           </div>
         ) : groups.length === 0 ? (
           <p className="py-8 text-center text-muted-foreground">

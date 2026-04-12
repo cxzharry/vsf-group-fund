@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase-client";
 import { useAuth } from "@/components/auth-provider";
-import { MobileHeader } from "@/components/mobile-header";
+import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
@@ -121,9 +121,14 @@ export default function ConfirmPaymentPage() {
   if (loading) {
     return (
       <>
-        <MobileHeader title="Xác nhận" />
-        <div className="flex justify-center py-8">
-          <div className="h-6 w-6 animate-spin rounded-full border-2 border-[#3A5CCC] border-t-transparent" />
+        <PageHeader title="Xác nhận" backHref="/debts" />
+        <div className="space-y-3 p-4">
+          {[1, 2].map((i) => (
+            <div key={i} className="animate-pulse rounded-2xl bg-white p-4 shadow-sm">
+              <div className="mb-3 h-4 w-1/3 rounded-full bg-[#E5E5EA]" />
+              <div className="h-3 w-full rounded-full bg-[#F2F2F7]" />
+            </div>
+          ))}
         </div>
       </>
     );
@@ -132,7 +137,7 @@ export default function ConfirmPaymentPage() {
   if (!debt) {
     return (
       <>
-        <MobileHeader title="Xác nhận" />
+        <PageHeader title="Xác nhận" backHref="/debts" />
         <p className="py-8 text-center text-muted-foreground">
           Không tìm thấy khoản nợ
         </p>
@@ -142,7 +147,7 @@ export default function ConfirmPaymentPage() {
 
   return (
     <>
-      <MobileHeader title="Xác nhận chuyển tiền" />
+      <PageHeader title="Xác nhận chuyển tiền" backHref="/debts" />
       <main className="space-y-4 p-4">
         {/* Debt info */}
         <Card>

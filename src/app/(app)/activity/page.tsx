@@ -3,7 +3,7 @@
 import { useEffect, useState, useMemo } from "react";
 import { createBrowserClient } from "@supabase/ssr";
 import { useAuth } from "@/components/auth-provider";
-import { MobileHeader } from "@/components/mobile-header";
+import { PageHeader } from "@/components/page-header";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { formatVND } from "@/lib/format-vnd";
@@ -162,7 +162,7 @@ export default function ActivityPage() {
 
   return (
     <>
-      <MobileHeader title="Hoạt động" />
+      <PageHeader title="Hoạt động" backHref="/" />
       <main className="p-4">
         {loading ? (
           <div className="flex justify-center py-12">
