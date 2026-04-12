@@ -1,153 +1,146 @@
 # Epic 3: Giao Dịch (Transactions)
 
-Bao gồm: Tạo Bill, Chia Tiền, Bill Mở, Chuyển Tiền.
-
 ---
 
-## 3.1 Tạo Bill qua Chat
+## US-3.1: Tạo bill qua chat (AI Parser)
 
 ### Function
 - User gõ tin nhắn VD: "500k ăn trưa 6 người"
 - AI Parser (regex local, không LLM):
-  - Phát hiện số tiền: "500k" → 500.000đ, "1tr2" → 1.200.000đ
-  - Phát hiện mô tả: "ăn trưa", "bún bò", "café"
-  - Phát hiện số người: "6 người", "cả team"
-- Đủ thông tin → hiện Bill Confirm Sheet
-- Thiếu → hiện AI Follow-up Card với 3 lựa chọn
+  - Số tiền: "500k" → 500.000đ, "1tr2" → 1.200.000đ
+  - Mô tả: "ăn trưa", "bún bò", "café"
+  - Số người: "6 người", "cả team"
+- Đủ thông tin → hiện Bill Confirm Sheet (US-3.2)
+- Thiếu → hiện AI Follow-up Card
+
+### Edge cases
+- Tin nhắn không có số tiền → gửi như text thường, không trigger
+- Chỉ có số tiền, không có mô tả → vẫn trigger, description = null
+- "cả team" → peopleCount = -1 (= group size)
+- Số tiền < 1.000đ hoặc > 1 tỷ → bỏ qua
 
 ### UX/UI
-**AI Follow-up Card:**
-- Vị trí: inline trong chat, trước thanh nhập
-- Câu hỏi: "Chia 500k cho ăn trưa. Bạn muốn chia như nào?" (14px)
-- 3 nút pill: "Bill mở" | "Chia đều" | "Tuỳ chỉnh"
-- Nút pill: nền #F2F2F7, text 13px, rounded full, padding 6px 14px
+**AI Follow-up Card:** inline trước thanh nhập
+- "Chia 500k cho ăn trưa. Bạn muốn chia như nào?" (14px)
+- 3 pill: "Bill mở" | "Chia đều" | "Tuỳ chỉnh" (nền #F2F2F7, 13px, rounded full)
+
+### Tiêu chí
+- [ ] "500k bún bò 6 người" → parse đúng amount/description/people
+- [ ] "1tr2 ăn trưa" → 1.200.000đ
+- [ ] Tin nhắn thường → không trigger
+- [ ] Follow-up hiện khi thiếu split type
 
 ---
 
-## 3.2 Bill Confirm Sheet
+## US-3.2: Xác nhận bill (Confirm Sheet)
 
 ### Function
-- Khi xác nhận:
-  1. Tạo bill + bill_participants + debts
-  2. Chèn chat message type "bill_card"
-  3. Thông báo participants qua Telegram
-- Số tiền mỗi người = floor(tổng / số người)
-- Payer mặc định = user hiện tại
+1. Hiện sau AI parse đủ info hoặc chọn follow-up option
+2. Xác nhận → tạo bill + bill_participants + debts
+3. Chèn chat message type "bill_card"
+4. Thông báo participants qua Telegram
+5. Payer mặc định = user hiện tại
+6. Số tiền mỗi người = floor(tổng / số người)
+
+### Edge cases
+- Tổng không chia hết → dư phân bổ +1 cho N người đầu
+- Amount = 0 → nút disabled
+- Description trống → nút disabled
+- Đóng sheet bằng tap backdrop hoặc nút X
 
 ### UX/UI
-- Half-sheet từ dưới lên, rounded top 20px
-- Shadow: blur 20px, color #00000022, offset y -4px
-- Backdrop: 40% đen
-- Padding body: 8px 20px 34px 20px
+Half-sheet từ dưới, rounded top 20px, shadow blur 20px, backdrop 40% đen
 
-**Thành phần (từ trên xuống):**
-- Drag handle: 36x4px, #D1D1D6, rounded 2px, căn giữa, padding 8px 0
-- Header: "✦ Xác nhận bill" (15px bold) + "✕" (16px #AEAEB2)
-- Dòng "Mô tả": label 13px #8E8E93 | value 13px #1C1C1E
-- Dòng "Chia cho": label | avatar tròn 22px × tối đa 5, gap 4px, "+N" nếu nhiều
-- Dòng "Mỗi người": label | số tiền 14px bold #3A5CCC
-- Dòng "Người trả": label | avatar 22px + tên 13px bold ("Bạn" nếu current user)
-- Gap giữa các dòng: 12px
-- Đường kẻ: #E5E5EA, height 0.5px
-- Nút "📎 Thêm ảnh bill": nền #F2F2F7, rounded 10px, cao 38px, text 13px #8E8E93
-- Nút "Tạo bill": nền #3A5CCC, rounded 12px, cao 48px, text 15px bold trắng
+**Thành phần:** drag handle 36x4px → "✦ Xác nhận bill" + "✕" → "Mô tả" | value → "Chia cho" | avatars 22px → "Mỗi người" | amount #3A5CCC → "Người trả" | avatar + name → divider → "📎 Thêm ảnh bill" → "Tạo bill" #3A5CCC 48px
+
+### Tiêu chí
+- [ ] Sheet hiện đúng avatars, amount, payer
+- [ ] Confirm tạo bill + debts + chat message
+- [ ] Sheet đóng sau confirm
+- [ ] Toast "Đã tạo bill!"
 
 ---
 
-## 3.3 Chọn Người & Số Tiền
+## US-3.3: Chọn người & số tiền (Split Sheet)
 
 ### Function
-- **Chia đều:** tổng / số người chọn, phần dư +1 VND cho N người đầu
-- **Chia %:** mỗi người nhập %, tổng phải = 100%
-- **Tuỳ chỉnh:** nhập thủ công, tổng phải = tổng bill
+- **Chia đều:** tổng / số người chọn, dư +1 cho N đầu
+- **Chia %:** mỗi người nhập %, tổng = 100%
+- **Tuỳ chỉnh:** nhập thủ công, tổng = tổng bill
 - Validate: không cho xác nhận nếu tổng không khớp
 
+### Edge cases
+- Bỏ chọn tất cả → nút xác nhận disabled
+- Chia đều 1 người → 1 người nhận toàn bộ
+- Tuỳ chỉnh nhập 0 cho 1 người → cho phép (người đó không nợ)
+- Tổng tuỳ chỉnh > tổng bill → hiện error
+
 ### UX/UI
-- Full-height bottom sheet, dim overlay
-- Drag handle
-- Header: "Chọn người & số tiền" (17px bold) + "Xong" (15px #3A5CCC)
-- Split mode tabs: pill buttons, gap 8px, padding 8px 16px
-  - Active: nền #EEF2FF, text #3A5CCC bold
-  - Inactive: nền #F2F2F7, text #8E8E93
-- Dòng tổng: "Tổng" (13px #8E8E93) | "500.000đ" (15px bold #1C1C1E), cao 36px, padding 0 20px
-- Member row (cao 60px, padding 0 20px, gap 12px):
-  - Avatar 36px tròn, nền màu, chữ cái đầu 14px bold trắng
-  - Tên 14px bold #1C1C1E + phụ đề 12px #8E8E93
-  - Amount pill: nền #F2F2F7, rounded 8px, cao 32px, padding 0 10px, text 13px bold #3A5CCC
-  - Checkbox 22px tròn: checked = nền #3A5CCC "✓" trắng | unchecked = nền #F2F2F7
-- Separator: #E5E5EA, 0.5px
-- Remainder row: "Còn lại chưa chia" #8E8E93 | "0đ" 15px bold #34C759, cao 44px
-- Nút "Xác nhận": nền #3A5CCC, rounded 14px, cao 52px, padding wrapper 12px
+Full bottom sheet, dim overlay
+
+Tabs pill: "Chia đều" (active #EEF2FF) | "Chia %" | "Tuỳ chỉnh" (inactive #F2F2F7)
+
+Member row 60px: avatar 36px + tên 14px bold + amount pill #F2F2F7 + checkbox 22px
+
+Footer: "Còn lại chưa chia" | "0đ" #34C759 + nút "Xác nhận" #3A5CCC 52px
+
+### Tiêu chí
+- [ ] Toggle modes thay đổi UI
+- [ ] Chia đều: auto-calculate
+- [ ] "Còn lại" = 0 khi chia hết
+- [ ] Xác nhận chỉ khi tổng = tổng bill
 
 ---
 
-## 3.4 Bill Mở (Open Bill)
+## US-3.4: Bill mở (Open Bill)
 
 ### Function
-- Tạo: bill_type = "open", status = "active"
-- Check-in: tạo bill_checkins record (member_id hoặc guest_name)
-- Đóng bill: per_person = floor(tổng / checkin_count), tạo debts trừ payer
-- Chỉ payer/admin được đóng bill
-- Khách (không có account) check-in qua guest_name
+1. Tạo: bill_type = "open", status = "active"
+2. Check-in: thành viên tap "Tôi có ăn" → tạo bill_checkins
+3. Thêm khách: guest_name (không cần tài khoản)
+4. Đóng bill: per_person = floor(tổng / checkin_count), tạo debts trừ payer
+5. Chỉ payer/admin được đóng bill
+
+### Edge cases
+- Check-in 2 lần → chặn (unique constraint)
+- Đóng bill 0 checkins → error "Chưa có ai check-in"
+- Khách check-in → nợ không tạo (không có member_id)
+- Payer tự check-in → không tạo debt cho chính mình
 
 ### UX/UI
-**Card Bill Mở (trong chat):**
-- Avatar: #FF9500, 34px tròn
-- Nền card: #FFF8EC (cam nhạt)
-- Badge: "Bill mở · N người đã check-in" (11px #FF9500)
-- Nút "Tôi có ăn": outline cam, rounded
-- Nút "Đã check-in": disabled, gray
-- Admin buttons: "+ Thêm người" | "Đóng bill"
+**Card trong chat:** avatar cam #FF9500 + nền #FFF8EC + badge "Bill mở · N check-in" + nút "Tôi có ăn" / "Đã check-in"
 
-**Sheet thêm người:**
-- Bottom sheet, rounded top 20px
-- Handle + header "Thêm người vào bill" + "Xong"
-- Ô tìm kiếm: "Tìm thành viên...", rounded, nền #F2F2F7
-- Danh sách: avatar + tên + badge "Thêm" (xanh) hoặc "✓ Đã check-in"
-- Section "Người ngoài nhóm": icon "+" + "Thêm người lạ bằng tên"
+**Sheet thêm người:** handle + "Thêm người vào bill" + search + member list + "Người ngoài nhóm"
+
+### Tiêu chí
+- [ ] Check-in tạo record + update UI
+- [ ] Đóng bill tạo debts đúng
+- [ ] Khách check-in được
+- [ ] Chỉ payer/admin thấy "Đóng bill"
+- [ ] Check-in trùng → chặn
 
 ---
 
-## 3.5 Chuyển Tiền
+## US-3.5: Chuyển tiền / Thanh toán
 
 ### Function
-- QR tạo từ VietQR API với bank info của creditor
-- Deep link mở app ngân hàng trực tiếp
-- "Đã chuyển tiền" → tạo payment_confirmation (status: pending)
-- Chủ nợ xác nhận → debt status = "confirmed"
-- Notify qua Telegram cả 2 chiều
+1. QR tạo từ VietQR API với bank info creditor
+2. Deep link mở app ngân hàng
+3. "Đã chuyển tiền" → tạo payment_confirmation (pending)
+4. Chủ nợ xác nhận → debt status = "confirmed"
+5. Notify Telegram 2 chiều
+
+### Edge cases
+- Creditor chưa liên kết NH → hiện "Người nhận chưa liên kết ngân hàng"
+- Copy số TK → toast "Đã sao chép"
+- Network error khi tạo confirmation → toast error
 
 ### UX/UI
-**Màn hình Transfer (full page):**
-- Header: back + "Chuyển tiền" (17px bold)
-- Bill info: tiêu đề + ngày (13px #8E8E93)
-- Số tiền: 28px bold #1C1C1E + "cho" + avatar 22px + tên bold
-- Card QR (trắng, rounded 14px, padding 16px):
-  - QR image căn giữa
-  - Tên NH (15px bold) + số TK (13px, có nút copy icon) + tên chủ TK (13px)
-  - Nút row: "Lưu QR" | "Chia sẻ" | nút bank app (icon ngân hàng)
-- CTA: "Đã chuyển tiền" nền #3A5CCC, rounded 14px, cao 52px, full width
-- Nếu không có bank info: thông báo "Người nhận chưa liên kết ngân hàng"
+**Transfer page:** back + "Chuyển tiền" → amount lớn bold + "cho" + avatar → QR card (rounded 14px) + bank info + copy + "Lưu QR" | "Chia sẻ" → CTA "Đã chuyển tiền" #3A5CCC 52px
 
----
-
-## Tiêu chí thành công
-
-### Function
-- [ ] "500k bún bò 6 người" → parse đúng amount, description, people
-- [ ] Follow-up card hiện khi thiếu info
-- [ ] Confirm sheet tạo bill + debts + chat message
-- [ ] Chia đều: per person = floor(tổng / N), dư +1 cho N đầu
-- [ ] Chia tuỳ chỉnh: validate tổng = tổng bill
-- [ ] Open bill: check-in + close tạo debts đúng
-- [ ] Khách check-in qua guest_name
-- [ ] QR tạo đúng bank info
-- [ ] Payment confirmation 2 chiều
-
-### UX/UI
-- [ ] Confirm sheet: drag handle, rows đúng spacing, avatar 22px
-- [ ] Split sheet: tabs pill, member rows 60px, checkbox 22px
-- [ ] Open bill card: cam theme, badge, nút check-in
-- [ ] Transfer page: QR card, copy button, CTA 52px
-- [ ] Tất cả sheet: rounded top 20px, shadow, backdrop 40%
-- [ ] Nút xác nhận disabled khi data không hợp lệ
+### Tiêu chí
+- [ ] QR đúng bank info creditor
+- [ ] Copy số TK hoạt động
+- [ ] "Đã chuyển tiền" tạo payment_confirmation
+- [ ] Thông báo Telegram
+- [ ] Hiện thông báo khi chưa có bank info

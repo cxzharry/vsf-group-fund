@@ -2,15 +2,39 @@
 
 ---
 
-## Function
+## US-4.1: Hiện banner nợ trong Group Detail
 
-### Logic banner nợ
-- Query tất cả debts trong nhóm mà user hiện tại là debtor hoặc creditor
-- Nợ ròng mỗi người: sum(nợ tôi nợ họ) - sum(nợ họ nợ tôi)
+### Function
+- Query debts trong nhóm: user là debtor hoặc creditor
+- Tính nợ ròng mỗi người: sum(nợ họ nợ tôi) - sum(nợ tôi nợ họ)
 - Hiện khoản nợ ròng lớn nhất
-- Chỉ hiện nợ có status = "pending"
+- Chỉ đếm debts status = "pending"
 
-### Tính nợ ròng
+### Edge cases
+- Không có nợ → banner ẩn hoàn toàn
+- Nhiều khoản nợ → chỉ hiện lớn nhất
+- Nợ ròng = 0 (2 chiều triệt tiêu) → banner ẩn
+- Debt vừa confirmed → banner cập nhật real-time
+
+### UX/UI
+- Vị trí: ngay dưới nav bar, trên chat feed
+- Đỏ #FFF3F0 nếu nợ: "Bạn nợ [Tên] [Số tiền]" + nút "Trả nợ" #FF3B30
+- Xanh #F0FFF4 nếu được nợ: "[Tên] nợ bạn [Số tiền]" + nút "Nhắc nợ" #34C759
+- Cao 56px, padding ngang 16px
+- Ẩn không chiếm space
+
+### Tiêu chí
+- [ ] Nợ ròng tính đúng
+- [ ] Chỉ đếm pending
+- [ ] Đỏ khi nợ, xanh khi được nợ
+- [ ] Ẩn khi không có nợ
+- [ ] Số tiền format "1.200.000đ"
+
+---
+
+## US-4.2: Tính nợ ròng
+
+### Function
 ```
 Với user A và user B:
   a_nợ_b = sum(debts where debtor=A, creditor=B, status=pending)
@@ -19,43 +43,33 @@ Với user A và user B:
   Dương → họ nợ tôi | Âm → tôi nợ họ
 ```
 
-### Luồng trả nợ
-1. Tap "Trả nợ" trên banner nợ
-2. Chuyển đến trang Transfer (/transfer/[debtId])
-3. User chuyển tiền qua app ngân hàng
-4. Tap "Đã chuyển tiền" → tạo payment_confirmation (pending)
-5. Chủ nợ nhận thông báo Telegram
-6. Chủ nợ xác nhận → debt status = "confirmed"
+### Edge cases
+- User có nợ cả 2 chiều với cùng 1 người → net correctly
+- Debts từ nhiều bills → sum tất cả
+- Debt status = "confirmed" → không tính
+
+### Tiêu chí
+- [ ] Net debt tính đúng 2 chiều
+- [ ] Chỉ count pending debts
+- [ ] Tổng nợ trên Home khớp với detail
 
 ---
 
-## UX/UI
-
-### Banner nợ (trong Group Detail header)
-- Vị trí: ngay dưới nav bar, trên chat feed
-- Nền đỏ (#FFF3F0) nếu tôi nợ: "Bạn nợ [Tên] [Số tiền]" + nút "Trả nợ" (đỏ #FF3B30)
-- Nền xanh (#F0FFF4) nếu được nợ: "[Tên] nợ bạn [Số tiền]" + nút "Nhận tiền" (xanh #34C759)
-- Chiều cao: 56px, padding ngang 16px
-- Ẩn hoàn toàn nếu không có nợ pending
-- Chỉ hiện 1 khoản nợ lớn nhất (không hiện danh sách)
-
-### Trạng thái
-- Loading: skeleton bar 56px
-- Không có nợ: banner ẩn, không chiếm không gian
-- Có nhiều khoản nợ: chỉ hiện lớn nhất
-
----
-
-## Tiêu chí thành công
+## US-4.3: Xác nhận thanh toán 2 chiều
 
 ### Function
-- [ ] Nợ ròng tính đúng (sum debtor - sum creditor)
-- [ ] Chỉ đếm debts status = "pending"
-- [ ] Payment confirmation 2 chiều hoạt động
-- [ ] Debt status chuyển "confirmed" sau khi chủ nợ xác nhận
+1. Người nợ tap "Đã chuyển tiền" → payment_confirmation (pending)
+2. Notify chủ nợ qua Telegram
+3. Chủ nợ xác nhận → debt status = "confirmed"
+4. Notify người nợ: "Đã xác nhận"
 
-### UX/UI
-- [ ] Banner đỏ khi nợ, xanh khi được nợ
-- [ ] Banner ẩn khi không có nợ
-- [ ] Banner không gây layout shift khi ẩn/hiện
-- [ ] Số tiền format đúng (VD: 1.200.000đ)
+### Edge cases
+- Chủ nợ chưa link Telegram → không gửi notification (silent)
+- Người nợ bấm nhiều lần → chỉ tạo 1 confirmation
+- Chủ nợ từ chối → chưa implement (future)
+
+### Tiêu chí
+- [ ] Payment confirmation tạo đúng
+- [ ] Debt chuyển "confirmed" sau xác nhận
+- [ ] Telegram notification gửi 2 chiều
+- [ ] Banner cập nhật sau confirm

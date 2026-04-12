@@ -2,107 +2,139 @@
 
 ---
 
-## Function
+## US-2.1: Xem danh sách nhóm (Home)
 
-### Tạo nhóm
-1. Nhập tên nhóm → API tạo group + invite_code (8 ký tự md5)
-2. Tự thêm creator là admin vào group_members
-3. Redirect đến group detail
+### Function
+- Sau login, hiện danh sách groups mà user là member
+- Mỗi group: tên, số thành viên, nợ ròng trong nhóm đó
+- Chip tổng nợ: tổng tất cả nợ + được nợ qua tất cả nhóm
 
-### Tham gia nhóm
-1. Nhập invite code 8 ký tự
+### Edge cases
+- Chưa có nhóm → hiện empty state
+- Group tên dài → truncate 1 dòng
+- Nợ = 0 → không hiện số tiền bên phải card
+
+### UX/UI
+**Header:** "Nhóm" (28-30px bold, căn trái) + nút "+" 36px tròn #3A5CCC + "Tham gia" xanh
+
+**Chip tổng nợ:** nền trắng, rounded 12px, cao 52px, text 12px gray
+
+**Card nhóm:** nền trắng, rounded 14px, cao 88px, gap 12px, padding 0 16px
+- Avatar 44px tròn, 2 chữ cái đầu, nền màu hash
+- Tên 15px bold + "X thành viên" 13px gray
+- Nợ ròng: 15px bold, đỏ #FF3B30 / xanh #34C759
+
+**Tab bar:** 2 tabs only, cao 56px + safe-area
+
+**Empty state:** icon people 72px gray + "Chưa có nhóm nào" 20px bold + nút "Tạo nhóm mới" outline
+
+### Tiêu chí
+- [ ] Chỉ hiện 2 tabs
+- [ ] Card nhóm hiện đúng nợ ròng (đỏ/xanh)
+- [ ] Empty state khi chưa có group
+- [ ] Chip tổng nợ hiện cả 2 chiều (nợ + được nợ)
+
+---
+
+## US-2.2: Tạo nhóm
+
+### Function
+1. Tap "+" → dialog nhập tên nhóm
+2. API tạo group + invite_code (8 ký tự)
+3. Tự thêm creator là admin vào group_members
+4. Redirect đến group detail
+
+### Edge cases
+- Tên trống → không cho tạo (nút disabled)
+- API lỗi → toast error
+
+### UX/UI
+- Dialog: tiêu đề "Tạo nhóm mới", ô nhập tên, nút "Tạo nhóm" #3A5CCC
+
+### Tiêu chí
+- [ ] Tạo nhóm thành công + redirect detail
+- [ ] Creator là admin
+- [ ] Invite code 8 ký tự được tạo
+
+---
+
+## US-2.3: Tham gia nhóm
+
+### Function
+1. Tap "Tham gia" → dialog nhập invite code 8 ký tự
 2. Tìm group theo code → thêm user là member
 3. Kiểm tra trùng lặp (không cho join 2 lần)
 
-### Cài đặt nhóm
-- Đổi tên (chỉ admin)
-- Xem/copy mã mời
-- Xem danh sách thành viên + role
-- Rời nhóm (xoá group_members record, cần xác nhận)
+### Edge cases
+- Code không tồn tại → error "Không tìm thấy nhóm"
+- Đã là member → error "Bạn đã trong nhóm này"
+- Code đúng → toast + reload danh sách
 
-### Group Detail - Chat
+### UX/UI
+- Dialog: tiêu đề "Tham gia nhóm", ô nhập mã 8 ký tự, nút "Tham gia"
+
+### Tiêu chí
+- [ ] Tham gia thành công bằng invite code
+- [ ] Không cho join trùng
+- [ ] Code sai → error message
+
+---
+
+## US-2.4: Xem Group Detail (Chat View)
+
+### Function
 - Load chat_messages + bills theo group_id
-- Real-time subscription (Supabase channel)
+- Real-time subscription (Supabase channel) cho tin nhắn + bill mới
 - Debt banner: query debts → tính nợ ròng lớn nhất
 - Gửi tin nhắn → trigger AI intent parser
 
----
-
-## UX/UI
-
-### 2.1 Home / Nhóm (Tab 1)
-
-**Header:**
-- "Nhóm" (28-30px bold, căn trái)
-- Phải: nút "+" xanh 36px tròn (#3A5CCC) + chữ "Tham gia" xanh
-
-**Chip tổng nợ:**
-- Nền trắng, rounded 12px, padding 0 16px, cao 52px
-- Text: "Tổng: Bạn đang nợ X · Bạn được nợ Y", font 12px gray #636366
-
-**Card nhóm (mỗi card):**
-- Nền trắng, rounded 14px, padding 0 16px, cao 88px, gap 12px
-- Trái: avatar 44px tròn, nền màu, chữ cái đầu 2 ký tự trắng bold
-- Giữa: tên nhóm (15px bold #1C1C1E) + "X thành viên" (13px #8E8E93)
-- Phải: số nợ ròng (15px bold, đỏ #FF3B30 hoặc xanh #34C759) + "Trả nợ" (13px #3A5CCC)
-- Gap giữa cards: 8px (từ absolute layout y offset)
-
-**Tab bar:**
-- 2 tabs only: "Nhóm" + "Tài khoản"
-- Cao 56px + safe-area-inset-bottom
-- Active: xanh #3A5CCC, stroke 2 | Inactive: gray #8E8E93, stroke 1.5
-
-**Trạng thái trống:**
-- Icon people gray 72x72
-- "Chưa có nhóm nào" (20px bold)
-- "Tạo nhóm để bắt đầu chia bill với bạn bè." (15px gray, căn giữa, width 260px)
-- Nút "Tạo nhóm mới" (outline, border #3A5CCC 1.5px, rounded 10px, cao 46px, padding 0 28px)
-
-### 2.2 Group Detail (Chat View)
-
-**Nav bar (cao 52px, nền trắng):**
-- Nút back "<" (xanh #3A5CCC, 28px)
-- Giữa: tên nhóm (17px bold) + "X thành viên" (12px gray)
-- Phải: icon cài đặt trong vòng tròn xám #E5E5EA 36px
-
-**Debt banner (cao 56px, conditional):**
-- Nền đỏ nhạt #FFF3F0 nếu nợ | Nền xanh nhạt #F0FFF4 nếu được nợ
-- Text trái: "Bạn nợ [Tên]" (13px) + số tiền (15px bold)
-- Nút phải: "Trả nợ" rounded 16px, cao 32px, padding 0 14px
-
-**Feed chat:**
-- Nền #F2F2F7
-- Date divider: text 11px gray #AEAEB2, căn giữa, padding 0 8px
-- Bill card: avatar 34px + bubble trắng rounded 14px, padding 14px 12px, gap 6px
-- Transfer pill: nền #E8EDFF, rounded 20px, padding 7px 14px, căn giữa
-
-**FAB:**
-- Dưới phải, padding 8px 16px 40px 16px
-- Nền #3A5CCC, rounded 26px, cao 52px, padding 0 22px 0 18px
-- Shadow: blur 16px, color #3A5CCC55, offset y 4px
-- Text: "+ Thêm hoá đơn" trắng + icon receipt
-
-### 2.3 Cài đặt nhóm
-- Nav: back + "Cài đặt nhóm" (17px bold)
-- Sections: tên, mô tả, thành viên, mã mời, nâng cao
-- Gap giữa sections: 16px, padding 8px 16px 32px 16px
-
----
-
-## Tiêu chí thành công
-
-### Function
-- [ ] Tạo nhóm thành công + redirect detail
-- [ ] Tham gia nhóm bằng invite code
-- [ ] Real-time: tin nhắn/bill mới hiện ngay
-- [ ] Debt banner tính đúng nợ ròng
-- [ ] Rời nhóm xoá membership
+### Edge cases
+- Group trống (chưa có hoạt động) → empty state với hướng dẫn
+- Real-time disconnect → auto reconnect
+- Group 1 thành viên → chat input vẫn hoạt động
 
 ### UX/UI
-- [ ] Chỉ hiện 2 tabs
-- [ ] Card nhóm: avatar 44px, tên bold, nợ đỏ/xanh
-- [ ] Trạng thái trống: icon + text + nút outline
-- [ ] Group detail: nav 52px, debt banner 56px
-- [ ] FAB: rounded 26px, shadow, luôn ở dưới phải
-- [ ] Feed chat: date dividers, bill cards, transfer pills
-- [ ] Desktop: sidebar thay tab bar, content giữ max-width
+**Nav bar (52px, trắng):** back "<" xanh + tên nhóm 17px bold + "X thành viên" 12px gray + gear icon 36px
+
+**Debt banner (56px, conditional):**
+- Đỏ #FFF3F0 nếu nợ | Xanh #F0FFF4 nếu được nợ
+- Text: "Bạn nợ [Tên] [Số tiền]" + nút "Trả nợ" / "Nhắc nợ"
+- Ẩn nếu không có nợ
+
+**Feed:** nền #F2F2F7, date dividers 11px gray, bill cards rounded 14px, transfer pills #E8EDFF
+
+**Chat input:** ô nhập + nút tạo bill 44x44px
+
+### Tiêu chí
+- [ ] Feed hiện bill cards, transfers, tin nhắn
+- [ ] Debt banner đúng nợ ròng
+- [ ] Real-time: bill/tin nhắn mới hiện ngay
+- [ ] Empty state khi chưa có hoạt động
+- [ ] Tab bar ẩn trên màn này
+
+---
+
+## US-2.5: Cài đặt nhóm
+
+### Function
+- Đổi tên (chỉ admin)
+- Xem/copy mã mời
+- Xem danh sách thành viên + role (Admin/Member)
+- Rời nhóm (xoá group_members record, cần xác nhận)
+
+### Edge cases
+- Non-admin đổi tên → ẩn nút sửa
+- Rời nhóm khi là admin duy nhất → cho phép (group vẫn tồn tại)
+- Copy mã mời → toast "Đã sao chép"
+
+### UX/UI
+- Nav: back + "Cài đặt nhóm" 17px bold
+- Sections: tên, thành viên, mã mời, rời nhóm
+- Gap 16px, padding 8px 16px 32px 16px
+- Nút rời nhóm: nền đỏ nhạt, có dialog xác nhận
+
+### Tiêu chí
+- [ ] Admin đổi tên thành công
+- [ ] Copy mã mời hoạt động
+- [ ] Rời nhóm có dialog xác nhận
+- [ ] Non-admin không thấy nút đổi tên
