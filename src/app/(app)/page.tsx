@@ -34,8 +34,18 @@ export default function HomePage() {
     []
   );
 
-  const [groups, setGroups] = useState<GroupItem[]>([]);
-  const [loading, setLoading] = useState(true);
+  // Stale-while-revalidate: show cached data instantly, refresh in background
+  const [groups, setGroups] = useState<GroupItem[]>(() => {
+    if (typeof window === "undefined") return [];
+    try {
+      const cached = sessionStorage.getItem("home_groups");
+      return cached ? JSON.parse(cached) : [];
+    } catch { return []; }
+  });
+  const [loading, setLoading] = useState(() => {
+    if (typeof window === "undefined") return true;
+    return !sessionStorage.getItem("home_groups");
+  });
   const [showCreate, setShowCreate] = useState(false);
   const [showJoin, setShowJoin] = useState(false);
   const [newName, setNewName] = useState("");
@@ -109,15 +119,15 @@ export default function HomePage() {
       debtPerGroup[gId] = { net, label };
     }
 
-    setGroups(
-      (groupData ?? []).map((g) => ({
-        ...g,
-        member_count: countMap[g.id] ?? 0,
-        netDebt: debtPerGroup[g.id]?.net ?? 0,
-        debtLabel: debtPerGroup[g.id]?.label ?? "",
-      }))
-    );
+    const items = (groupData ?? []).map((g) => ({
+      ...g,
+      member_count: countMap[g.id] ?? 0,
+      netDebt: debtPerGroup[g.id]?.net ?? 0,
+      debtLabel: debtPerGroup[g.id]?.label ?? "",
+    }));
+    setGroups(items);
     setLoading(false);
+    try { sessionStorage.setItem("home_groups", JSON.stringify(items)); } catch {}
   }
 
   async function handleCreate() {
@@ -141,6 +151,7 @@ export default function HomePage() {
     setShowCreate(false);
     setNewName("");
     setSubmitting(false);
+    try { sessionStorage.removeItem("home_groups"); } catch {}
     loadGroups();
   }
 
@@ -165,6 +176,7 @@ export default function HomePage() {
     setShowJoin(false);
     setJoinCode("");
     setSubmitting(false);
+    try { sessionStorage.removeItem("home_groups"); } catch {}
     loadGroups();
   }
 
