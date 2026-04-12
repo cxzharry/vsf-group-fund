@@ -128,8 +128,8 @@ export default function HomePage() {
   return (
     <>
       {/* Header — US-2.1 Pencil design */}
-      <header className="sticky top-0 z-40 bg-[#F2F2F7] px-5 pt-3 pb-2">
-        <div className="mx-auto flex max-w-md items-center justify-between">
+      <header className="sticky top-0 z-40 bg-[#F2F2F7] px-4 pt-3 pb-2">
+        <div className="flex items-center justify-between">
           <h1 className="text-[28px] font-bold text-[#1C1C1E]">Nhóm</h1>
           <button
             onClick={() => router.push("/groups/create")}
@@ -141,7 +141,7 @@ export default function HomePage() {
 
         {/* Chip tổng nợ — h52, rounded-12 */}
         {groups.length > 0 && (
-          <div className="mx-auto mt-2 max-w-md">
+          <div className="mt-2">
             <div className="flex h-[52px] items-center gap-1.5 rounded-[12px] bg-white px-4 text-xs">
               {(() => {
                 const totalOwe = groups.filter(g => g.netDebt < 0).reduce((s, g) => s + Math.abs(g.netDebt), 0);
