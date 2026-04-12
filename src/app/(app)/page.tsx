@@ -2,10 +2,10 @@
 
 import { useEffect, useState, useMemo } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { createBrowserClient } from "@supabase/ssr";
 import { useAuth } from "@/components/auth-provider";
 import { Button } from "@/components/ui/button";
-
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -24,6 +24,7 @@ interface GroupItem extends Group {
 }
 
 export default function HomePage() {
+  const router = useRouter();
   const { member, loading: authLoading } = useAuth();
   const supabase = useMemo(
     () =>
@@ -46,9 +47,7 @@ export default function HomePage() {
     if (typeof window === "undefined") return true;
     return !sessionStorage.getItem("home_groups");
   });
-  const [showCreate, setShowCreate] = useState(false);
   const [showJoin, setShowJoin] = useState(false);
-  const [newName, setNewName] = useState("");
   const [joinCode, setJoinCode] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
@@ -130,31 +129,6 @@ export default function HomePage() {
     try { sessionStorage.setItem("home_groups", JSON.stringify(items)); } catch {}
   }
 
-  async function handleCreate() {
-    if (!newName.trim() || !member) return;
-    setSubmitting(true);
-
-    const res = await fetch("/api/groups/create", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name: newName.trim(), memberId: member.id }),
-    });
-    const result = await res.json();
-
-    if (!res.ok) {
-      toast.error(result.error ?? "Lỗi tạo nhóm");
-      setSubmitting(false);
-      return;
-    }
-
-    toast.success("Đã tạo nhóm!");
-    setShowCreate(false);
-    setNewName("");
-    setSubmitting(false);
-    try { sessionStorage.removeItem("home_groups"); } catch {}
-    loadGroups();
-  }
-
   async function handleJoin() {
     if (!joinCode.trim() || !member) return;
     setSubmitting(true);
@@ -202,7 +176,7 @@ export default function HomePage() {
               Tham gia
             </button>
             <button
-              onClick={() => setShowCreate(true)}
+              onClick={() => router.push("/groups/create")}
               className="flex h-9 w-9 items-center justify-center rounded-full bg-[#3A5CCC] text-white shadow-sm"
             >
               <span className="text-lg leading-none">+</span>
@@ -255,7 +229,7 @@ export default function HomePage() {
             <p className="text-sm text-[#8E8E93]">Tạo nhóm để bắt đầu chia bill với bạn bè</p>
             <div className="mt-1 flex gap-2">
               <button
-                onClick={() => setShowCreate(true)}
+                onClick={() => router.push("/groups/create")}
                 className="rounded-xl border border-[#3A5CCC] px-5 py-2.5 text-sm font-semibold text-[#3A5CCC]"
               >
                 Tạo nhóm mới
@@ -301,34 +275,6 @@ export default function HomePage() {
           </div>
         )}
       </main>
-
-      {/* Create dialog */}
-      <Dialog open={showCreate} onOpenChange={setShowCreate}>
-        <DialogContent className="max-w-sm">
-          <DialogHeader>
-            <DialogTitle>Tạo nhóm mới</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label>Tên nhóm</Label>
-              <Input
-                value={newName}
-                onChange={(e) => setNewName(e.target.value)}
-                placeholder="VD: Team Product"
-                autoFocus
-                onKeyDown={(e) => e.key === "Enter" && handleCreate()}
-              />
-            </div>
-            <Button
-              className="w-full bg-[#3A5CCC] hover:bg-[#2f4fb0]"
-              onClick={handleCreate}
-              disabled={submitting || !newName.trim()}
-            >
-              {submitting ? "Đang tạo..." : "Tạo nhóm"}
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
 
       {/* Join dialog */}
       <Dialog open={showJoin} onOpenChange={setShowJoin}>
