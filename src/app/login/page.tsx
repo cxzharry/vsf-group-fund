@@ -41,16 +41,35 @@ export default function LoginPage() {
     setLoading(true);
     setError("");
 
-    const { error } = await supabase.auth.verifyOtp({
+    const { data, error } = await supabase.auth.verifyOtp({
       email: email.trim(),
       token: otp.trim(),
       type: "email",
     });
 
-    setLoading(false);
     if (error) {
+      setLoading(false);
       setError(error.message);
+      return;
+    }
+
+    // Check if new user needs onboarding
+    const userId = data.user?.id;
+    if (userId) {
+      const { data: member } = await supabase
+        .from("members")
+        .select("setup_done")
+        .eq("user_id", userId)
+        .single();
+
+      setLoading(false);
+      if (!member?.setup_done) {
+        router.push("/setup");
+      } else {
+        router.push("/");
+      }
     } else {
+      setLoading(false);
       router.push("/");
     }
   }

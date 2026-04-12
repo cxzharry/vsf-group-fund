@@ -8,6 +8,7 @@ export interface Member {
   bank_account_no: string | null;
   bank_account_name: string | null;
   telegram_chat_id: string | null;
+  setup_done: boolean;
   created_at: string;
 }
 
