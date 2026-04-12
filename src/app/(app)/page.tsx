@@ -5,15 +5,6 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createBrowserClient } from "@supabase/ssr";
 import { useAuth } from "@/components/auth-provider";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import { toast } from "sonner";
 import type { Group } from "@/lib/types";
 
@@ -47,9 +38,6 @@ export default function HomePage() {
     if (typeof window === "undefined") return true;
     return !sessionStorage.getItem("home_groups");
   });
-  const [showJoin, setShowJoin] = useState(false);
-  const [joinCode, setJoinCode] = useState("");
-  const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     if (!member) return;
@@ -114,7 +102,7 @@ export default function HomePage() {
       const net = owed - owing;
       let label = "";
       if (owing > 0) label = `Bạn đang nợ ${owing.toLocaleString("vi-VN")}đ`;
-      else if (owed > 0) label = `Bạn được nợ ${owed.toLocaleString("vi-VN")}đ`;
+      else if (owed > 0) label = `Được nợ ${owed.toLocaleString("vi-VN")}đ`;
       debtPerGroup[gId] = { net, label };
     }
 
@@ -129,31 +117,6 @@ export default function HomePage() {
     try { sessionStorage.setItem("home_groups", JSON.stringify(items)); } catch {}
   }
 
-  async function handleJoin() {
-    if (!joinCode.trim() || !member) return;
-    setSubmitting(true);
-
-    const res = await fetch("/api/groups/join", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ inviteCode: joinCode.trim(), memberId: member.id }),
-    });
-    const result = await res.json();
-
-    if (!res.ok) {
-      toast.error(result.error ?? "Không thể tham gia nhóm");
-      setSubmitting(false);
-      return;
-    }
-
-    toast.success(`Đã tham gia "${result.group?.name}"!`);
-    setShowJoin(false);
-    setJoinCode("");
-    setSubmitting(false);
-    try { sessionStorage.removeItem("home_groups"); } catch {}
-    loadGroups();
-  }
-
   if (authLoading) {
     return (
       <div className="flex min-h-dvh items-center justify-center">
@@ -164,40 +127,33 @@ export default function HomePage() {
 
   return (
     <>
-      {/* Header — matches Pencil design */}
+      {/* Header — US-2.1 Pencil design */}
       <header className="sticky top-0 z-40 bg-[#F2F2F7] px-5 pt-3 pb-2">
         <div className="mx-auto flex max-w-md items-center justify-between">
           <h1 className="text-[28px] font-bold text-[#1C1C1E]">Nhóm</h1>
-          <div className="flex gap-2">
-            <button
-              onClick={() => setShowJoin(true)}
-              className="text-sm font-medium text-[#3A5CCC]"
-            >
-              Tham gia
-            </button>
-            <button
-              onClick={() => router.push("/groups/create")}
-              className="flex h-9 w-9 items-center justify-center rounded-full bg-[#3A5CCC] text-white shadow-sm"
-            >
-              <span className="text-lg leading-none">+</span>
-            </button>
-          </div>
+          <button
+            onClick={() => router.push("/groups/create")}
+            className="flex h-9 w-9 items-center justify-center rounded-full bg-[#3A5CCC] text-white shadow-sm"
+          >
+            <span className="text-lg leading-none">+</span>
+          </button>
         </div>
-        {/* Total debt summary */}
+
+        {/* Chip tổng nợ — h52, rounded-12 */}
         {groups.length > 0 && (
           <div className="mx-auto mt-2 max-w-md">
-            <div className="flex items-center gap-1.5 rounded-xl bg-white px-4 py-2.5 text-xs">
+            <div className="flex h-[52px] items-center gap-1.5 rounded-[12px] bg-white px-4 text-xs">
               {(() => {
                 const totalOwe = groups.filter(g => g.netDebt < 0).reduce((s, g) => s + Math.abs(g.netDebt), 0);
                 const totalOwed = groups.filter(g => g.netDebt > 0).reduce((s, g) => s + g.netDebt, 0);
                 return (
                   <>
                     {totalOwe > 0 && (
-                      <span>Tổng: <span className="font-semibold text-[#FF3B30]">Bạn đang nợ {totalOwe.toLocaleString("vi-VN")}đ</span></span>
+                      <span className="text-[#636366]">Tổng: <span className="font-semibold text-[#FF3B30]">Bạn đang nợ {totalOwe.toLocaleString("vi-VN")}đ</span></span>
                     )}
                     {totalOwe > 0 && totalOwed > 0 && <span className="text-[#C7C7CC]">·</span>}
                     {totalOwed > 0 && (
-                      <span>Bạn được nợ <span className="font-semibold text-[#34C759]">{totalOwed.toLocaleString("vi-VN")}đ</span></span>
+                      <span className="text-[#636366]">Bạn được nợ <span className="font-semibold text-[#34C759]">{totalOwed.toLocaleString("vi-VN")}đ</span></span>
                     )}
                     {totalOwe === 0 && totalOwed === 0 && (
                       <span className="text-[#8E8E93]">Không có khoản nợ</span>
@@ -210,39 +166,31 @@ export default function HomePage() {
         )}
       </header>
 
-      <main className="px-5 py-3">
+      <main className="px-4 py-3">
         {loading ? (
           <div className="flex justify-center py-12">
             <div className="h-6 w-6 animate-spin rounded-full border-2 border-[#3A5CCC] border-t-transparent" />
           </div>
         ) : groups.length === 0 ? (
-          <div className="flex flex-col items-center gap-3 py-16 text-center">
-            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-white shadow-sm">
-              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#8E8E93" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round">
-                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
-                <circle cx="9" cy="7" r="4" />
-                <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
-                <path d="M16 3.13a4 4 0 0 1 0 7.75" />
-              </svg>
-            </div>
-            <p className="font-semibold text-[#1C1C1E]">Chưa có nhóm nào</p>
-            <p className="text-sm text-[#8E8E93]">Tạo nhóm để bắt đầu chia bill với bạn bè</p>
-            <div className="mt-1 flex gap-2">
-              <button
-                onClick={() => router.push("/groups/create")}
-                className="rounded-xl border border-[#3A5CCC] px-5 py-2.5 text-sm font-semibold text-[#3A5CCC]"
-              >
-                Tạo nhóm mới
-              </button>
-              <button
-                onClick={() => setShowJoin(true)}
-                className="rounded-xl border border-[#E5E5EA] px-5 py-2.5 text-sm font-semibold text-[#1C1C1E]"
-              >
-                Nhập mã mời
-              </button>
-            </div>
+          /* Empty state — US-2.1 */
+          <div className="flex flex-col items-center gap-5 py-16 text-center">
+            <svg width="72" height="72" viewBox="0 0 24 24" fill="none" stroke="#C7C7CC" strokeWidth={1.2} strokeLinecap="round" strokeLinejoin="round">
+              <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+              <circle cx="9" cy="7" r="4" />
+              <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+              <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+            </svg>
+            <p className="text-[20px] font-semibold text-[#1C1C1E]">Chưa có nhóm nào</p>
+            <p className="text-[15px] text-[#8E8E93]">Tạo nhóm để bắt đầu chia bill với bạn bè.</p>
+            <button
+              onClick={() => router.push("/groups/create")}
+              className="mt-1 rounded-[10px] border-[1.5px] border-[#3A5CCC] px-7 py-3 text-[15px] font-semibold text-[#3A5CCC]"
+            >
+              Tạo nhóm mới
+            </button>
           </div>
         ) : (
+          /* Group cards — US-2.1 */
           <div className="space-y-3">
             {groups.map((g) => {
               const colors = ["#3A5CCC", "#FF9500", "#34C759", "#AF52DE", "#FF3B30", "#5AC8FA"];
@@ -252,22 +200,44 @@ export default function HomePage() {
                 <Link
                   key={g.id}
                   href={`/groups/${g.id}`}
-                  className="flex w-full items-center gap-3 rounded-2xl bg-white p-4 text-left shadow-sm transition-all active:scale-[0.98]"
+                  className="flex h-[88px] w-full items-center gap-3 rounded-[14px] bg-white px-4 text-left transition-all active:scale-[0.98]"
                 >
+                  {/* Avatar 44px */}
                   <div
-                    className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full text-sm font-bold text-white"
+                    className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-sm font-bold text-white"
                     style={{ backgroundColor: color }}
                   >
                     {initials}
                   </div>
+
+                  {/* Name + debt subtitle */}
                   <div className="flex-1 min-w-0">
-                    <p className="font-semibold text-[#1C1C1E] truncate">{g.name}</p>
-                    <p className="text-xs text-[#8E8E93]">{g.debtLabel || `${g.member_count} thành viên`}</p>
+                    <p className="text-[15px] font-semibold text-[#1C1C1E] truncate">{g.name}</p>
+                    <p className={`mt-1 text-[13px] ${
+                      g.netDebt < 0 ? "text-[#FF3B30]" :
+                      g.netDebt > 0 ? "text-[#34C759]" :
+                      "text-[#8E8E93]"
+                    }`}>
+                      {g.debtLabel || `${g.member_count} thành viên`}
+                    </p>
                   </div>
-                  {g.netDebt !== 0 && (
-                    <span className={`text-sm font-bold ${g.netDebt < 0 ? "text-[#FF3B30]" : "text-[#34C759]"}`}>
-                      {g.netDebt < 0 ? "-" : "+"}{Math.abs(g.netDebt).toLocaleString("vi-VN")}đ
-                    </span>
+
+                  {/* Right — debt amount + action button */}
+                  {g.netDebt !== 0 ? (
+                    <div className="flex shrink-0 flex-col items-end gap-1.5">
+                      <span className={`text-[15px] font-semibold ${g.netDebt < 0 ? "text-[#FF3B30]" : "text-[#34C759]"}`}>
+                        {g.netDebt < 0 ? "-" : "+"}{Math.abs(g.netDebt).toLocaleString("vi-VN")}đ
+                      </span>
+                      <span className={`rounded-xl px-2.5 py-1 text-xs font-semibold ${
+                        g.netDebt < 0
+                          ? "bg-[#EEF1FB] text-[#3A5CCC]"
+                          : "bg-[#F0FFF4] text-[#34C759]"
+                      }`}>
+                        {g.netDebt < 0 ? "Trả nợ" : "Nhắc nợ"}
+                      </span>
+                    </div>
+                  ) : (
+                    <span className="shrink-0 text-xs text-[#AEAEB2]">Không có nợ</span>
                   )}
                 </Link>
               );
@@ -275,34 +245,6 @@ export default function HomePage() {
           </div>
         )}
       </main>
-
-      {/* Join dialog */}
-      <Dialog open={showJoin} onOpenChange={setShowJoin}>
-        <DialogContent className="max-w-sm">
-          <DialogHeader>
-            <DialogTitle>Tham gia nhóm</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label>Mã mời</Label>
-              <Input
-                value={joinCode}
-                onChange={(e) => setJoinCode(e.target.value)}
-                placeholder="Nhập mã 8 ký tự"
-                autoFocus
-                onKeyDown={(e) => e.key === "Enter" && handleJoin()}
-              />
-            </div>
-            <Button
-              className="w-full bg-[#3A5CCC] hover:bg-[#2f4fb0]"
-              onClick={handleJoin}
-              disabled={submitting || !joinCode.trim()}
-            >
-              {submitting ? "Đang tham gia..." : "Tham gia"}
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
     </>
   );
 }
