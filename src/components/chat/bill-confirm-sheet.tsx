@@ -1,6 +1,6 @@
 "use client";
 
-// Bottom sheet for confirming bill creation — slides up over the chat
+// Bottom sheet for confirming bill creation — matches Pencil half-sheet design
 import { useState } from "react";
 import { formatVND } from "@/lib/format-vnd";
 import type { ParsedBillIntent } from "@/lib/ai-intent-types";
@@ -23,13 +23,34 @@ export interface BillConfirmData {
   billType: "standard" | "open";
 }
 
-type SplitChip = "equal" | "custom" | "open";
-
-const SPLIT_CHIPS: { value: SplitChip; label: string }[] = [
-  { value: "equal", label: "Chia đều" },
-  { value: "custom", label: "Tuỳ chỉnh" },
-  { value: "open", label: "Bill mở" },
+const AVATAR_COLORS = [
+  "#3A5CCC", "#34C759", "#FF9500", "#5856D6", "#FF3B30", "#FF6B6B",
+  "#AF52DE", "#00C7BE", "#FF2D55",
 ];
+
+function getInitial(name: string): string {
+  return (name.charAt(0) || "?").toUpperCase();
+}
+
+function getAvatarColor(name: string): string {
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
+  return AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length];
+}
+
+function MiniAvatar({ member, size = 22 }: { member: Member; size?: number }) {
+  const bg = getAvatarColor(member.display_name);
+  return (
+    <div
+      className="flex shrink-0 items-center justify-center rounded-full"
+      style={{ width: size, height: size, backgroundColor: bg }}
+    >
+      <span className="text-white font-bold" style={{ fontSize: size * 0.5 }}>
+        {getInitial(member.display_name)}
+      </span>
+    </div>
+  );
+}
 
 export function BillConfirmSheet({
   intent,
@@ -38,21 +59,27 @@ export function BillConfirmSheet({
   onConfirm,
   onClose,
 }: BillConfirmSheetProps) {
-  const [amount, setAmount] = useState<number>(intent.amount ?? 0);
-  const [description, setDescription] = useState<string>(intent.description ?? "");
-  const [splitType, setSplitType] = useState<SplitChip>(
-    (intent.splitType as SplitChip) ?? "equal"
+  const [amount] = useState<number>(intent.amount ?? 0);
+  const [description] = useState<string>(intent.description ?? "");
+  const [splitType] = useState<"equal" | "custom" | "open">(
+    (intent.splitType as "equal" | "custom" | "open") ?? "equal"
   );
-  const [peopleCount, setPeopleCount] = useState<number>(
+  const [peopleCount] = useState<number>(
     intent.peopleCount ?? groupMembers.length
   );
-  const [payerId, setPayerId] = useState<string>(currentMember.id);
+  const [payerId] = useState<string>(currentMember.id);
   const [submitting, setSubmitting] = useState(false);
 
   const perPerson =
     splitType !== "open" && peopleCount > 0
       ? Math.floor(amount / peopleCount)
       : null;
+
+  const payer = groupMembers.find((m) => m.id === payerId) ?? currentMember;
+
+  // Show up to 5 member avatars for "chia cho" row
+  const shownMembers = groupMembers.slice(0, 5);
+  const extraCount = groupMembers.length - shownMembers.length;
 
   async function handleConfirm() {
     if (!amount || !description.trim()) return;
@@ -77,148 +104,90 @@ export function BillConfirmSheet({
         aria-hidden="true"
       />
 
-      {/* Sheet */}
-      <div className="fixed inset-x-0 bottom-0 z-50 rounded-t-2xl bg-white pb-[env(safe-area-inset-bottom)] shadow-xl animate-in slide-in-from-bottom duration-300">
+      {/* Half-sheet */}
+      <div className="fixed inset-x-0 bottom-0 z-50 rounded-t-[20px] bg-white pb-[env(safe-area-inset-bottom)] shadow-[0_-4px_20px_rgba(0,0,0,0.13)] animate-in slide-in-from-bottom duration-300">
         {/* Drag handle */}
-        <div className="flex justify-center pt-3 pb-1">
-          <div className="h-1 w-10 rounded-full bg-gray-300" />
+        <div className="flex justify-center py-2">
+          <div className="h-1 w-9 rounded-full bg-[#D1D1D6]" />
         </div>
 
-        {/* Header */}
-        <div className="flex items-center justify-between px-4 pb-3 pt-1">
-          <h2 className="text-base font-bold text-gray-900">Xác nhận bill</h2>
+        {/* Body */}
+        <div className="space-y-3 px-5 pb-[34px] pt-2">
+          {/* Header row */}
+          <div className="flex items-center justify-between">
+            <h2 className="text-[15px] font-bold text-black">
+              ✦ Xác nhận bill
+            </h2>
+            <button
+              type="button"
+              onClick={onClose}
+              className="text-base text-[#AEAEB2]"
+              aria-label="Đóng"
+            >
+              ✕
+            </button>
+          </div>
+
+          {/* Info rows */}
+          <div className="space-y-3">
+            {/* Mô tả */}
+            <div className="flex items-center justify-between">
+              <span className="text-[13px] text-[#8E8E93]">Mô tả</span>
+              <span className="text-[13px] text-[#1C1C1E]">{description || "—"}</span>
+            </div>
+
+            {/* Chia cho — member avatars */}
+            <div className="flex items-center justify-between">
+              <span className="text-[13px] text-[#8E8E93]">Chia cho</span>
+              <div className="flex items-center gap-1">
+                {shownMembers.map((m) => (
+                  <MiniAvatar key={m.id} member={m} size={22} />
+                ))}
+                {extraCount > 0 && (
+                  <span className="ml-1 text-xs text-[#8E8E93]">+{extraCount}</span>
+                )}
+              </div>
+            </div>
+
+            {/* Mỗi người */}
+            {perPerson !== null && (
+              <div className="flex items-center justify-between">
+                <span className="text-[13px] text-[#8E8E93]">Mỗi người</span>
+                <span className="text-sm font-semibold text-[#3A5CCC]">
+                  {formatVND(perPerson)}đ
+                </span>
+              </div>
+            )}
+
+            {/* Người trả */}
+            <div className="flex items-center justify-between">
+              <span className="text-[13px] text-[#8E8E93]">Người trả</span>
+              <div className="flex items-center gap-1.5">
+                <MiniAvatar member={payer} size={22} />
+                <span className="text-[13px] font-semibold text-[#1C1C1E]">
+                  {payer.id === currentMember.id ? "Bạn" : payer.display_name}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* Divider */}
+          <div className="h-px bg-[#E5E5EA]" />
+
+          {/* Upload row */}
           <button
             type="button"
-            onClick={onClose}
-            className="flex h-7 w-7 items-center justify-center rounded-full bg-gray-100 text-gray-500"
-            aria-label="Đóng"
+            className="flex h-[38px] w-full items-center justify-center rounded-[10px] bg-[#F2F2F7] text-[13px] text-[#8E8E93]"
           >
-            ✕
+            📎 Thêm ảnh bill
           </button>
-        </div>
 
-        <div className="max-h-[65vh] overflow-y-auto px-4 pb-4 space-y-3">
-          {/* Amount field */}
-          <div>
-            <label className="mb-1 block text-xs font-medium text-gray-500">
-              Tổng tiền
-            </label>
-            <div className="flex items-center rounded-xl border border-gray-200 bg-gray-50 px-3 py-2">
-              <input
-                type="number"
-                value={amount || ""}
-                onChange={(e) => setAmount(Number(e.target.value))}
-                placeholder="0"
-                className="min-w-0 flex-1 bg-transparent text-lg font-bold text-gray-900 outline-none"
-              />
-              <span className="ml-1 text-sm font-medium text-gray-400">đ</span>
-            </div>
-          </div>
-
-          {/* Description field */}
-          <div>
-            <label className="mb-1 block text-xs font-medium text-gray-500">
-              Mô tả
-            </label>
-            <input
-              type="text"
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              placeholder="Bữa ăn, cafe, ..."
-              className="w-full rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-900 outline-none focus:border-blue-300"
-            />
-          </div>
-
-          {/* Split type chips */}
-          <div>
-            <label className="mb-1.5 block text-xs font-medium text-gray-500">
-              Loại chia
-            </label>
-            <div className="flex gap-2">
-              {SPLIT_CHIPS.map((chip) => (
-                <button
-                  key={chip.value}
-                  type="button"
-                  onClick={() => setSplitType(chip.value)}
-                  className={`rounded-full px-3 py-1 text-xs font-semibold transition-colors ${
-                    splitType === chip.value
-                      ? "bg-[#3A5CCC] text-white"
-                      : "bg-gray-100 text-gray-600"
-                  }`}
-                >
-                  {chip.label}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* People count + per-person (only for non-open) */}
-          {splitType !== "open" && (
-            <div className="flex items-center gap-3">
-              <div className="flex-1">
-                <label className="mb-1 block text-xs font-medium text-gray-500">
-                  Số người
-                </label>
-                <div className="flex items-center gap-2 rounded-xl border border-gray-200 bg-gray-50 px-3 py-2">
-                  <button
-                    type="button"
-                    onClick={() => setPeopleCount(Math.max(1, peopleCount - 1))}
-                    className="text-lg font-bold text-gray-500"
-                  >
-                    −
-                  </button>
-                  <span className="flex-1 text-center text-sm font-bold text-gray-900">
-                    {peopleCount}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => setPeopleCount(peopleCount + 1)}
-                    className="text-lg font-bold text-gray-500"
-                  >
-                    +
-                  </button>
-                </div>
-              </div>
-
-              {perPerson !== null && (
-                <div className="flex-1">
-                  <label className="mb-1 block text-xs font-medium text-gray-500">
-                    Mỗi người
-                  </label>
-                  <div className="rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-center text-sm font-bold text-[#3A5CCC]">
-                    {formatVND(perPerson)}đ
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Payer selector */}
-          <div>
-            <label className="mb-1 block text-xs font-medium text-gray-500">
-              Người trả
-            </label>
-            <select
-              value={payerId}
-              onChange={(e) => setPayerId(e.target.value)}
-              className="w-full rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-900 outline-none"
-            >
-              {groupMembers.map((m) => (
-                <option key={m.id} value={m.id}>
-                  {m.display_name} {m.id === currentMember.id ? "(Bạn)" : ""}
-                </option>
-              ))}
-            </select>
-          </div>
-        </div>
-
-        {/* CTA */}
-        <div className="border-t border-gray-100 px-4 pt-3 pb-4">
+          {/* Confirm button */}
           <button
             type="button"
             onClick={handleConfirm}
             disabled={submitting || !amount || !description.trim()}
-            className="w-full rounded-2xl bg-[#3A5CCC] py-3.5 text-sm font-bold text-white shadow transition-opacity active:opacity-80 disabled:opacity-50"
+            className="flex h-12 w-full items-center justify-center rounded-xl bg-[#3A5CCC] text-[15px] font-semibold text-white transition-opacity active:opacity-80 disabled:opacity-50"
           >
             {submitting ? "Đang tạo..." : "Tạo bill"}
           </button>
