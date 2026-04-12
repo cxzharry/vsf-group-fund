@@ -79,14 +79,23 @@ export default function LoginPage() {
         {/* App icon + branding */}
         <div className="mb-8 flex flex-col items-center gap-3">
           <div
-            className="flex h-20 w-20 items-center justify-center rounded-[22px] text-3xl font-bold text-white"
+            className="flex h-[72px] w-[72px] items-center justify-center rounded-[22px] text-white"
             style={{ backgroundColor: "#3A5CCC" }}
           >
-            G
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+              <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+              <circle cx="9" cy="7" r="4" />
+              <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+              <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+            </svg>
           </div>
           <div className="text-center">
-            <h1 className="text-[26px] font-bold text-[#1C1C1E]">Group Fund</h1>
-            <p className="mt-0.5 text-sm text-[#8E8E93]">Chia tiền nhóm dễ dàng</p>
+            <h1 className="text-[28px] font-bold leading-tight text-[#1C1C1E]">
+              NoPay{"\n"}FreeLunch
+            </h1>
+            <p className="mt-2 text-[15px] leading-relaxed text-[#8E8E93]">
+              Nhập email để đăng nhập{"\n"}hoặc tạo tài khoản mới.
+            </p>
           </div>
         </div>
 

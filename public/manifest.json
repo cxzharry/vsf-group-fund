@@ -1,7 +1,7 @@
 {
-  "name": "Group Fund - Chia tiền ăn trưa",
-  "short_name": "Group Fund",
-  "description": "Chia tiền ăn trưa cho team",
+  "name": "NoPay FreeLunch",
+  "short_name": "NPFL",
+  "description": "Chia tiền nhóm dễ dàng",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#ffffff",

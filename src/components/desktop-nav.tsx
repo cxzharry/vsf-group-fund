@@ -34,7 +34,7 @@ export function DesktopNav() {
             <path d="M16 3.13a4 4 0 0 1 0 7.75" />
           </svg>
         </div>
-        <span className="text-[17px] font-bold text-[#1C1C1E]">Group Fund</span>
+        <span className="text-[17px] font-bold text-[#1C1C1E]">NoPay FreeLunch</span>
       </div>
 
       {/* Nav items */}
@@ -61,7 +61,7 @@ export function DesktopNav() {
 
       {/* Footer hint */}
       <div className="px-6 py-4 text-xs text-[#AEAEB2]">
-        VSF Group Fund v1.0
+        NPFL v1.0
       </div>
     </aside>
   );

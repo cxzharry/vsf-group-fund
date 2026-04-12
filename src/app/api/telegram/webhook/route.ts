@@ -34,7 +34,7 @@ export async function POST(request: Request) {
     if (!email) {
       await sendReply(
         chatId,
-        "Chào bạn! Để liên kết tài khoản, gửi:\n/start email@example.com\n\n(dùng email đã đăng ký trên Group Fund)"
+        "Chào bạn! Để liên kết tài khoản, gửi:\n/start email@example.com\n\n(dùng email đã đăng ký trên NoPay FreeLunch)"
       );
       return NextResponse.json({ ok: true });
     }
@@ -50,7 +50,7 @@ export async function POST(request: Request) {
     if (error || !member) {
       await sendReply(
         chatId,
-        `Không tìm thấy tài khoản với email: ${email}\nHãy đăng nhập Group Fund trước rồi thử lại.`
+        `Không tìm thấy tài khoản với email: ${email}\nHãy đăng nhập NoPay FreeLunch trước rồi thử lại.`
       );
     } else {
       await sendReply(

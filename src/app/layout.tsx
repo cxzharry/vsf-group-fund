@@ -10,13 +10,13 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "Group Fund - Chia tiền nhóm",
+  title: "NoPay FreeLunch",
   description: "Chia tiền nhóm dễ dàng",
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
-    title: "Group Fund",
+    title: "NoPay FreeLunch",
   },
 };
 
