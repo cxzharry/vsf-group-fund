@@ -15,12 +15,11 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         {/* Main content area */}
         <div className="relative flex-1 sm:flex sm:justify-center">
           {/* Phone frame on desktop for content */}
-          <div className="relative w-full bg-[#F2F2F7] sm:max-w-xl sm:shadow-[0_0_60px_rgba(0,0,0,0.15)]">
-            {/* On mobile: padding for bottom nav; desktop: no bottom nav */}
-            <div className="pb-16 sm:pb-0">
+          <div className="flex min-h-dvh w-full flex-col bg-[#F2F2F7] sm:max-w-xl sm:min-h-0 sm:shadow-[0_0_60px_rgba(0,0,0,0.15)]">
+            <div className="flex-1">
               {children}
             </div>
-            {/* Bottom nav only on mobile */}
+            {/* Bottom nav only on mobile — sticky to bottom of flex container */}
             <BottomNav />
           </div>
         </div>

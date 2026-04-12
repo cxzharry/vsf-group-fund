@@ -28,8 +28,7 @@ export function BottomNav() {
   return (
     // Hidden on desktop — desktop uses sidebar nav instead
     <nav
-      className="absolute bottom-0 left-0 right-0 z-50 border-t border-[#E5E5EA] bg-white pb-[env(safe-area-inset-bottom)] sm:hidden"
-      style={{ height: "calc(56px + env(safe-area-inset-bottom, 0px))" }}
+      className="sticky bottom-0 z-50 border-t border-[#E5E5EA] bg-white pb-[env(safe-area-inset-bottom)] sm:hidden"
     >
       <div className="flex h-14 items-stretch justify-around">
         {navItems.map((item) => {
