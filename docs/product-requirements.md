@@ -1,7 +1,8 @@
 # NoPay FreeLunch - PRD Summary
 
-**Version:** 1.0 | **Updated:** 2026-04-12  
-**URL:** https://nopay-freelunch.vercel.app
+**Version:** 1.1 | **Updated:** 2026-04-12  
+**URL:** https://nopay-freelunch.vercel.app  
+**PRD:** https://nopay-freelunch.vercel.app/prd
 
 ---
 
@@ -23,14 +24,12 @@ App chia bill cho nhóm bạn bè tại Việt Nam. Tạo bill nhanh qua chat, t
 | # | Epic | File | Mô tả |
 |---|------|------|--------|
 | 1 | Đăng nhập | [epic-01-auth.md](epic-01-auth.md) | OTP + password login, branding |
-| 2 | Nhóm | [epic-02-groups.md](epic-02-groups.md) | Tạo nhóm, tham gia, cài đặt, danh sách |
-| 3 | Group Detail | [epic-03-group-detail.md](epic-03-group-detail.md) | Chat view, banner nợ, FAB, real-time |
-| 4 | Tạo Bill | [epic-04-create-bill.md](epic-04-create-bill.md) | Chat intent, AI parser, confirm sheet |
-| 5 | Chọn Người & Số Tiền | [epic-05-split-people.md](epic-05-split-people.md) | Chia đều, chia %, tuỳ chỉnh |
-| 6 | Bill Mở | [epic-06-open-bill.md](epic-06-open-bill.md) | Check-in, đóng bill, thêm khách |
-| 7 | Theo Dõi Nợ | [epic-07-debt-tracking.md](epic-07-debt-tracking.md) | Banner nợ, nợ ròng, trả nợ |
-| 8 | Chuyển Tiền | [epic-08-transfer.md](epic-08-transfer.md) | QR, thông tin ngân hàng, xác nhận |
-| 9 | Tài Khoản | [epic-09-account.md](epic-09-account.md) | Hồ sơ, ngân hàng, Telegram, đăng xuất |
+| 2 | Nhóm | [epic-02-groups.md](epic-02-groups.md) | Tạo/tham gia nhóm, group detail chat, cài đặt |
+| 3 | Giao dịch | [epic-03-transactions.md](epic-03-transactions.md) | Tạo bill, chia tiền, bill mở, chuyển tiền |
+| 4 | Theo dõi nợ | [epic-04-debt-tracking.md](epic-04-debt-tracking.md) | Banner nợ, nợ ròng, xác nhận thanh toán |
+| 5 | Tài khoản | [epic-05-account.md](epic-05-account.md) | Hồ sơ, ngân hàng, Telegram, đăng xuất |
+
+Mỗi epic chia rõ **Function** (logic nghiệp vụ) và **UX/UI** (giao diện, spacing, màu sắc).
 
 ---
 
@@ -71,11 +70,15 @@ Dương = họ nợ tôi | Âm = tôi nợ họ
 | Warning Orange | #FF9500 |
 | Text Primary | #1C1C1E |
 | Text Secondary | #8E8E93 |
+| Text Tertiary | #AEAEB2 |
 | Border | #E5E5EA |
 | Background | #F2F2F7 |
+| Card Background | #FFFFFF |
 | Font | Inter |
 | Corner Radius (card) | 14px |
 | Corner Radius (sheet) | 20px |
+| Corner Radius (avatar) | 50% |
+| Tab bar height | 56px + safe-area |
 
 ---
 
