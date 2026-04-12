@@ -36,25 +36,91 @@
 
 ---
 
-## US-2.2: Tạo nhóm
+## US-2.2: Tạo nhóm (Full-page flow)
 
 ### Function
-1. Tap "+" → dialog nhập tên nhóm
-2. API tạo group + invite_code (8 ký tự)
-3. Tự thêm creator là admin vào group_members
-4. Redirect đến group detail
+1. Tap "+" trên Home → navigate đến /groups/create (full page, KHÔNG phải dialog)
+2. User nhập tên nhóm + chọn emoji (optional)
+3. Tap "Tạo nhóm" → API tạo group + invite_code (8 ký tự) + creator là admin
+4. Thành công → chuyển sang màn "Mời thành viên" (step 2)
 
 ### Edge cases
-- Tên trống → không cho tạo (nút disabled)
-- API lỗi → toast error
+- Tên trống → nút "Tạo nhóm" disabled
+- Tên quá dài → truncate ở display
+- API lỗi → toast error, giữ form
 
-### UX/UI
-- Dialog: tiêu đề "Tạo nhóm mới", ô nhập tên, nút "Tạo nhóm" #3A5CCC
+### UX/UI — Step 1: Tạo nhóm
+
+**Nav bar (52px, trắng):**
+- Back chevron-left xanh #3A5CCC (24px)
+- "Tạo nhóm" (17px bold, căn giữa)
+- Spacer 24px bên phải (balance)
+
+**Content (nền #F2F2F7, padding 40px 24px 24px 24px, gap 32px):**
+
+**Avatar section:**
+- Vòng tròn 80px, nền #EEF2FF, icon people #3A5CCC
+- Overlay icon camera nhỏ (16px) góc dưới phải
+- Text dưới: "Ảnh nhóm (tuỳ chọn)" (12px #8E8E93)
+
+**Name card (trắng, rounded 12px, padding 16px, gap 8px):**
+- Label: "TÊN NHÓM" (11px bold #8E8E93, uppercase)
+- Input row: text input 15px + clear icon (nếu có text)
+- Divider: #E5E5EA, 1px
+- Hint: "Tên nhóm sẽ hiển thị với tất cả thành viên" (12px #8E8E93)
+
+**Emoji card (trắng, rounded 12px, padding 16px, gap 12px):**
+- Label: "EMOJI NHÓM" (11px bold #8E8E93)
+- Emoji row: 8 emoji options, mỗi cái 36px, gap 10px
+- Selected: border 2px #3A5CCC rounded
+- Default emojis: 🍜 🐱 🏖️ 🎮 🏠 ✈️ 🎁 ⋯
+
+**Bottom area (trắng, padding 12px 16px 32px 16px):**
+- Nút "Tạo nhóm": nền #3A5CCC, rounded 14px, cao 52px, text 16px bold trắng, full width
+
+### UX/UI — Step 2: Mời thành viên (sau tạo thành công)
+
+**Nav bar:** "Mời thành viên" (17px bold, căn giữa, không có back)
+
+**Content (padding 32px 24px, gap 24px):**
+
+**Group card (trắng, rounded 14px, padding 16px, gap 12px, căn giữa):**
+- Avatar nhóm 56px tròn (nền #3A5CCC + emoji/icon)
+- Tên nhóm (17px bold)
+- "1 thành viên" (13px #8E8E93)
+
+**Link card (trắng, rounded 14px, padding 16px, gap 12px):**
+- Label: "LINK MỜI NHÓM" (11px bold #8E8E93)
+- Link box: nền #F2F2F7, rounded 10px, padding 12px
+  - Text link (13px #1C1C1E) + copy icon bên phải
+- Feedback: "✓ Đã sao chép link" (13px #34C759) — hiện sau tap copy
+
+**QR card (trắng, rounded 14px, padding 20px, gap 8px, căn giữa):**
+- QR code frame: 140x140px, nền #F2F2F7, rounded 8px, border #E5E5EA
+- Text: "Quét mã QR để tham gia nhóm" (13px #8E8E93)
+
+**Share section:**
+- Label: "CHIA SẺ QUA" (11px bold #8E8E93)
+- Share icons row: Zalo | Telegram | Facebook | More (mỗi icon 44px tròn, gap 16px)
+
+**Bottom:** Nút "Vào nhóm ngay" → navigate đến group detail
 
 ### Tiêu chí
-- [ ] Tạo nhóm thành công + redirect detail
+
+**Function:**
+- [ ] Tạo nhóm full-page (không phải dialog)
+- [ ] Tạo thành công → chuyển sang "Mời thành viên"
 - [ ] Creator là admin
-- [ ] Invite code 8 ký tự được tạo
+- [ ] Invite code + link mời được tạo
+- [ ] Copy link hoạt động
+
+**UX/UI:**
+- [ ] Step 1: avatar + name card + emoji card đúng layout
+- [ ] Name input: label uppercase, hint text, divider
+- [ ] Nút "Tạo nhóm" disabled khi tên trống
+- [ ] Step 2: group card + link + QR + share icons
+- [ ] Copy feedback "✓ Đã sao chép link" xanh lá
+- [ ] "Vào nhóm ngay" → navigate group detail
 
 ---
 
@@ -89,7 +155,7 @@
 - Gửi tin nhắn → trigger AI intent parser
 
 ### Edge cases
-- Group trống (chưa có hoạt động) → empty state với hướng dẫn
+- Group trống (chưa có hoạt động) → empty state: icon receipt 64px #E5E5EA + "Chưa có bill nào" 17px bold + "Tạo bill đầu tiên để bắt đầu theo dõi chi tiêu nhóm." 14px gray + banner "Không có khoản nợ nào. Tạo bill đầu tiên! 🎉" nền #EEF2FF
 - Real-time disconnect → auto reconnect
 - Group 1 thành viên → chat input vẫn hoạt động
 
