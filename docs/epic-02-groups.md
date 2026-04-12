@@ -8,29 +8,53 @@
 - Sau login, hiện danh sách groups mà user là member
 - Mỗi group: tên, số thành viên, nợ ròng trong nhóm đó
 - Chip tổng nợ: tổng tất cả nợ + được nợ qua tất cả nhóm
+- Card nhóm hiện subtitle nợ + nút hành động nhanh (Trả nợ / Nhắc nợ)
+
+### Hiển thị nợ trên card nhóm
+
+Mỗi card hiện thông tin nợ theo 6 trường hợp:
+
+| # | Trường hợp | Subtitle (13px) | Bên phải card | Nút |
+|---|-----------|-----------------|---------------|-----|
+| 1 | Nợ 1 người | "Bạn nợ [Tên] [số tiền]đ" (đỏ) | -[số tiền]đ (đỏ) | Trả nợ (bg #EEF1FB, text #3A5CCC) |
+| 2 | Nợ nhiều người | "Bạn nợ [Tên] và [N-1] người khác" (đỏ) | -[tổng nợ]đ (đỏ) | Trả nợ |
+| 3 | 1 người nợ mình | "[Tên] nợ bạn [số tiền]đ" (xanh) | +[số tiền]đ (xanh) | Nhắc nợ (bg #F0FFF4, text #34C759) |
+| 4 | Nhiều người nợ mình | "[Tên] và [N-1] người khác nợ bạn" (xanh) | +[tổng]đ (xanh) | Nhắc nợ |
+| 5 | Vừa nợ vừa được nợ | Hiện theo nợ ròng: nếu ròng < 0 → case 1/2, nếu ròng > 0 → case 3/4 | Nợ ròng (đỏ/xanh) | Trả nợ / Nhắc nợ |
+| 6 | Không có nợ | "[X] thành viên" (gray #8E8E93) | "Không có nợ" (gray #AEAEB2) | Không có nút |
+
+**Logic chọn [Tên]:** Người có khoản nợ ròng lớn nhất với user trong nhóm đó.
 
 ### Edge cases
 - Chưa có nhóm → hiện empty state
 - Group tên dài → truncate 1 dòng
-- Nợ = 0 → không hiện số tiền bên phải card
+- Nợ = 0 → không hiện số tiền, hiện "Không có nợ" gray
+- Nợ ròng = 0 nhưng có nợ 2 chiều → vẫn hiện "Không có nợ" (vì đã triệt tiêu)
+- Tên người nợ dài → truncate subtitle 1 dòng
 
 ### UX/UI
-**Header:** "Nhóm" (28-30px bold, căn trái) + nút "+" 36px tròn #3A5CCC + "Tham gia" xanh
+**Header:** "Nhóm" (28px bold, căn trái) + nút "+" 36px tròn #3A5CCC
 
 **Chip tổng nợ:** nền trắng, rounded 12px, cao 52px, text 12px gray
+- Hiện tổng: "Bạn đang nợ [X]đ" (đỏ) · "Bạn được nợ [Y]đ" (xanh)
+- Nếu chỉ có 1 chiều → chỉ hiện chiều đó
+- Nếu cả 2 = 0 → "Không có khoản nợ"
 
 **Card nhóm:** nền trắng, rounded 14px, cao 88px, gap 12px, padding 0 16px
-- Avatar 44px tròn, 2 chữ cái đầu, nền màu hash
-- Tên 15px bold + "X thành viên" 13px gray
-- Nợ ròng: 15px bold, đỏ #FF3B30 / xanh #34C759
+- Trái: Avatar 44px tròn, 2 chữ cái đầu, nền màu hash
+- Giữa: Tên 15px bold + subtitle nợ 13px (đỏ/xanh/gray, xem bảng trên)
+- Phải: Số tiền 15px bold + nút hành động (Trả nợ / Nhắc nợ) hoặc "Không có nợ"
 
 **Tab bar:** 2 tabs only, cao 56px + safe-area
 
-**Empty state:** icon people 72px gray + "Chưa có nhóm nào" 20px bold + nút "Tạo nhóm mới" outline
+**Empty state:** icon people 72px gray + "Chưa có nhóm nào" 20px bold + "Tạo nhóm để bắt đầu chia bill với bạn bè." 15px gray + nút "Tạo nhóm mới" outline #3A5CCC
 
 ### Tiêu chí
 - [ ] Chỉ hiện 2 tabs
 - [ ] Card nhóm hiện đúng nợ ròng (đỏ/xanh)
+- [ ] Subtitle hiện tên người nợ lớn nhất
+- [ ] Nợ nhiều người → "[Tên] và [N-1] người khác"
+- [ ] Nút Trả nợ (đỏ) / Nhắc nợ (xanh) / Không có nợ (gray)
 - [ ] Empty state khi chưa có group
 - [ ] Chip tổng nợ hiện cả 2 chiều (nợ + được nợ)
 
