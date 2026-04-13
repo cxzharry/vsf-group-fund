@@ -22,9 +22,11 @@ Cả 2 flow tạo đều có thể chọn **Bill mở (US-3.5)** thay vì bill t
 1. Tap ➕ → mở Create Bill Sheet ở trạng thái blank
 2. User điền các field required
 3. Khi đủ required → nút "Tạo" đổi sang màu xanh enabled
-4. Tap "Tạo" → bill được tạo + khoản nợ cho từng người tham gia + bill card hiện trong chat feed
+4. Tap "Tạo":
+   - Nếu **Bill mở OFF** → bill tạo + chia khoản nợ cho từng người + hiện card trong chat
+   - Nếu **Bill mở ON** → redirect qua flow **US-3.5** (tạo bill mở, mọi người check-in sau)
 5. Toast "Đã tạo bill" → sheet đóng, feed scroll tới bill card mới
-6. Những người được chia nhận thông báo qua Telegram
+6. Những người được chia nhận thông báo qua Telegram (chỉ bill thường)
 
 **Fields:**
 
@@ -34,7 +36,8 @@ Cả 2 flow tạo đều có thể chọn **Bill mở (US-3.5)** thay vì bill t
 | Số tiền | Yes | — | VND format, phải > 0 |
 | Mô tả | Yes | — | Text mô tả khoản chi, không được trống |
 | Người trả | Yes | User hiện tại | Một thành viên trong nhóm |
-| Chia cho | Yes | (mở US-3.2) | Kết quả chọn từ US-3.2 |
+| Chia cho | Conditional | (mở US-3.2) | Kết quả chọn từ US-3.2. Required khi Bill mở OFF, ẨN khi Bill mở ON |
+| Bill mở | No | OFF | Toggle. ON → chuyển flow US-3.5, ẨN row "Chia cho", hiện optional input "Số người ước tính" bên cạnh |
 
 **Phân loại:** auto-infer từ description (US-3.9), không phải field nhập tay để giảm thao tác.
 
@@ -42,7 +45,8 @@ Cả 2 flow tạo đều có thể chọn **Bill mở (US-3.5)** thay vì bill t
 - Số tiền có giá trị > 0
 - Có mô tả
 - Có người trả
-- Có ít nhất 1 người chia
+- **Bill mở OFF:** phải có ít nhất 1 người được chọn ở "Chia cho"
+- **Bill mở ON:** không cần chọn ai; nếu nhập số người ước tính thì phải > 0 (optional, có thể bỏ trống)
 
 Thiếu bất kỳ điều kiện nào → nút xám disabled.
 
@@ -63,7 +67,8 @@ Thiếu bất kỳ điều kiện nào → nút xám disabled.
 - Row "Số tiền" — right-aligned, 22px bold, `#3A5CCC` khi có số, placeholder "0đ" `#AEAEB2`
 - Row "Mô tả" — right-aligned, 13px `#1C1C1E`, placeholder "VD: Ăn trưa team" `#AEAEB2`
 - Row "Người trả" — avatar 22px + "{Tên} (bạn)" 14px `#1C1C1E` + chevron `›`
-- Row "Chia cho" — link "Chọn thành viên" 13px `#3A5CCC` gạch chân (no chevron). Khi đã chọn → "N người · Xđ/người" `#3A5CCC`
+- Row "Chia cho" — link "Chọn thành viên" 13px `#3A5CCC` gạch chân (no chevron). Khi đã chọn → "N người · Xđ/người" `#3A5CCC`. **Ẩn khi Bill mở ON.**
+- Row "Bill mở" — layout ngang: label "Bill mở" + toggle iOS-style bên phải. Khi ON → bên cạnh toggle hiện thêm optional input "Số người ước tính" (placeholder "—", 13px, width ~80px, right-aligned)
 - Spacer `fill_container` đẩy CTA xuống đáy
 - CTA "Tạo" full-width 48px — bg `#3A5CCC` text white khi enabled, bg `#C7C7CC` khi disabled
 
@@ -79,13 +84,15 @@ Thiếu bất kỳ điều kiện nào → nút xám disabled.
 ### Tiêu chí
 - [ ] Nút ➕ trong chat input bar mở Create Bill Sheet blank
 - [ ] Toggle "Chia tiền" default, "Chuyển tiền" redirect US-3.6
-- [ ] Required: Số tiền, Mô tả, Người trả, Chia cho
+- [ ] Required: Số tiền, Mô tả, Người trả, Chia cho (trừ khi Bill mở ON)
 - [ ] Điền đủ required → nút "Tạo" đổi sang màu xanh enabled
 - [ ] Người trả default hiển thị "{Tên} (bạn)" cho currentMember
-- [ ] "Chia cho" là link "Chọn thành viên" xanh gạch chân → mở US-3.2 Split Sheet
+- [ ] "Chia cho" là link "Chọn thành viên" xanh gạch chân → mở US-3.2
+- [ ] **Bill mở toggle**: ON → ẩn row "Chia cho", hiện optional input "Số người ước tính" bên cạnh
+- [ ] **Bill mở ON** + tap "Tạo" → redirect qua flow US-3.5 (không tạo bill thường)
 - [ ] Nút "Tạo" pinned ở đáy sheet, không nổi giữa màn
 - [ ] Focus input → hiện input accessory bar trên keyboard
-- [ ] Submit tạo bill + debts + chat_message + toast "Đã tạo bill"
+- [ ] Submit bill thường → tạo bill + khoản nợ + toast "Đã tạo bill"
 - [ ] Huỷ (backdrop/✕) đóng sheet không confirm dialog
 
 ---
@@ -99,7 +106,6 @@ Thiếu bất kỳ điều kiện nào → nút xám disabled.
 **Entry:** Từ Create Bill Sheet (US-3.1), user tap link "Chọn thành viên".
 
 **Sheet nhận từ parent:**
-- Số người AI parser đoán (từ US-3.3), hoặc không có nếu là manual
 - Selection lần trước (khi re-open sau đã confirm)
 - List thành viên trong nhóm
 - Người trả hiện tại
@@ -115,20 +121,21 @@ Thiếu bất kỳ điều kiện nào → nút xám disabled.
 ```
 Tổng số người = số thành viên chọn + số khách + số người ẩn danh
 Chia đều: mỗi người = Tổng bill / Tổng số người (phần dư cộng vào N người đầu)
-Tuỳ chỉnh: user nhập từng số, tổng phải bằng Tổng bill
+Chia không đều: user nhập từng số, tổng phải bằng Tổng bill
 ```
 
 **Split modes (2):**
 - **Chia đều** (default): tự động tính, không cần nhập
-- **Tuỳ chỉnh:** user nhập thủ công cho từng người, tổng phải khớp bill
+- **Chia không đều:** user nhập thủ công cho từng người, tổng phải khớp bill
 
-**Auto-switch rule:** Đang ở "Chia đều" mà user sửa số tiền của bất kỳ row nào → tự động chuyển sang "Tuỳ chỉnh", giữ giá trị user vừa sửa, các row còn lại giữ baseline chia đều.
+**Auto-switch rule:** Đang ở "Chia đều" mà user sửa số tiền của bất kỳ row nào → tự động chuyển sang "Chia không đều", giữ giá trị user vừa sửa, các row còn lại giữ baseline chia đều.
 
 **Số người chia (người ẩn danh):**
-- Stepper với giá trị mặc định = số thành viên chọn + số khách
-- Tăng stepper → tạo "người ẩn danh" (counts vào per-person, không có danh tính, không bị truy đòi nợ)
-- Giảm stepper xuống dưới (thành viên + khách) → block, toast "Bỏ chọn người trước nếu muốn giảm"
-- Check thêm thành viên/khách → stepper tự tăng; bỏ check → tự giảm (tối thiểu 1)
+- **Ô input số** với giá trị mặc định = số thành viên chọn + số khách
+- User gõ số lớn hơn → phần dư là "người ẩn danh" (counts vào per-person, không có danh tính, không bị truy đòi nợ)
+- Gõ số nhỏ hơn (thành viên + khách) → block, toast "Bỏ chọn người trước nếu muốn giảm"
+- Check thêm thành viên/khách → số tự tăng; bỏ check → tự giảm (tối thiểu 1)
+- Gõ 0 hoặc để trống → revert về số mặc định
 
 **Khách ngoài nhóm:**
 - Có tên nhưng không có tài khoản trong app
@@ -138,36 +145,34 @@ Tuỳ chỉnh: user nhập từng số, tổng phải bằng Tổng bill
 
 **Case matrix:**
 
-| # | Tình huống | AI đoán | Default | Behaviour |
-|---|---|---|---|---|
-| A | Blank manual full nhóm | — | All checked | Confirm luôn ok |
-| B | Manual subset | — | All checked | User uncheck bớt |
-| C | AI match group size | `= N` | All checked | Hint "đúng cả nhóm ✓" |
-| D | AI ít hơn nhóm | `< N` | Clear all | Banner "Hãy chọn ai tham gia" |
-| E | AI nhiều hơn nhóm | `> N` | All members | Banner "Thêm khách?" |
-| F | Không biết ai | — | — | Banner "Chuyển Bill mở (US-3.5)?" |
-| G | Có khách ngoài nhóm | — | — | Section "Khách" + input |
-| H | Payer không tham gia | — | — | Payer uncheck mình, không nhận chia |
-| I | 1 người duy nhất | — | — | OK, nhận toàn bộ |
-| J | 0 người | — | — | Disabled |
+| # | Tình huống | Default | Behaviour |
+|---|---|---|---|
+| A | Full nhóm | All checked | Confirm luôn ok |
+| B | Subset nhóm | All checked | User uncheck bớt |
+| C | Có khách ngoài nhóm | — | Thêm qua section "Khách" + input |
+| D | Có người ẩn danh (biết số, không biết ai) | — | Tăng ô "Số người chia" |
+| E | Payer không tham gia | — | Payer uncheck chính mình, không nhận chia |
+| F | 1 người duy nhất | — | OK, người đó nhận toàn bộ |
+| G | 0 người | — | Nút Xác nhận disabled |
+
+*Note: Trường hợp user hoàn toàn không biết ai tham gia → xử lý bằng toggle "Bill mở" ở US-3.1, không phải ở đây.*
 
 **Validation:**
 
 | State | Điều kiện | Effect |
 |---|---|---|
-| Disabled | Chưa chọn ai | Nút Xác nhận xám |
-| Warning | AI đoán khác số user chọn | Banner cam cảnh báo, vẫn confirm được |
-| Error | Tuỳ chỉnh: tổng > bill | Nút disabled, hiện "Vượt {diff}đ" đỏ |
-| Error | Tuỳ chỉnh: tổng < bill | Nút disabled, hiện "Còn {diff}đ" cam |
+| Disabled | Chưa có ai (0 người) | Nút Xác nhận xám |
+| Error | Chia không đều: tổng > bill | Nút disabled, hiện "Vượt {diff}đ" đỏ |
+| Error | Chia không đều: tổng < bill | Nút disabled, hiện "Còn {diff}đ" cam |
 | OK | Tất cả khớp | Nút enabled |
 
 **Edge cases:**
-- Tuỳ chỉnh, 1 người = 0đ → cho phép (người đó không nợ)
+- Chia không đều, 1 người = 0đ → cho phép (người đó không nợ)
 - Payer uncheck chính mình → hợp lệ, payer không nhận phần chia
 - Mở lại sheet sau đã confirm → phục hồi selection trước đó
 - Group chỉ 1 thành viên → default chọn user, gợi ý thêm khách/ẩn danh
 - Bill = 0đ (chưa nhập) → vẫn cho chọn người, hiện "—đ/người"
-- Đang "Tuỳ chỉnh" → tap "Chia đều" → confirm dialog "Reset về chia đều?"
+- Đang "Chia không đều" → tap "Chia đều" → confirm dialog "Reset về chia đều?"
 
 ### UI/UX
 
@@ -178,24 +183,17 @@ Tuỳ chỉnh: user nhập từng số, tổng phải bằng Tổng bill
 - Subtitle "Tổng {amount}đ" 13px `#8E8E93`
 - ✕ close top-right
 
-**Top tabs pill (2 mode):** "Chia đều" active `#EEF2FF/#3A5CCC` | "Tuỳ chỉnh" inactive `#F2F2F7/#8E8E93`
+**Top tabs pill (2 mode):** "Chia đều" active `#EEF2FF/#3A5CCC` | "Chia không đều" inactive `#F2F2F7/#8E8E93`
 
 **Số người chia row** (đầu sheet, trên list member):
 - Label "Số người chia" 13px `#8E8E93`
-- Stepper bên phải: nút `−` 28×28 `#F2F2F7` + value 17px bold + nút `+` 28×28 `#3A5CCC`
-
-**Banner (conditional, dưới tabs):**
-| Case | Bg | Text color | Nội dung |
-|---|---|---|---|
-| C | `#EEF2FF` | `#3A5CCC` | "AI đoán {N} người, đúng cả nhóm ✓" |
-| D | `#EEF2FF` | `#3A5CCC` | "AI đoán {K} người. Hãy chọn ai tham gia." |
-| E | `#FFF8EC` | `#FF9500` | "AI đoán {K} người nhưng nhóm có {N}. Thêm khách?" |
-| F | `#FFF3F0` | `#FF3B30` | "Chưa biết ai tham gia? → Chuyển Bill mở" |
+- **Ô input số** bên phải: frame 60×36 rounded 8px bg `#F2F2F7` border 1px `#E5E5EA`, text 17px bold `#1C1C1E` center-aligned, keyboard number khi focus
 
 **Section "THÀNH VIÊN NHÓM":**
 - Label uppercase 10px `#8E8E93`
+- **Search input** ngay dưới label: frame full-width 36px bg `#F2F2F7` rounded 10px, padding 0,12, icon 🔍 nhỏ bên trái + placeholder "Tìm thành viên..." 13px `#AEAEB2`. Gõ → filter member list real-time theo tên (case-insensitive, diacritic-insensitive).
 - Member row 56px: avatar 36px màu hash + tên 14px semibold ("Hai Do (bạn)" cho self) + amount pill + checkbox 22px
-- Amount pill: bg `#F2F2F7`, text 13px bold; mode đều = display, mode custom = input field
+- Amount pill: bg `#F2F2F7`, text 13px bold; mode đều = display, mode chia không đều = input field
 - Checkbox checked: bg `#3A5CCC` + ✓ trắng; unchecked: bg trắng + border 1.5px `#D1D1D6`
 
 **Section "KHÁCH KHÔNG TRONG NHÓM":**
@@ -211,23 +209,21 @@ Tuỳ chỉnh: user nhập từng số, tổng phải bằng Tổng bill
 - Trái vertical: label "Còn lại chưa chia" 12px `#8E8E93` + value 17px bold (xanh `#34C759` = 0, cam `#FF9500` thiếu, đỏ `#FF3B30` vượt)
 - Phải: nút "Xác nhận" 52px width 160 — `#3A5CCC` enabled, `#C7C7CC` disabled
 
-**Frames trong Pencil:** Case A (default), Case D (AI ít), Case E (AI nhiều), Case F (gợi ý Bill mở).
+**Frames trong Pencil:** Case A (default), Case E (payer uncheck), Case C (có khách), Case D (có người ẩn danh).
 
 ### Tiêu chí
 - [ ] Mở từ link "Chọn thành viên" trong Create Bill Sheet
-- [ ] Case A (blank full group): all checked default, confirm luôn được
-- [ ] Case C (AI match): hint "đúng cả nhóm" hiện
-- [ ] Case D (AI ít hơn): clear preselection, banner yêu cầu chọn
-- [ ] Case E (AI nhiều hơn): banner gợi ý thêm khách
-- [ ] Case F (bill mở): banner gợi ý chuyển US-3.5
-- [ ] Case G (khách): thêm/xoá khách, count vào per-person, không tạo debt
-- [ ] Case H (payer uncheck): hợp lệ, payer không nợ
-- [ ] Toggle 2 modes: Chia đều / Tuỳ chỉnh
-- [ ] Auto-switch về Tuỳ chỉnh khi user sửa amount của row bất kỳ
-- [ ] Tuỳ chỉnh: validate tổng = total
-- [ ] Số người chia stepper: tăng tạo anonymous slots, giảm bị block khi < members+guests
-- [ ] Anonymous slots count vào per-person, không tạo debt
-- [ ] 0 người chọn → disabled, hint "Chọn ít nhất 1 người"
+- [ ] Case A (full nhóm): all checked default, confirm luôn được
+- [ ] Case B (subset): user uncheck bớt, confirm ok
+- [ ] Case C (khách): thêm/xoá khách, count vào per-person, không tạo nợ truy đòi
+- [ ] Case D (người ẩn danh): gõ số lớn hơn member+guest count → tạo slot ẩn danh, count vào per-person
+- [ ] Case E (payer không tham gia): payer uncheck chính mình, hợp lệ
+- [ ] Toggle 2 modes: Chia đều / Chia không đều
+- [ ] Auto-switch về Chia không đều khi user sửa amount của row bất kỳ
+- [ ] Chia không đều: validate tổng = total
+- [ ] Ô input "Số người chia" nhận số, gõ nhỏ hơn member+guest → block toast
+- [ ] **Search input** filter member list real-time theo tên (không phân biệt dấu)
+- [ ] 0 người → disabled, hint "Chọn ít nhất 1 người"
 - [ ] Max 10 khách/bill
 - [ ] Quay về Create Bill Sheet, row "Chia cho" hiện "{N} người · {per}đ/người"
 
@@ -270,7 +266,7 @@ Flow:
 - Nền trắng, rounded 14px, border-top #E5E5EA
 - Text: "Chia 500k cho ăn trưa. Bạn muốn chia như nào?" (14px #1C1C1E)
 - Nếu thiếu description: "Chia 500k. Chi tiêu cho gì? Bạn có thể chọn cách chia bên dưới hoặc gõ lại chi tiết hơn."
-- 3 pill buttons: "Bill mở" | "Chia đều" | "Tuỳ chỉnh" (nền #F2F2F7, 13px, rounded full, padding 8×14px)
+- 3 pill buttons: "Bill mở" | "Chia đều" | "Chia không đều" (nền #F2F2F7, 13px, rounded full, padding 8×14px)
 - Chọn 1 option → mở **Create Bill Sheet (US-3.1)** với data từ parser + option đã chọn
 
 ### Tiêu chí
