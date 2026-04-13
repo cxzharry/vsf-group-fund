@@ -130,13 +130,13 @@ export default function SummaryPage() {
               <Card className="border-red-100 bg-red-50/50">
                 <CardContent className="p-3 text-center">
                   <p className="text-xs text-muted-foreground">Tôi nợ</p>
-                  <p className="text-xl font-bold text-red-600">{formatVND(totalIOwe)}đ</p>
+                  <p className="text-xl font-bold text-[#FF3B30]">{formatVND(totalIOwe)}đ</p>
                 </CardContent>
               </Card>
               <Card className="border-green-100 bg-green-50/50">
                 <CardContent className="p-3 text-center">
                   <p className="text-xs text-muted-foreground">Nợ tôi</p>
-                  <p className="text-xl font-bold text-green-600">{formatVND(totalOwedToMe)}đ</p>
+                  <p className="text-xl font-bold text-[#34C759]">{formatVND(totalOwedToMe)}đ</p>
                 </CardContent>
               </Card>
             </div>
@@ -153,7 +153,7 @@ export default function SummaryPage() {
                     .map(([id, { name, amount }]) => (
                       <div key={id} className="flex items-center justify-between py-1.5">
                         <span className="text-sm">{name}</span>
-                        <span className={`text-sm font-medium ${amount < 0 ? "text-red-600" : "text-green-600"}`}>
+                        <span className={`text-sm font-medium ${amount < 0 ? "text-[#FF3B30]" : "text-[#34C759]"}`}>
                           {amount < 0 ? "-" : "+"}{formatVND(Math.abs(amount))}đ
                         </span>
                       </div>
@@ -166,7 +166,7 @@ export default function SummaryPage() {
             {iOwe.length > 0 && (
               <Card>
                 <CardHeader className="pb-2">
-                  <CardTitle className="text-sm text-red-600">Tôi cần trả ({iOwe.length})</CardTitle>
+                  <CardTitle className="text-sm text-[#FF3B30]">Tôi cần trả ({iOwe.length})</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-1">
                   {iOwe.map((d) => (
@@ -195,7 +195,7 @@ export default function SummaryPage() {
             {owedToMe.length > 0 && (
               <Card>
                 <CardHeader className="pb-2">
-                  <CardTitle className="text-sm text-green-600">Chờ nhận ({owedToMe.length})</CardTitle>
+                  <CardTitle className="text-sm text-[#34C759]">Chờ nhận ({owedToMe.length})</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-1">
                   {owedToMe.map((d) => (
@@ -226,14 +226,14 @@ export default function SummaryPage() {
       {confirmDebt && (
         <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-4">
           <div className="w-full max-w-sm rounded-2xl bg-white p-5 shadow-xl">
-            <h3 className="mb-2 text-center text-base font-bold text-gray-900">Xác nhận</h3>
-            <p className="mb-5 text-center text-sm text-gray-500">
+            <h3 className="mb-2 text-center text-base font-bold text-[#1C1C1E]">Xác nhận</h3>
+            <p className="mb-5 text-center text-sm text-[#8E8E93]">
               Xác nhận đã nhận{" "}
-              <span className="font-semibold text-gray-900">
+              <span className="font-semibold text-[#1C1C1E]">
                 {formatVND(confirmDebt.remaining)}đ
               </span>{" "}
               từ{" "}
-              <span className="font-semibold text-gray-900">
+              <span className="font-semibold text-[#1C1C1E]">
                 {confirmDebt.debtor?.display_name ?? "?"}
               </span>
               ?
@@ -242,7 +242,7 @@ export default function SummaryPage() {
               <button
                 type="button"
                 onClick={() => setConfirmDebt(null)}
-                className="flex-1 rounded-2xl border border-gray-200 py-3 text-sm font-semibold text-gray-700"
+                className="flex-1 rounded-2xl border border-[#E5E5EA] py-3 text-sm font-semibold text-[#1C1C1E]"
               >
                 Hủy
               </button>

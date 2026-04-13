@@ -64,12 +64,12 @@ export function OpenBillCard({
             <p className="text-xs text-[#FF9500]">
               {isMe ? "Bạn" : payerName} đã tạo
             </p>
-            <p className="truncate text-sm font-semibold text-gray-900">
+            <p className="truncate text-sm font-semibold text-[#1C1C1E]">
               {bill.title}
             </p>
           </div>
           <div className="text-right shrink-0">
-            <p className="text-sm font-bold text-gray-900">
+            <p className="text-sm font-bold text-[#1C1C1E]">
               {formatVND(bill.total_amount)}đ
             </p>
           </div>
@@ -87,15 +87,15 @@ export function OpenBillCard({
                   <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#FFE0B2] text-[9px] font-bold text-[#E65100]">
                     {getInitials(name)}
                   </div>
-                  <p className="text-xs text-gray-700">{name}</p>
+                  <p className="text-xs text-[#636366]">{name}</p>
                   {isGuest && (
-                    <span className="text-[9px] text-gray-400">• Khách</span>
+                    <span className="text-[9px] text-[#AEAEB2]">• Khách</span>
                   )}
                 </div>
               );
             })}
             {checkinCount > 5 && (
-              <p className="text-[10px] text-gray-400">
+              <p className="text-[10px] text-[#AEAEB2]">
                 +{checkinCount - 5} người khác
               </p>
             )}
@@ -112,7 +112,7 @@ export function OpenBillCard({
             Tôi có ăn
           </button>
         ) : (
-          <div className="w-full rounded-xl bg-green-50 py-2 text-center text-sm font-semibold text-green-600 border border-green-200">
+          <div className="w-full rounded-xl bg-[#F0FFF4] py-2 text-center text-sm font-semibold text-[#34C759] border border-[#34C759]/30">
             Đã check-in
           </div>
         )}
@@ -131,7 +131,7 @@ export function OpenBillCard({
             <button
               type="button"
               onClick={() => onCloseBill(bill.id)}
-              className="text-xs font-medium text-gray-400 underline-offset-2 hover:underline"
+              className="text-xs font-medium text-[#AEAEB2] underline-offset-2 hover:underline"
             >
               Đóng bill
             </button>

@@ -113,7 +113,7 @@ export default function AccountPage() {
             </div>
             <button
               onClick={() => setEditing("profile")}
-              className="ml-1 text-sm font-medium text-[#3A5CCC]"
+              className="ml-1 flex min-h-[44px] min-w-[44px] items-center justify-center text-sm font-medium text-[#3A5CCC]"
             >
               Sửa
             </button>
@@ -173,7 +173,7 @@ export default function AccountPage() {
                   href={`https://t.me/vsf_product_bot?start=${encodeURIComponent(member?.email ?? "")}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-sm font-medium text-[#3A5CCC]"
+                  className="flex min-h-[44px] min-w-[44px] items-center justify-center text-sm font-medium text-[#3A5CCC]"
                 >
                   Liên kết
                 </a>
@@ -186,7 +186,7 @@ export default function AccountPage() {
         <div className="pt-2">
           <button
             onClick={() => setShowSignOutConfirm(true)}
-            className="flex w-full items-center justify-center gap-2 text-sm font-medium text-[#FF3B30]"
+            className="flex min-h-[44px] w-full items-center justify-center gap-2 py-3 text-sm font-medium text-[#FF3B30]"
           >
             <LogoutIcon />
             Đăng xuất

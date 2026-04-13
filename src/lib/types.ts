@@ -41,6 +41,7 @@ export interface Bill {
   photo_url: string | null;
   created_by: string;
   created_at: string;
+  updated_at?: string | null;
 }
 
 export type ChatMessageType = "text" | "bill_card" | "transfer_card" | "ai_response" | "system";

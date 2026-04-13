@@ -77,6 +77,7 @@ export default function GroupDetailPage() {
     if (typeof window === "undefined") return true;
     return !sessionStorage.getItem(`group_detail_${id}`);
   });
+  const [pendingConfirmDebtIds, setPendingConfirmDebtIds] = useState<Set<string>>(new Set());
   const [inputText, setInputText] = useState("");
 
   // Sprint 4: AI intent state
@@ -87,6 +88,12 @@ export default function GroupDetailPage() {
 
   // Sprint 5: open bill sheet state
   const [addPeopleBillId, setAddPeopleBillId] = useState<string | null>(null);
+
+  // Delete bill confirmation dialog state
+  const [deleteBillId, setDeleteBillId] = useState<string | null>(null);
+
+  // Edit bill state
+  const [editBillId, setEditBillId] = useState<string | null>(null);
 
   // ─── data loading ──────────────────────────────────────────────────────────
 
@@ -200,8 +207,23 @@ export default function GroupDetailPage() {
           debtId = biggest.id;
         }
         setNetDebt({ amount: net, otherMemberId, debtId });
+
+      // Query pending payment confirmations for debts I owe in this group
+      const allDebtIds = (owingData ?? []).map((d: { id: string }) => d.id);
+      if (allDebtIds.length > 0) {
+        const { data: pendingData } = await supabase
+          .from("payment_confirmations")
+          .select("debt_id")
+          .in("debt_id", allDebtIds)
+          .eq("status", "pending");
+        const pendingSet = new Set((pendingData ?? []).map((p: { debt_id: string }) => p.debt_id));
+        setPendingConfirmDebtIds(pendingSet);
+      } else {
+        setPendingConfirmDebtIds(new Set());
+      }
       } else {
         setNetDebt(null);
+        setPendingConfirmDebtIds(new Set());
       }
     }
 
@@ -380,13 +402,13 @@ export default function GroupDetailPage() {
       }
     }
 
-    // 3. Insert bill_card chat message
+    // 3. Insert bill_card chat message (category stored in metadata — no DB migration needed)
     await supabase.from("chat_messages").insert({
       group_id: id,
       sender_id: currentMember.id,
       message_type: "bill_card",
       content: data.description,
-      metadata: { bill_id: newBill.id },
+      metadata: { bill_id: newBill.id, category: data.category },
     });
 
     // 4. Send Telegram notification (fire-and-forget)
@@ -428,6 +450,21 @@ export default function GroupDetailPage() {
 
     if (error) { toast.error("Lỗi check-in"); return; }
     toast.success("Đã check-in!");
+
+    // Notify bill creator via Telegram (fire-and-forget)
+    const checkinCountAfter = (billCheckins[billId] ?? []).length + 1;
+    fetch("/api/notify", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        type: "open_bill_checkin",
+        payload: {
+          billId,
+          memberName: currentMember.display_name,
+          totalCheckins: checkinCountAfter,
+        },
+      }),
+    }).catch(() => {});
 
     setTimeout(() => {
       setBillCheckins((prev) => {
@@ -504,20 +541,43 @@ export default function GroupDetailPage() {
     // Create equal debts for all checked-in members (excluding payer)
     const debtors = checkins.filter((c) => c.member_id && c.member_id !== bill.paid_by);
     const totalParticipants = checkins.length; // everyone splits including payer
-    const perPerson = Math.floor(bill.total_amount / totalParticipants);
+    const base = Math.floor(bill.total_amount / totalParticipants);
+    const remainder = bill.total_amount - base * totalParticipants;
     const debtInserts = debtors
-      .map((c) => ({
-        bill_id: billId,
-        debtor_id: c.member_id!,
-        creditor_id: bill.paid_by,
-        amount: perPerson,
-        remaining: perPerson,
-        status: "pending" as const,
-      }));
+      .map((c, i) => {
+        const amount = base + (i < remainder ? 1 : 0);
+        return {
+          bill_id: billId,
+          debtor_id: c.member_id!,
+          creditor_id: bill.paid_by,
+          amount,
+          remaining: amount,
+          status: "pending" as const,
+        };
+      });
 
     if (debtInserts.length > 0) {
       await supabase.from("debts").insert(debtInserts);
     }
+
+    // Insert system chat message on close
+    await supabase.from("chat_messages").insert({
+      group_id: id,
+      sender_id: currentMember.id,
+      message_type: "system",
+      content: `Bill "${bill.title ?? "open bill"}" đã đóng — ${debtors.length} người chia tiền.`,
+      metadata: { bill_id: billId },
+    });
+
+    // Notify participants via Telegram (fire-and-forget)
+    fetch("/api/notify", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        type: "open_bill_closed",
+        payload: { billId },
+      }),
+    }).catch(() => {});
 
     // Update local bills state
     setTimeout(() => {
@@ -529,7 +589,158 @@ export default function GroupDetailPage() {
     toast.success("Đã đóng bill!");
   }
 
+  // ─── Delete bill ───────────────────────────────────────────────────────────
+
+  async function handleDeleteBill(billId: string) {
+    if (!currentMember) return;
+
+    const bill = bills.find((b) => b.id === billId);
+    if (!bill) return;
+
+    // Guard: only the bill creator can delete
+    if (bill.paid_by !== currentMember.id) {
+      toast.error("Chỉ người tạo bill mới có thể xóa");
+      return;
+    }
+
+    try {
+      // 1. Delete related debts
+      await supabase.from("debts").delete().eq("bill_id", billId);
+      // 2. Delete bill_participants
+      await supabase.from("bill_participants").delete().eq("bill_id", billId);
+      // 3. Delete bill_checkins (for open bills)
+      await supabase.from("bill_checkins").delete().eq("bill_id", billId);
+      // 4. Delete the bill row
+      const { error } = await supabase.from("bills").delete().eq("id", billId);
+      if (error) { toast.error("Lỗi xóa bill"); return; }
+      // 5. Delete the bill_card chat message
+      await supabase
+        .from("chat_messages")
+        .delete()
+        .eq("group_id", id)
+        .contains("metadata", { bill_id: billId });
+    } catch {
+      toast.error("Lỗi xóa bill");
+      return;
+    }
+
+    // Update local state
+    try { sessionStorage.removeItem(`group_detail_${id}`); } catch {}
+    setTimeout(() => {
+      setBills((prev) => prev.filter((b) => b.id !== billId));
+      setChatMessages((prev) =>
+        prev.filter((m) => {
+          const meta = m.metadata as { bill_id?: string } | null;
+          return meta?.bill_id !== billId;
+        })
+      );
+    }, 0);
+
+    toast.success("Đã xóa bill");
+  }
+
+  // ─── Edit bill ─────────────────────────────────────────────────────────────
+
+  async function handleEditBill(data: BillConfirmData) {
+    if (!currentMember || !editBillId) return;
+
+    const bill = bills.find((b) => b.id === editBillId);
+    if (!bill) return;
+
+    try {
+      // 1. Fetch existing debts for this bill
+      const { data: existingDebts, error: debtFetchErr } = await supabase
+        .from("debts")
+        .select("id, debtor_id, amount, remaining, status")
+        .eq("bill_id", editBillId);
+
+      if (debtFetchErr) { toast.error("Lỗi tải dữ liệu bill"); return; }
+
+      // 2. Block if any debt has a payment_confirmation
+      if (existingDebts && existingDebts.length > 0) {
+        const debtIds = existingDebts.map((d: { id: string }) => d.id);
+        const { data: confirmRows } = await supabase
+          .from("payment_confirmations")
+          .select("id")
+          .in("debt_id", debtIds)
+          .limit(1);
+
+        if (confirmRows && confirmRows.length > 0) {
+          toast.error("Không thể sửa: bill có xác nhận thanh toán");
+          return;
+        }
+      }
+
+      // 4. UPDATE bill
+      const { error: billUpdateErr } = await supabase
+        .from("bills")
+        .update({
+          title: data.description,
+          total_amount: data.amount,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", editBillId);
+
+      if (billUpdateErr) { toast.error("Lỗi cập nhật bill"); return; }
+
+      // 5. Recompute per-person and update pending debts
+      const pendingDebts = (existingDebts ?? []).filter(
+        (d: { status: string }) => d.status === "pending"
+      );
+
+      if (pendingDebts.length > 0) {
+        const numDebtors = pendingDebts.length;
+        const newPer = Math.floor(data.amount / (numDebtors + 1)); // +1 for payer
+        const remainder = data.amount - newPer * (numDebtors + 1);
+
+        for (let i = 0; i < pendingDebts.length; i++) {
+          const debt = pendingDebts[i] as { id: string; amount: number; remaining: number };
+          const newAmount = newPer + (i < remainder ? 1 : 0);
+          const delta = newAmount - debt.amount;
+          const newRemaining = Math.max(0, debt.remaining + delta);
+          const newStatus = newRemaining <= 0 ? "paid" : "pending";
+
+          await supabase
+            .from("debts")
+            .update({ amount: newAmount, remaining: newRemaining, status: newStatus })
+            .eq("id", debt.id);
+        }
+      }
+
+      // 6. Update local state
+      try { sessionStorage.removeItem(`group_detail_${id}`); } catch {}
+      setTimeout(() => {
+        setBills((prev) =>
+          prev.map((b) =>
+            b.id === editBillId
+              ? { ...b, title: data.description, total_amount: data.amount, updated_at: new Date().toISOString() }
+              : b
+          )
+        );
+        setEditBillId(null);
+      }, 0);
+
+      toast.success("Đã cập nhật bill");
+    } catch {
+      toast.error("Lỗi cập nhật bill");
+    }
+  }
+
   // ─── build feed items ──────────────────────────────────────────────────────
+
+  // Build a map of bill_id → category from bill_card chat messages
+  const billCategoryMap = useMemo<Record<string, string>>(() => {
+    const map: Record<string, string> = {};
+    for (const m of chatMessages) {
+      if (m.message_type === "bill_card" && m.metadata) {
+        const meta = m.metadata as { bill_id?: string; category?: string };
+        if (meta.bill_id && meta.category) {
+          map[meta.bill_id] = meta.category;
+        }
+      }
+    }
+    return map;
+  }, [chatMessages]);
 
   const feedItems = useMemo<MessageFeedItem[]>(() => {
     const items: MessageFeedItem[] = [
@@ -559,12 +770,28 @@ export default function GroupDetailPage() {
     const otherDisplayName = otherMember?.display_name ?? "thành viên";
 
     if (netDebt.amount < 0) {
+      // Check if debtor already submitted a pending confirmation
+      const hasPendingConfirm = netDebt.debtId
+        ? pendingConfirmDebtIds.has(netDebt.debtId)
+        : false;
+
+      if (hasPendingConfirm) {
+        return {
+          text: `Chờ ${otherDisplayName} xác nhận thanh toán`,
+          action: "Chờ xác nhận",
+          bg: "bg-[#FFF8EC]",
+          textColor: "text-[#FF9500]",
+          btnColor: "bg-[#FF9500] text-white opacity-70 cursor-default",
+          href: null,
+        };
+      }
+
       return {
         text: `Bạn nợ ${otherDisplayName} ${formatVND(Math.abs(netDebt.amount))}đ`,
         action: "Trả nợ",
         bg: "bg-[#FFF3F0]",
-        textColor: "text-red-600",
-        btnColor: "bg-red-500 text-white",
+        textColor: "text-[#FF3B30]",
+        btnColor: "bg-[#FF3B30] text-white",
         href: netDebt.debtId ? `/transfer/${netDebt.debtId}` : "/debts",
       };
     }
@@ -572,11 +799,11 @@ export default function GroupDetailPage() {
       text: `${otherDisplayName} nợ bạn ${formatVND(netDebt.amount)}đ`,
       action: "Nhắc nợ",
       bg: "bg-[#F0FFF4]",
-      textColor: "text-green-600",
-      btnColor: "bg-green-500 text-white",
+      textColor: "text-[#34C759]",
+      btnColor: "bg-[#34C759] text-white",
       href: "/debts",
     };
-  }, [netDebt, members]);
+  }, [netDebt, members, pendingConfirmDebtIds]);
 
   // ─── add people sheet bill ─────────────────────────────────────────────────
 
@@ -597,7 +824,7 @@ export default function GroupDetailPage() {
   if (!group) {
     return (
       <div className="flex h-dvh items-center justify-center bg-[#F2F2F7]">
-        <p className="text-sm text-gray-400">Không tìm thấy nhóm</p>
+        <p className="text-sm text-[#AEAEB2]">Không tìm thấy nhóm</p>
       </div>
     );
   }
@@ -609,7 +836,7 @@ export default function GroupDetailPage() {
         <button
           type="button"
           onClick={() => router.back()}
-          className="flex h-8 w-8 items-center justify-center rounded-full text-gray-600 hover:bg-gray-100"
+          className="flex h-11 w-11 items-center justify-center rounded-full text-[#8E8E93] hover:bg-[#F2F2F7]"
           aria-label="Quay lại"
         >
           <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
@@ -619,14 +846,14 @@ export default function GroupDetailPage() {
         </button>
 
         <div className="flex flex-col items-center">
-          <p className="text-sm font-semibold text-gray-900">{group.name}</p>
-          <p className="text-xs text-gray-400">{memberCount} thành viên</p>
+          <p className="text-sm font-semibold text-[#1C1C1E]">{group.name}</p>
+          <p className="text-xs text-[#AEAEB2]">{memberCount} thành viên</p>
         </div>
 
         <button
           type="button"
           onClick={() => router.push(`/groups/${id}/settings`)}
-          className="flex h-8 w-8 items-center justify-center rounded-full text-gray-600 hover:bg-gray-100"
+          className="flex h-11 w-11 items-center justify-center rounded-full text-[#8E8E93] hover:bg-[#F2F2F7]"
           aria-label="Cài đặt nhóm"
         >
           <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
@@ -647,7 +874,8 @@ export default function GroupDetailPage() {
           </p>
           <button
             type="button"
-            onClick={() => router.push(debtBanner.href)}
+            onClick={() => debtBanner.href && router.push(debtBanner.href)}
+            disabled={!debtBanner.href}
             className={`rounded-full px-3 py-1 text-xs font-semibold ${debtBanner.btnColor}`}
           >
             {debtBanner.action}
@@ -704,10 +932,13 @@ export default function GroupDetailPage() {
             members={members}
             billParticipantCounts={billParticipantCounts}
             billCheckins={billCheckins}
+            billCategoryMap={billCategoryMap}
             currentMemberId={currentMember?.id ?? null}
             onCheckin={handleCheckin}
             onAddPeople={(billId) => setAddPeopleBillId(billId)}
             onCloseBill={handleCloseBill}
+            onDeleteBill={(billId) => setDeleteBillId(billId)}
+            onEditBill={(billId) => setEditBillId(billId)}
           />
         )}
       </div>
@@ -724,10 +955,25 @@ export default function GroupDetailPage() {
 
       {/* Input bar */}
       <ChatInputBar
-        groupId={id}
         value={inputText}
         onChange={setInputText}
         onSend={handleSendText}
+        onOpenManualBill={() => {
+          // US-3.1 manual flow: open Confirm Sheet with blank intent
+          setPendingIntent({
+            hasIntent: true,
+            intentType: "split",
+            amount: null,
+            description: null,
+            peopleCount: null,
+            peopleNames: [],
+            splitType: "equal",
+            transferTo: null,
+            readyToConfirm: false,
+            followUp: null,
+          });
+          setShowConfirmSheet(true);
+        }}
       />
 
       {/* Sprint 4: Bill confirm sheet */}
@@ -741,6 +987,39 @@ export default function GroupDetailPage() {
         />
       )}
 
+      {/* Edit bill sheet */}
+      {editBillId && currentMember && (() => {
+        const editingBill = bills.find((b) => b.id === editBillId);
+        if (!editingBill) return null;
+        const editIntent = {
+          hasIntent: true,
+          intentType: "split" as const,
+          amount: editingBill.total_amount,
+          description: editingBill.title,
+          splitType: (editingBill.split_type as "equal" | "custom" | "open") ?? "equal",
+          peopleCount: billParticipantCounts[editBillId] ?? 1,
+          peopleNames: [] as string[],
+          transferTo: null,
+          readyToConfirm: true,
+          followUp: null,
+        };
+        return (
+          <BillConfirmSheet
+            intent={editIntent}
+            groupMembers={memberList}
+            currentMember={currentMember}
+            mode="edit"
+            initialData={{
+              amount: editingBill.total_amount,
+              description: editingBill.title,
+              category: (billCategoryMap[editBillId] ?? "khac") as import("@/lib/bill-categories").BillCategoryId,
+            }}
+            onConfirm={handleEditBill}
+            onClose={() => setEditBillId(null)}
+          />
+        );
+      })()}
+
       {/* Sprint 5: Add people sheet */}
       {addPeopleBillId && addPeopleBill && (
         <AddPeopleSheet
@@ -750,6 +1029,34 @@ export default function GroupDetailPage() {
           onAdd={handleAddPerson}
           onClose={() => setAddPeopleBillId(null)}
         />
+      )}
+
+      {/* Delete bill confirmation dialog */}
+      {deleteBillId && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-6">
+          <div className="w-full max-w-sm rounded-2xl bg-white p-5 shadow-xl">
+            <h3 className="text-base font-bold text-[#1C1C1E]">Xóa bill?</h3>
+            <p className="mt-2 text-sm text-[#636366]">
+              Thao tác này không thể hoàn tác. Tất cả khoản nợ liên quan cũng sẽ bị xóa.
+            </p>
+            <div className="mt-4 flex gap-2">
+              <button
+                type="button"
+                onClick={() => setDeleteBillId(null)}
+                className="flex-1 rounded-xl border border-[#E5E5EA] py-2.5 text-sm font-semibold text-[#1C1C1E] hover:bg-[#F2F2F7]"
+              >
+                Hủy
+              </button>
+              <button
+                type="button"
+                onClick={() => { const bid = deleteBillId; setDeleteBillId(null); handleDeleteBill(bid); }}
+                className="flex-1 rounded-xl bg-[#FF3B30] py-2.5 text-sm font-semibold text-white hover:opacity-90"
+              >
+                Xóa bill
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

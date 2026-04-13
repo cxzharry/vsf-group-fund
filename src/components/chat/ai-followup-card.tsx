@@ -14,7 +14,7 @@ export function AiFollowupCard({ followUp, onSelectOption }: AiFollowupCardProps
         <p className="mb-1.5 text-[10px] font-semibold text-[#3A5CCC]">AI trợ lý</p>
 
         {/* Question */}
-        <p className="mb-2.5 text-sm text-gray-900">{followUp.question}</p>
+        <p className="mb-2.5 text-sm text-[#1C1C1E]">{followUp.question}</p>
 
         {/* Options */}
         <div className="flex flex-col gap-1.5">
@@ -29,9 +29,9 @@ export function AiFollowupCard({ followUp, onSelectOption }: AiFollowupCardProps
                 {opt.label.charAt(0).toUpperCase()}.
               </span>
               <div className="min-w-0 flex-1">
-                <p className="text-xs font-medium text-gray-900">{opt.label}</p>
+                <p className="text-xs font-medium text-[#1C1C1E]">{opt.label}</p>
                 {opt.description && (
-                  <p className="text-[10px] text-gray-400">{opt.description}</p>
+                  <p className="text-[10px] text-[#AEAEB2]">{opt.description}</p>
                 )}
               </div>
             </button>
@@ -39,7 +39,7 @@ export function AiFollowupCard({ followUp, onSelectOption }: AiFollowupCardProps
         </div>
 
         {/* Hint */}
-        <p className="mt-2 text-[10px] text-gray-400">Chọn option hoặc chat tiếp</p>
+        <p className="mt-2 text-[10px] text-[#AEAEB2]">Chọn option hoặc chat tiếp</p>
       </div>
     </div>
   );

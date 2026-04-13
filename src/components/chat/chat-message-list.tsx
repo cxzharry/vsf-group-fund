@@ -14,6 +14,8 @@ interface MessageFeedItem {
   createdAt: string;
   message?: ChatMessage;
   bill?: Bill;
+  /** Chat message metadata — carries bill_id + category for bill_card messages */
+  billMetadata?: Record<string, unknown>;
 }
 
 interface ChatMessageListProps {
@@ -21,10 +23,14 @@ interface ChatMessageListProps {
   members: Record<string, Member>;
   billParticipantCounts: Record<string, number>;
   billCheckins: Record<string, BillCheckin[]>;
+  /** Maps bill_id → category id string, sourced from bill_card chat message metadata */
+  billCategoryMap?: Record<string, string>;
   currentMemberId: string | null;
   onCheckin: (billId: string) => void;
   onAddPeople: (billId: string) => void;
   onCloseBill: (billId: string) => void;
+  onDeleteBill?: (billId: string) => void;
+  onEditBill?: (billId: string) => void;
 }
 
 function formatDateDivider(dateStr: string): string {
@@ -45,10 +51,13 @@ export function ChatMessageList({
   members,
   billParticipantCounts,
   billCheckins,
+  billCategoryMap,
   currentMemberId,
   onCheckin,
   onAddPeople,
   onCloseBill,
+  onDeleteBill,
+  onEditBill,
 }: ChatMessageListProps) {
   const bottomRef = useRef<HTMLDivElement>(null);
 
@@ -59,7 +68,7 @@ export function ChatMessageList({
   if (items.length === 0) {
     return (
       <div className="flex flex-1 items-center justify-center py-16">
-        <p className="text-sm text-gray-400">Chưa có hoạt động nào</p>
+        <p className="text-sm text-[#AEAEB2]">Chưa có hoạt động nào</p>
       </div>
     );
   }
@@ -112,6 +121,9 @@ export function ChatMessageList({
             payer={payer}
             participantCount={billParticipantCounts[bill.id] ?? 0}
             currentMemberId={currentMemberId}
+            category={billCategoryMap?.[bill.id]}
+            onDelete={onDeleteBill}
+            onEdit={onEditBill}
           />
         );
       }
@@ -150,11 +162,11 @@ export function ChatMessageList({
               className={`max-w-[75%] rounded-2xl px-3 py-2 text-sm ${
                 isMe
                   ? "bg-[#3A5CCC] text-white"
-                  : "bg-white text-gray-900 shadow-sm"
+                  : "bg-white text-[#1C1C1E] shadow-sm"
               }`}
             >
               {!isMe && sender && (
-                <p className="mb-0.5 text-[10px] font-semibold text-gray-400">
+                <p className="mb-0.5 text-[10px] font-semibold text-[#AEAEB2]">
                   {sender.display_name}
                 </p>
               )}

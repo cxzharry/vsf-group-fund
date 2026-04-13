@@ -27,10 +27,10 @@ const PEOPLE_PATTERNS = [
   /tất\s*cả/i,
 ];
 
-// Description extraction — common food/activity words
+// Description extraction — common food/activity words (with and without diacritics)
 const DESC_PATTERNS = [
   /(?:ăn|đi)\s+([\p{L}\s]+?)(?:\s+\d|\s*$)/iu,
-  /(phở|bún|cơm|bánh|pizza|cafe|cà phê|trà|bia|lẩu|nướng|sushi|gà|bò|heo|tôm|cua)/i,
+  /(phở|pho|bún|bun|cơm|com|bánh|banh|pizza|cafe|cà phê|ca phe|trà|tra|bia|lẩu|lau|nướng|nuong|sushi|gà|ga|bò|bo|heo|tôm|tom|cua|mì|mi|xôi|xoi|bắp|bap|ốc|oc)/i,
 ];
 
 /** Parse a chat message locally (no LLM) */
@@ -90,6 +90,24 @@ export function parseIntentLocal(message: string): ParsedBillIntent {
     }
   }
 
+  // Fallback: extract words between amount token and people count token
+  // e.g. "280k bun bo 3 nguoi" → "bun bo"
+  if (!description) {
+    // Strip amount token (e.g. "280k", "1tr2")
+    const withoutAmount = trimmed
+      .replace(/\d+(?:[.,]\d+)?\s*(?:tr(?:iệu)?|k)\s*\d*/i, "")
+      .replace(/\d{4,}\s*(?:đ|dong|vnd|vnđ)?/i, "")
+      .trim();
+    // Strip people count token
+    const withoutPeople = withoutAmount
+      .replace(/\d+\s*(?:người|ng|ngừ?ời)/i, "")
+      .replace(/cả\s*team|tất\s*cả/i, "")
+      .trim();
+    if (withoutPeople.length > 0) {
+      description = withoutPeople;
+    }
+  }
+
   // Determine split type
   let splitType: "equal" | "custom" | "open" | null = null;
   if (peopleCount !== null && peopleCount > 0) {
@@ -136,10 +154,15 @@ function generateSplitFollowUp(
   const amtStr = parsed.amount
     ? `${(parsed.amount / 1000).toLocaleString("vi-VN")}k`
     : "";
-  const desc = parsed.description ?? "bữa ăn";
+  const desc = parsed.description?.trim();
+
+  // When description is missing, ask for it first (user can still chat-edit)
+  const questionLead = desc
+    ? `Chia ${amtStr} cho ${desc}.`
+    : `Chia ${amtStr}. Chi tiêu cho gì? Bạn có thể chọn cách chia bên dưới hoặc gõ lại chi tiết hơn.`;
 
   return {
-    question: `Chia ${amtStr} cho ${desc}.\nBạn muốn chia như nào?`,
+    question: `${questionLead}\nBạn muốn chia như nào?`,
     options: [
       {
         label: "A",

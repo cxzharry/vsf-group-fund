@@ -63,16 +63,16 @@ export function AddPeopleSheet({
       <div className="fixed inset-x-0 bottom-0 z-50 rounded-t-2xl bg-white pb-[env(safe-area-inset-bottom)] shadow-xl animate-in slide-in-from-bottom duration-300">
         {/* Drag handle */}
         <div className="flex justify-center pt-3 pb-1">
-          <div className="h-1 w-10 rounded-full bg-gray-300" />
+          <div className="h-1 w-10 rounded-full bg-[#C7C7CC]" />
         </div>
 
         {/* Header */}
         <div className="flex items-center justify-between px-4 pb-3 pt-1">
-          <h2 className="text-base font-bold text-gray-900">Thêm người</h2>
+          <h2 className="text-base font-bold text-[#1C1C1E]">Thêm người</h2>
           <button
             type="button"
             onClick={onClose}
-            className="flex h-7 w-7 items-center justify-center rounded-full bg-gray-100 text-gray-500"
+            className="flex h-7 w-7 items-center justify-center rounded-full bg-[#F2F2F7] text-[#8E8E93]"
             aria-label="Đóng"
           >
             ✕
@@ -86,32 +86,32 @@ export function AddPeopleSheet({
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Tìm thành viên..."
-            className="w-full rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-sm outline-none focus:border-blue-300"
+            className="w-full rounded-xl border border-[#E5E5EA] bg-[#F2F2F7] px-3 py-2 text-sm outline-none focus:border-[#3A5CCC]"
           />
         </div>
 
         <div className="max-h-[55vh] overflow-y-auto px-4 pb-4">
           {/* Group members section */}
-          <p className="mb-2 text-[10px] font-bold uppercase tracking-wide text-gray-400">
+          <p className="mb-2 text-[10px] font-bold uppercase tracking-wide text-[#AEAEB2]">
             Trong nhóm
           </p>
 
           {filteredMembers.length === 0 && (
-            <p className="py-3 text-center text-sm text-gray-400">Không tìm thấy</p>
+            <p className="py-3 text-center text-sm text-[#AEAEB2]">Không tìm thấy</p>
           )}
 
           {filteredMembers.map((m) => {
             const isCheckedIn = checkedInMemberIds.has(m.id);
             return (
               <div key={m.id} className="flex items-center gap-3 py-2.5">
-                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-blue-100 text-xs font-bold text-blue-600">
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#EEF2FF] text-xs font-bold text-[#3A5CCC]">
                   {getInitials(m.display_name)}
                 </div>
                 <div className="min-w-0 flex-1">
-                  <p className="text-sm font-medium text-gray-900">{m.display_name}</p>
+                  <p className="text-sm font-medium text-[#1C1C1E]">{m.display_name}</p>
                 </div>
                 {isCheckedIn ? (
-                  <span className="text-xs font-medium text-green-600">
+                  <span className="text-xs font-medium text-[#34C759]">
                     ✓ Đã check-in
                   </span>
                 ) : (
@@ -129,7 +129,7 @@ export function AddPeopleSheet({
           })}
 
           {/* Outside group section */}
-          <p className="mb-2 mt-4 text-[10px] font-bold uppercase tracking-wide text-gray-400">
+          <p className="mb-2 mt-4 text-[10px] font-bold uppercase tracking-wide text-[#AEAEB2]">
             Người ngoài nhóm
           </p>
 
@@ -138,14 +138,14 @@ export function AddPeopleSheet({
             .filter((c) => !c.member_id && c.guest_name)
             .map((c) => (
               <div key={c.id} className="flex items-center gap-3 py-2">
-                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gray-100 text-xs font-bold text-gray-500">
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#F2F2F7] text-xs font-bold text-[#8E8E93]">
                   {getInitials(c.guest_name!)}
                 </div>
                 <div className="min-w-0 flex-1">
-                  <p className="text-sm font-medium text-gray-900">{c.guest_name}</p>
-                  <p className="text-[10px] text-gray-400">Người ngoài</p>
+                  <p className="text-sm font-medium text-[#1C1C1E]">{c.guest_name}</p>
+                  <p className="text-[10px] text-[#AEAEB2]">Người ngoài</p>
                 </div>
-                <span className="text-xs font-medium text-green-600">✓ Đã check-in</span>
+                <span className="text-xs font-medium text-[#34C759]">✓ Đã check-in</span>
               </div>
             ))}
 
@@ -159,7 +159,7 @@ export function AddPeopleSheet({
                 onKeyDown={(e) => e.key === "Enter" && handleAddGuest()}
                 placeholder="Tên người ngoài..."
                 autoFocus
-                className="min-w-0 flex-1 rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-sm outline-none focus:border-blue-300"
+                className="min-w-0 flex-1 rounded-xl border border-[#E5E5EA] bg-[#F2F2F7] px-3 py-2 text-sm outline-none focus:border-[#3A5CCC]"
               />
               <button
                 type="button"
@@ -174,7 +174,7 @@ export function AddPeopleSheet({
             <button
               type="button"
               onClick={() => setShowGuestInput(true)}
-              className="mt-1 flex w-full items-center gap-2 rounded-xl border border-dashed border-gray-300 px-3 py-2.5 text-sm text-gray-500 transition-colors active:bg-gray-50"
+              className="mt-1 flex w-full items-center gap-2 rounded-xl border border-dashed border-[#C7C7CC] px-3 py-2.5 text-sm text-[#8E8E93] transition-colors active:bg-[#F2F2F7]"
             >
               <span className="text-base">+</span>
               Thêm người lạ bằng tên

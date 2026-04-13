@@ -1,16 +1,16 @@
 // Bottom input bar: text field + round blue bill creation button
-import { useRouter } from "next/navigation";
+// The "+" button opens the Bill Confirm Sheet in manual (blank) mode — US-3.1.
+// Typing a message and sending it triggers AI parser — US-3.2.
 
 interface ChatInputBarProps {
-  groupId: string;
   value: string;
   onChange: (value: string) => void;
   onSend: () => void;
+  /** Opens Bill Confirm Sheet with blank state (US-3.1 manual flow). */
+  onOpenManualBill: () => void;
 }
 
-export function ChatInputBar({ groupId, value, onChange, onSend }: ChatInputBarProps) {
-  const router = useRouter();
-
+export function ChatInputBar({ value, onChange, onSend, onOpenManualBill }: ChatInputBarProps) {
   function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
     if (e.key === "Enter" && value.trim()) onSend();
   }
@@ -24,29 +24,29 @@ export function ChatInputBar({ groupId, value, onChange, onSend }: ChatInputBarP
         onChange={(e) => onChange(e.target.value)}
         onKeyDown={handleKeyDown}
         placeholder="1tr2 bún bò 6 người..."
-        className="h-10 flex-1 rounded-[20px] border border-gray-200 bg-gray-50 px-4 text-sm outline-none focus:border-blue-300 focus:ring-0"
+        className="h-10 flex-1 rounded-[20px] border border-[#E5E5EA] bg-[#F2F2F7] px-4 text-sm outline-none focus:border-[#3A5CCC] focus:ring-0"
       />
 
-      {/* Bill creation button — round blue */}
+      {/* Manual bill creation button — opens blank Confirm Sheet */}
       <button
         type="button"
-        onClick={() => router.push(`/bills/new?group=${groupId}`)}
-        aria-label="Tạo bill"
+        onClick={onOpenManualBill}
+        aria-label="Tạo bill thủ công"
         className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[#3A5CCC] text-white shadow transition-opacity active:opacity-80"
       >
-        {/* Receipt icon */}
+        {/* Plus icon — opens manual bill creation */}
         <svg
           xmlns="http://www.w3.org/2000/svg"
           viewBox="0 0 24 24"
           fill="none"
           stroke="currentColor"
-          strokeWidth={2}
+          strokeWidth={2.5}
           strokeLinecap="round"
           strokeLinejoin="round"
           className="h-5 w-5"
         >
-          <path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1Z" />
-          <path d="M14 8H8M16 12H8M11 16H8" />
+          <line x1="12" y1="5" x2="12" y2="19" />
+          <line x1="5" y1="12" x2="19" y2="12" />
         </svg>
       </button>
     </div>

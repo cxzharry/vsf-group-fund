@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/dialog";
 import { formatVND } from "@/lib/format-vnd";
 import { generateVietQRUrl, generateTransferDescription } from "@/lib/vietqr";
+import { simplifyDebts } from "@/lib/simplify-debts";
 import type { Debt, Member } from "@/lib/types";
 
 interface DebtWithNames extends Debt {
@@ -39,6 +40,7 @@ export default function DebtsPage() {
     if (typeof window === "undefined") return true;
     return !sessionStorage.getItem("debts_list");
   });
+  const [viewMode, setViewMode] = useState<"detail" | "simplified">("detail");
   const [qrDebt, setQrDebt] = useState<DebtWithNames | null>(null);
   const [confirmDebt, setConfirmDebt] = useState<DebtWithNames | null>(null);
 
@@ -113,6 +115,18 @@ export default function DebtsPage() {
   const totalIOwe = iOwe.reduce((s, d) => s + d.remaining, 0);
   const totalOwedToMe = owedToMe.reduce((s, d) => s + d.remaining, 0);
 
+  // Simplified (pairwise netted) view — only pending debts involving current user
+  const pendingDebts = debts.filter((d) => d.status !== "confirmed");
+  const simplifiedAll = simplifyDebts(pendingDebts);
+  const simplifiedIOwe = simplifiedAll.filter((s) => s.debtor_id === member?.id);
+  const simplifiedOwedToMe = simplifiedAll.filter((s) => s.creditor_id === member?.id);
+
+  // Helper: get member name by id
+  const getMemberName = (id: string) =>
+    debts.find((d) => d.debtor_id === id || d.creditor_id === id)?.debtor?.id === id
+      ? debts.find((d) => d.debtor_id === id)?.debtor?.display_name ?? id
+      : debts.find((d) => d.creditor_id === id)?.creditor?.display_name ?? id;
+
   // QR URL for payment dialog
   const qrUrl =
     qrDebt?.creditor?.bank_name && qrDebt?.creditor?.bank_account_no
@@ -180,10 +194,83 @@ export default function DebtsPage() {
     loadDebts();
   }
 
+  // Batch-settle all underlying debts for a simplified pair
+  async function handleBatchConfirmPaid(underlyingIds: string[]) {
+    for (const id of underlyingIds) {
+      await supabase.from("payment_confirmations").insert({
+        debt_id: id,
+        confirmed_by: "debtor",
+        method: "manual_debtor",
+        status: "pending",
+      });
+    }
+    fetch("/api/notify", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        type: "payment_claim",
+        payload: { debtIds: underlyingIds, method: "manual_debtor" },
+      }),
+    }).catch(() => {});
+    try { sessionStorage.removeItem("debts_list"); } catch {}
+    loadDebts();
+  }
+
+  async function handleBatchCreditorConfirm(underlyingIds: string[]) {
+    for (const id of underlyingIds) {
+      await supabase.from("payment_confirmations").insert({
+        debt_id: id,
+        confirmed_by: "creditor",
+        method: "manual_creditor",
+        status: "confirmed",
+      });
+    }
+    await supabase
+      .from("debts")
+      .update({ remaining: 0, status: "confirmed" })
+      .in("id", underlyingIds);
+    fetch("/api/notify", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        type: "payment_confirmed",
+        payload: { debtIds: underlyingIds },
+      }),
+    }).catch(() => {});
+    try { sessionStorage.removeItem("debts_list"); } catch {}
+    loadDebts();
+  }
+
   return (
     <>
       <PageHeader title="Khoản nợ" backHref="/" />
       <main className="space-y-4 p-4">
+        {/* View mode toggle */}
+        <div className="flex rounded-xl bg-[#F2F2F7] p-1">
+          <button
+            type="button"
+            onClick={() => setViewMode("detail")}
+            className={`flex-1 rounded-lg py-1.5 text-sm font-medium transition-colors ${
+              viewMode === "detail"
+                ? "bg-[#3A5CCC] text-white"
+                : "text-[#8E8E93]"
+            }`}
+          >
+            Chi tiết
+          </button>
+          <button
+            type="button"
+            onClick={() => setViewMode("simplified")}
+            className={`flex-1 rounded-lg py-1.5 text-sm font-medium transition-colors ${
+              viewMode === "simplified"
+                ? "bg-[#3A5CCC] text-white"
+                : "text-[#8E8E93]"
+            }`}
+          >
+            Nợ ròng
+          </button>
+        </div>
+
         {loading ? (
           <div className="space-y-3">
             <div className="grid grid-cols-2 gap-3">
@@ -204,6 +291,118 @@ export default function DebtsPage() {
               </div>
             ))}
           </div>
+        ) : viewMode === "simplified" ? (
+          <>
+            {/* Summary cards — simplified totals */}
+            <div className="grid grid-cols-2 gap-3">
+              <Card>
+                <CardContent className="p-3 text-center">
+                  <p className="text-xs text-muted-foreground">Tôi nợ (ròng)</p>
+                  <p className="text-lg font-bold text-[#FF3B30]">
+                    {formatVND(simplifiedIOwe.reduce((s, d) => s + d.amount, 0))}đ
+                  </p>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="p-3 text-center">
+                  <p className="text-xs text-muted-foreground">Nợ tôi (ròng)</p>
+                  <p className="text-lg font-bold text-[#34C759]">
+                    {formatVND(simplifiedOwedToMe.reduce((s, d) => s + d.amount, 0))}đ
+                  </p>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Simplified: I owe */}
+            {simplifiedIOwe.length > 0 && (
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm text-[#FF3B30]">
+                    Tôi đang nợ ({simplifiedIOwe.length})
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-1">
+                  {simplifiedIOwe.map((s) => (
+                    <div key={`${s.debtor_id}|${s.creditor_id}`}>
+                      <div className="flex items-center justify-between py-2">
+                        <div>
+                          <p className="text-sm font-medium">
+                            {getMemberName(s.creditor_id)}
+                          </p>
+                          <div className="flex items-center gap-1.5">
+                            <p className="text-xs text-muted-foreground">
+                              {formatVND(s.amount)}đ
+                            </p>
+                            <span className="rounded-full bg-[#F2F2F7] px-2 py-0.5 text-[11px] text-[#8E8E93]">
+                              Nợ ròng · gộp {s.underlying_ids.length}
+                            </span>
+                          </div>
+                        </div>
+                        <Button
+                          size="sm"
+                          className="h-10 bg-[#3A5CCC] text-xs hover:bg-[#2d4aaa]"
+                          onClick={() => handleBatchConfirmPaid(s.underlying_ids)}
+                        >
+                          Đã trả
+                        </Button>
+                      </div>
+                      <Separator />
+                    </div>
+                  ))}
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Simplified: owed to me */}
+            {simplifiedOwedToMe.length > 0 && (
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm text-[#34C759]">
+                    Người khác nợ tôi ({simplifiedOwedToMe.length})
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-1">
+                  {simplifiedOwedToMe.map((s) => (
+                    <div key={`${s.debtor_id}|${s.creditor_id}`}>
+                      <div className="flex items-center justify-between py-2">
+                        <div>
+                          <p className="text-sm font-medium">
+                            {getMemberName(s.debtor_id)}
+                          </p>
+                          <div className="flex items-center gap-1.5">
+                            <p className="text-xs text-muted-foreground">
+                              {formatVND(s.amount)}đ
+                            </p>
+                            <span className="rounded-full bg-[#F2F2F7] px-2 py-0.5 text-[11px] text-[#8E8E93]">
+                              Nợ ròng · gộp {s.underlying_ids.length}
+                            </span>
+                          </div>
+                        </div>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-10 text-xs"
+                          onClick={() => handleBatchCreditorConfirm(s.underlying_ids)}
+                        >
+                          Đã nhận
+                        </Button>
+                      </div>
+                      <Separator />
+                    </div>
+                  ))}
+                </CardContent>
+              </Card>
+            )}
+
+            {simplifiedIOwe.length === 0 && simplifiedOwedToMe.length === 0 && (
+              <p className="py-8 text-center text-2xl">
+                🎉{" "}
+                <span className="block mt-2 text-base text-muted-foreground">
+                  Tất cả đã cân bằng!
+                </span>
+              </p>
+            )}
+          </>
         ) : (
           <>
             {/* Summary cards */}
@@ -211,7 +410,7 @@ export default function DebtsPage() {
               <Card>
                 <CardContent className="p-3 text-center">
                   <p className="text-xs text-muted-foreground">Tôi nợ</p>
-                  <p className="text-lg font-bold text-red-600">
+                  <p className="text-lg font-bold text-[#FF3B30]">
                     {formatVND(totalIOwe)}đ
                   </p>
                 </CardContent>
@@ -219,7 +418,7 @@ export default function DebtsPage() {
               <Card>
                 <CardContent className="p-3 text-center">
                   <p className="text-xs text-muted-foreground">Nợ tôi</p>
-                  <p className="text-lg font-bold text-green-600">
+                  <p className="text-lg font-bold text-[#34C759]">
                     {formatVND(totalOwedToMe)}đ
                   </p>
                 </CardContent>
@@ -243,7 +442,7 @@ export default function DebtsPage() {
                         <span className="text-sm">{name}</span>
                         <span
                           className={`text-sm font-medium ${
-                            amount < 0 ? "text-red-600" : "text-green-600"
+                            amount < 0 ? "text-[#FF3B30]" : "text-[#34C759]"
                           }`}
                         >
                           {amount < 0 ? "-" : "+"}
@@ -259,7 +458,7 @@ export default function DebtsPage() {
             {iOwe.length > 0 && (
               <Card>
                 <CardHeader className="pb-2">
-                  <CardTitle className="text-sm text-red-600">
+                  <CardTitle className="text-sm text-[#FF3B30]">
                     Tôi đang nợ ({iOwe.length})
                   </CardTitle>
                 </CardHeader>
@@ -279,14 +478,14 @@ export default function DebtsPage() {
                           <Button
                             size="sm"
                             variant="outline"
-                            className="h-7 text-xs"
+                            className="h-10 text-xs"
                             onClick={() => setQrDebt(d)}
                           >
                             QR
                           </Button>
                           <Button
                             size="sm"
-                            className="h-7 bg-[#3A5CCC] text-xs hover:bg-[#2d4aaa]"
+                            className="h-10 bg-[#3A5CCC] text-xs hover:bg-[#2d4aaa]"
                             onClick={() =>
                               router.push(`/transfer/${d.id}`)
                             }
@@ -306,7 +505,7 @@ export default function DebtsPage() {
             {owedToMe.length > 0 && (
               <Card>
                 <CardHeader className="pb-2">
-                  <CardTitle className="text-sm text-green-600">
+                  <CardTitle className="text-sm text-[#34C759]">
                     Người khác nợ tôi ({owedToMe.length})
                   </CardTitle>
                 </CardHeader>
@@ -325,7 +524,7 @@ export default function DebtsPage() {
                         <Button
                           size="sm"
                           variant="outline"
-                          className="h-7 text-xs"
+                          className="h-10 text-xs"
                           onClick={() => setConfirmDebt(d)}
                         >
                           Đã nhận tiền
@@ -351,14 +550,14 @@ export default function DebtsPage() {
       {confirmDebt && (
         <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-4">
           <div className="w-full max-w-sm rounded-2xl bg-white p-5 shadow-xl">
-            <h3 className="mb-2 text-center text-base font-bold text-gray-900">Xác nhận</h3>
-            <p className="mb-5 text-center text-sm text-gray-500">
+            <h3 className="mb-2 text-center text-base font-bold text-foreground">Xác nhận</h3>
+            <p className="mb-5 text-center text-sm text-muted-foreground">
               Xác nhận đã nhận{" "}
-              <span className="font-semibold text-gray-900">
+              <span className="font-semibold text-foreground">
                 {formatVND(confirmDebt.remaining)}đ
               </span>{" "}
               từ{" "}
-              <span className="font-semibold text-gray-900">
+              <span className="font-semibold text-foreground">
                 {confirmDebt.debtor?.display_name ?? "?"}
               </span>
               ?
@@ -367,7 +566,7 @@ export default function DebtsPage() {
               <button
                 type="button"
                 onClick={() => setConfirmDebt(null)}
-                className="flex-1 rounded-2xl border border-gray-200 py-3 text-sm font-semibold text-gray-700"
+                className="flex-1 rounded-2xl border border-border py-3 text-sm font-semibold text-muted-foreground"
               >
                 Hủy
               </button>

@@ -131,12 +131,20 @@ export default function TransferPage() {
     }
   }
 
-  function handleSaveQR() {
+  async function handleSaveQR() {
     if (!qrUrl) return;
-    const a = document.createElement("a");
-    a.href = qrUrl;
-    a.download = `qr-transfer-${debtId}.png`;
-    a.click();
+    try {
+      const response = await fetch(qrUrl);
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "vietqr.png";
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch {
+      toast.error("Không thể tải QR");
+    }
   }
 
   function handleShareQR() {
@@ -161,7 +169,7 @@ export default function TransferPage() {
   if (!debt) {
     return (
       <div className="flex h-dvh items-center justify-center bg-[#F2F2F7]">
-        <p className="text-sm text-gray-400">Không tìm thấy khoản nợ</p>
+        <p className="text-sm text-[#AEAEB2]">Không tìm thấy khoản nợ</p>
       </div>
     );
   }
@@ -177,7 +185,7 @@ export default function TransferPage() {
         <button
           type="button"
           onClick={() => router.back()}
-          className="flex h-8 w-8 items-center justify-center rounded-full text-gray-600 hover:bg-gray-100"
+          className="flex h-8 w-8 items-center justify-center rounded-full text-[#636366] hover:bg-[#F2F2F7]"
           aria-label="Quay lại"
         >
           <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
@@ -186,9 +194,9 @@ export default function TransferPage() {
           </svg>
         </button>
         <div className="flex flex-col items-center">
-          <p className="text-sm font-semibold text-gray-900">Chuyển tiền</p>
+          <p className="text-sm font-semibold text-[#1C1C1E]">Chuyển tiền</p>
           {bill && (
-            <p className="text-[11px] text-gray-400">{bill.title} · {billDate}</p>
+            <p className="text-[11px] text-[#AEAEB2]">{bill.title} · {billDate}</p>
           )}
         </div>
         <div className="h-8 w-8" />
@@ -197,15 +205,15 @@ export default function TransferPage() {
       <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3">
         {/* Amount card */}
         <div className="rounded-2xl bg-white p-4 shadow-sm text-center">
-          <p className="text-3xl font-bold text-gray-900">
+          <p className="text-3xl font-bold text-[#1C1C1E]">
             {formatVND(debt.remaining)}đ
           </p>
           <div className="mt-2 flex items-center justify-center gap-2">
-            <p className="text-sm text-gray-500">cho</p>
-            <div className="flex h-7 w-7 items-center justify-center rounded-full bg-blue-100 text-xs font-bold text-blue-600">
+            <p className="text-sm text-[#8E8E93]">cho</p>
+            <div className="flex h-7 w-7 items-center justify-center rounded-full bg-[#EEF2FF] text-xs font-bold text-[#3A5CCC]">
               {creditorInitials}
             </div>
-            <p className="text-sm font-semibold text-gray-900">
+            <p className="text-sm font-semibold text-[#1C1C1E]">
               {creditor?.display_name ?? "?"}
             </p>
           </div>
@@ -228,13 +236,13 @@ export default function TransferPage() {
             {/* Bank info */}
             <div className="space-y-1.5 text-sm">
               <div className="flex justify-between">
-                <span className="text-gray-400">NH</span>
-                <span className="font-medium text-gray-900">{creditor.bank_name}</span>
+                <span className="text-[#AEAEB2]">NH</span>
+                <span className="font-medium text-[#1C1C1E]">{creditor.bank_name}</span>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-gray-400">STK</span>
+                <span className="text-[#AEAEB2]">STK</span>
                 <div className="flex items-center gap-1.5">
-                  <span className="font-medium text-gray-900">{creditor.bank_account_no}</span>
+                  <span className="font-medium text-[#1C1C1E]">{creditor.bank_account_no}</span>
                   <button
                     type="button"
                     onClick={handleCopyAccount}
@@ -246,8 +254,8 @@ export default function TransferPage() {
                 </div>
               </div>
               <div className="flex justify-between">
-                <span className="text-gray-400">Chủ TK</span>
-                <span className="font-medium text-gray-900">{creditor.bank_account_name}</span>
+                <span className="text-[#AEAEB2]">Chủ TK</span>
+                <span className="font-medium text-[#1C1C1E]">{creditor.bank_account_name}</span>
               </div>
             </div>
 
@@ -256,7 +264,7 @@ export default function TransferPage() {
               <button
                 type="button"
                 onClick={handleSaveQR}
-                className="flex flex-1 flex-col items-center gap-1 rounded-xl bg-gray-50 py-2.5 text-xs font-medium text-gray-700 active:bg-gray-100"
+                className="flex flex-1 flex-col items-center gap-1 rounded-xl bg-[#F2F2F7] py-2.5 text-xs font-medium text-[#1C1C1E] active:bg-[#F2F2F7]"
               >
                 <span className="text-lg">💾</span>
                 Lưu QR
@@ -264,7 +272,7 @@ export default function TransferPage() {
               <button
                 type="button"
                 onClick={handleShareQR}
-                className="flex flex-1 flex-col items-center gap-1 rounded-xl bg-gray-50 py-2.5 text-xs font-medium text-gray-700 active:bg-gray-100"
+                className="flex flex-1 flex-col items-center gap-1 rounded-xl bg-[#F2F2F7] py-2.5 text-xs font-medium text-[#1C1C1E] active:bg-[#F2F2F7]"
               >
                 <span className="text-lg">📤</span>
                 Chia sẻ
@@ -272,7 +280,7 @@ export default function TransferPage() {
               {deepLink && (
                 <a
                   href={deepLink}
-                  className="flex flex-1 flex-col items-center gap-1 rounded-xl bg-gray-50 py-2.5 text-xs font-medium text-gray-700 active:bg-gray-100"
+                  className="flex flex-1 flex-col items-center gap-1 rounded-xl bg-[#F2F2F7] py-2.5 text-xs font-medium text-[#1C1C1E] active:bg-[#F2F2F7]"
                 >
                   <span className="text-lg">🏦</span>
                   {creditor.bank_name?.split(" ")[0] ?? "Bank"}
@@ -282,7 +290,7 @@ export default function TransferPage() {
           </div>
         ) : (
           <div className="rounded-2xl bg-white p-4 shadow-sm text-center">
-            <p className="text-sm text-gray-400">
+            <p className="text-sm text-[#AEAEB2]">
               {creditor?.display_name ?? "Người nhận"} chưa cài ngân hàng
             </p>
           </div>
@@ -290,7 +298,7 @@ export default function TransferPage() {
       </div>
 
       {/* CTAs */}
-      <div className="border-t border-gray-100 bg-white px-4 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-3 space-y-2">
+      <div className="border-t border-[#E5E5EA] bg-white px-4 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-3 space-y-2">
         <button
           type="button"
           onClick={handleConfirmPayment}
@@ -299,7 +307,7 @@ export default function TransferPage() {
         >
           {submitting ? "Đang xử lý..." : "Đã chuyển tiền"}
         </button>
-        <label className="flex w-full cursor-pointer items-center justify-center gap-1.5 py-1 text-sm text-gray-400">
+        <label className="flex w-full cursor-pointer items-center justify-center gap-1.5 py-1 text-sm text-[#AEAEB2]">
           <span>📎</span>
           <span>Upload biên lai (tuỳ chọn)</span>
           <input

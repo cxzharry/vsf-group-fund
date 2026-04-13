@@ -198,7 +198,7 @@ export default function HomePage() {
           <h1 className="text-[28px] font-bold text-[#1C1C1E]">Nhóm</h1>
           <button
             onClick={() => router.push("/groups/create")}
-            className="flex h-9 w-9 items-center justify-center rounded-full bg-[#3A5CCC] text-white shadow-sm"
+            className="flex h-11 w-11 items-center justify-center rounded-full bg-[#3A5CCC] text-white shadow-sm"
           >
             <span className="text-lg leading-none">+</span>
           </button>
@@ -266,7 +266,7 @@ export default function HomePage() {
                 <Link
                   key={g.id}
                   href={`/groups/${g.id}`}
-                  className="flex h-[88px] w-full items-center gap-3 rounded-[14px] bg-white px-4 text-left transition-all active:scale-[0.98]"
+                  className="flex h-[88px] w-full items-center gap-3 rounded-[14px] bg-white px-4 text-left shadow-[0_1px_3px_rgba(0,0,0,0.08)] transition-all active:scale-[0.98]"
                 >
                   {/* Avatar 44px */}
                   <div

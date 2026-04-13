@@ -38,7 +38,7 @@ export function AiResponseCard({ intent, onConfirm, onEdit }: AiResponseCardProp
             {intentTypeLabel(intent.intentType)}
           </span>
           {intent.splitType && (
-            <span className="rounded-full bg-gray-100 px-2 py-0.5 text-[11px] text-gray-500">
+            <span className="rounded-full bg-muted px-2 py-0.5 text-[11px] text-muted-foreground">
               {splitTypeLabel(intent.splitType)}
             </span>
           )}
@@ -47,16 +47,16 @@ export function AiResponseCard({ intent, onConfirm, onEdit }: AiResponseCardProp
         {/* Parsed details */}
         <div className="mb-3 space-y-1">
           {intent.description && (
-            <p className="text-sm font-semibold text-gray-900">{intent.description}</p>
+            <p className="text-sm font-semibold text-foreground">{intent.description}</p>
           )}
           {intent.amount && (
-            <p className="text-sm text-gray-700">
+            <p className="text-sm text-muted-foreground">
               Tổng:{" "}
-              <span className="font-bold text-gray-900">{formatVND(intent.amount)}đ</span>
+              <span className="font-bold text-foreground">{formatVND(intent.amount)}đ</span>
             </p>
           )}
           {intent.peopleCount && (
-            <p className="text-sm text-gray-500">
+            <p className="text-sm text-muted-foreground">
               {intent.peopleCount} người
               {perPerson ? ` · ${formatVND(perPerson)}đ/người` : ""}
             </p>
@@ -75,7 +75,7 @@ export function AiResponseCard({ intent, onConfirm, onEdit }: AiResponseCardProp
           <button
             type="button"
             onClick={onEdit}
-            className="rounded-xl border border-gray-200 bg-gray-50 px-4 py-2 text-sm font-semibold text-gray-700 transition-colors active:bg-gray-100"
+            className="rounded-xl border border-border bg-muted px-4 py-2 text-sm font-semibold text-foreground transition-colors active:bg-muted/80"
           >
             Sửa
           </button>

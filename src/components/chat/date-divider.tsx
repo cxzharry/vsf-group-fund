@@ -6,7 +6,7 @@ interface DateDividerProps {
 export function DateDivider({ date }: DateDividerProps) {
   return (
     <div className="flex items-center justify-center py-3">
-      <span className="rounded-full bg-gray-200/70 px-3 py-0.5 text-xs text-gray-500">
+      <span className="rounded-full bg-muted px-3 py-0.5 text-xs text-muted-foreground">
         {date}
       </span>
     </div>
