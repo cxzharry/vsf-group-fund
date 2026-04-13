@@ -1,10 +1,10 @@
 "use client";
 
-// Bottom sheet for confirming bill creation — matches Pencil half-sheet design
+// US-3.1 Create Bill Sheet — half-sheet with required fields + CTA pinned bottom
 import { useState } from "react";
 import { formatVND } from "@/lib/format-vnd";
 import { SplitSheet } from "@/components/chat/split-sheet";
-import { BILL_CATEGORIES, inferCategory } from "@/lib/bill-categories";
+import { inferCategory } from "@/lib/bill-categories";
 import type { BillCategoryId } from "@/lib/bill-categories";
 import type { ParsedBillIntent } from "@/lib/ai-intent-types";
 import type { Member } from "@/lib/types";
@@ -15,9 +15,7 @@ interface BillConfirmSheetProps {
   currentMember: Member;
   onConfirm: (data: BillConfirmData) => Promise<void>;
   onClose: () => void;
-  /** Edit mode: pre-fills fields and hides split/payer rows */
   mode?: "create" | "edit";
-  /** Pre-fill data for edit mode */
   initialData?: Partial<BillConfirmData>;
 }
 
@@ -29,7 +27,6 @@ export interface BillConfirmData {
   payerId: string;
   billType: "standard" | "open";
   category: BillCategoryId;
-  /** Custom per-member splits (member_id → amount). Only set when splitType="custom". */
   customSplits?: Record<string, number>;
 }
 
@@ -74,74 +71,69 @@ export function BillConfirmSheet({
   const isEdit = mode === "edit";
   const [amount, setAmount] = useState<number>(initialData?.amount ?? intent.amount ?? 0);
   const [amountInput, setAmountInput] = useState<string>(
-    String(initialData?.amount ?? intent.amount ?? 0)
+    initialData?.amount || intent.amount ? String(initialData?.amount ?? intent.amount) : ""
   );
   const [description, setDescription] = useState<string>(
     initialData?.description ?? intent.description ?? ""
   );
-  const [splitType] = useState<"equal" | "custom" | "open">(
-    (intent.splitType as "equal" | "custom" | "open") ?? "equal"
-  );
-  const [peopleCount] = useState<number>(
+  const [peopleCount, setPeopleCount] = useState<number>(
     intent.peopleCount ?? groupMembers.length
   );
   const [payerId] = useState<string>(currentMember.id);
+  const [billType, setBillType] = useState<"split" | "transfer">("split");
   const [submitting, setSubmitting] = useState(false);
   const [showSplit, setShowSplit] = useState(false);
   const [customSplits, setCustomSplits] = useState<Record<string, number> | null>(null);
-  const [category, setCategory] = useState<BillCategoryId>(
-    initialData?.category ?? inferCategory(intent.description ?? "")
-  );
-
-  const perPerson =
-    splitType !== "open" && peopleCount > 0
-      ? Math.floor(amount / peopleCount)
-      : null;
 
   const payer = groupMembers.find((m) => m.id === payerId) ?? currentMember;
+  const category = inferCategory(description);
+  const perPerson =
+    peopleCount > 0 && amount > 0 ? Math.floor(amount / peopleCount) : 0;
 
-  // Show up to 5 member avatars for "chia cho" row
-  const shownMembers = groupMembers.slice(0, 5);
-  const extraCount = groupMembers.length - shownMembers.length;
+  const isValid = amount > 0 && description.trim().length > 0 && peopleCount > 0;
 
   async function handleConfirm() {
-    if (!amount || !description.trim()) return;
+    if (!isValid) return;
     setSubmitting(true);
     await onConfirm({
       amount,
       description: description.trim(),
-      splitType: customSplits ? "custom" : splitType,
+      splitType: customSplits ? "custom" : "equal",
       peopleCount: customSplits ? Object.keys(customSplits).length : peopleCount,
       payerId,
-      billType: splitType === "open" ? "open" : "standard",
+      billType: "standard",
       category,
       customSplits: customSplits ?? undefined,
     });
     setSubmitting(false);
   }
 
+  function handleBillTypeChange(type: "split" | "transfer") {
+    if (type === "transfer") {
+      // US-3.6 Transfer flow — not yet wired here
+      onClose();
+      return;
+    }
+    setBillType(type);
+  }
+
   return (
     <>
-      {/* Backdrop */}
       <div
         className="fixed inset-0 z-40 bg-black/40"
         onClick={onClose}
         aria-hidden="true"
       />
 
-      {/* Half-sheet */}
-      <div className="fixed inset-x-0 bottom-0 z-50 rounded-t-[20px] bg-white pb-[env(safe-area-inset-bottom)] shadow-[0_-4px_20px_rgba(0,0,0,0.13)] animate-in slide-in-from-bottom duration-300">
-        {/* Drag handle */}
+      <div className="fixed inset-x-0 bottom-0 z-50 flex max-h-[85vh] flex-col rounded-t-[20px] bg-white pb-[env(safe-area-inset-bottom)] shadow-[0_-4px_20px_rgba(0,0,0,0.13)] animate-in slide-in-from-bottom duration-300">
         <div className="flex justify-center py-2">
           <div className="h-1 w-9 rounded-full bg-[#D1D1D6]" />
         </div>
 
-        {/* Body */}
-        <div className="space-y-3 px-5 pb-[34px] pt-2">
-          {/* Header row */}
+        <div className="flex flex-1 flex-col gap-3 px-5 pb-[34px] pt-2">
           <div className="flex items-center justify-between">
             <h2 className="text-[15px] font-bold text-black">
-              {isEdit ? "✏️ Sửa bill" : "✦ Xác nhận bill"}
+              {isEdit ? "Sửa bill" : "Tạo bill"}
             </h2>
             <button
               type="button"
@@ -153,135 +145,104 @@ export function BillConfirmSheet({
             </button>
           </div>
 
-          {/* Info rows */}
+          {!isEdit && (
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => handleBillTypeChange("split")}
+                className={`rounded-full px-3.5 py-1.5 text-[13px] font-semibold ${
+                  billType === "split"
+                    ? "bg-[#EEF2FF] text-[#3A5CCC]"
+                    : "bg-[#F2F2F7] text-[#8E8E93]"
+                }`}
+              >
+                Chia tiền
+              </button>
+              <button
+                type="button"
+                onClick={() => handleBillTypeChange("transfer")}
+                className="rounded-full bg-[#F2F2F7] px-3.5 py-1.5 text-[13px] font-medium text-[#8E8E93]"
+              >
+                Chuyển tiền
+              </button>
+            </div>
+          )}
+
           <div className="space-y-3">
-            {/* Mô tả — editable inline */}
+            <div className="flex items-center justify-between gap-2">
+              <span className="shrink-0 text-[13px] text-[#8E8E93]">Số tiền</span>
+              <input
+                type="text"
+                inputMode="numeric"
+                value={amountInput}
+                onChange={(e) => {
+                  const raw = e.target.value.replace(/\D/g, "");
+                  setAmountInput(raw);
+                  setAmount(raw ? parseInt(raw, 10) : 0);
+                }}
+                placeholder="0đ"
+                className="min-w-0 flex-1 text-right text-[22px] font-bold text-[#3A5CCC] outline-none placeholder-[#AEAEB2]"
+              />
+            </div>
+
             <div className="flex items-center justify-between gap-2">
               <span className="shrink-0 text-[13px] text-[#8E8E93]">Mô tả</span>
               <input
                 type="text"
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
-                placeholder="Nhập mô tả..."
+                placeholder="VD: Ăn trưa team"
                 className="min-w-0 flex-1 text-right text-[13px] text-[#1C1C1E] outline-none placeholder-[#AEAEB2]"
               />
             </div>
 
-            {/* Số tiền — editable in edit mode */}
-            {isEdit && (
-              <div className="flex items-center justify-between gap-2">
-                <span className="shrink-0 text-[13px] text-[#8E8E93]">Số tiền</span>
-                <input
-                  type="number"
-                  inputMode="numeric"
-                  value={amountInput}
-                  onChange={(e) => {
-                    setAmountInput(e.target.value);
-                    const n = parseInt(e.target.value.replace(/\D/g, ""), 10);
-                    if (!isNaN(n) && n > 0) setAmount(n);
-                  }}
-                  placeholder="0"
-                  className="min-w-0 flex-1 text-right text-[13px] font-semibold text-[#1C1C1E] outline-none placeholder-[#AEAEB2]"
-                />
-                <span className="shrink-0 text-[13px] text-[#8E8E93]">đ</span>
-              </div>
-            )}
-
-            {/* Chia cho — hidden in edit mode */}
-            {!isEdit && (
-              <button
-                type="button"
-                onClick={() => setShowSplit(true)}
-                className="flex w-full items-center justify-between"
-              >
-                <span className="text-[13px] text-[#8E8E93]">
-                  Chia cho {customSplits ? `(${Object.keys(customSplits).length} người)` : ""}
-                </span>
-                <div className="flex items-center gap-1">
-                  {shownMembers.map((m) => (
-                    <MiniAvatar key={m.id} member={m} size={22} />
-                  ))}
-                  {extraCount > 0 && (
-                    <span className="ml-1 text-xs text-[#8E8E93]">+{extraCount}</span>
-                  )}
-                  <span className="ml-1 text-xs text-[#3A5CCC]">▸</span>
-                </div>
-              </button>
-            )}
-
-            {/* Phân loại — inline chip row */}
-            <div className="flex flex-col gap-1.5">
-              <span className="text-[13px] text-[#8E8E93]">Phân loại</span>
-              <div className="flex gap-1.5 overflow-x-auto pb-0.5">
-                {BILL_CATEGORIES.map((cat) => (
-                  <button
-                    key={cat.id}
-                    type="button"
-                    onClick={() => setCategory(cat.id)}
-                    className={`flex shrink-0 items-center gap-1 rounded-full px-2.5 py-1 text-[12px] font-medium transition-colors ${
-                      category === cat.id
-                        ? "bg-[#EEF2FF] text-[#3A5CCC]"
-                        : "bg-[#F2F2F7] text-[#8E8E93]"
-                    }`}
-                  >
-                    <span aria-hidden>{cat.emoji}</span>
-                    <span>{cat.label}</span>
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Mỗi người — hidden in edit mode (recomputed on save) */}
-            {!isEdit && perPerson !== null && (
-              <div className="flex items-center justify-between">
-                <span className="text-[13px] text-[#8E8E93]">Mỗi người</span>
-                <span className="text-sm font-semibold text-[#3A5CCC]">
-                  {formatVND(perPerson)}đ
-                </span>
-              </div>
-            )}
-
-            {/* Người trả — hidden in edit mode */}
             {!isEdit && (
               <div className="flex items-center justify-between">
                 <span className="text-[13px] text-[#8E8E93]">Người trả</span>
                 <div className="flex items-center gap-1.5">
                   <MiniAvatar member={payer} size={22} />
-                  <span className="text-[13px] font-semibold text-[#1C1C1E]">
-                    {payer.id === currentMember.id ? "Bạn" : payer.display_name}
+                  <span className="text-[14px] font-medium text-[#1C1C1E]">
+                    {payer.display_name}
+                    {payer.id === currentMember.id && " (bạn)"}
                   </span>
+                  <span className="text-[15px] text-[#C7C7CC]">›</span>
                 </div>
+              </div>
+            )}
+
+            {!isEdit && (
+              <div className="flex items-center justify-between">
+                <span className="text-[13px] text-[#8E8E93]">Chia cho</span>
+                <button
+                  type="button"
+                  onClick={() => setShowSplit(true)}
+                  className="text-[13px] font-medium text-[#3A5CCC] underline underline-offset-2"
+                >
+                  {customSplits
+                    ? `${Object.keys(customSplits).length} người · ${formatVND(perPerson)}đ/người`
+                    : "Chọn thành viên"}
+                </button>
               </div>
             )}
           </div>
 
-          {/* Divider */}
-          <div className="h-px bg-[#E5E5EA]" />
+          <div className="flex-1" />
 
-          {/* Upload row */}
-          <button
-            type="button"
-            className="flex h-[38px] w-full items-center justify-center rounded-[10px] bg-[#F2F2F7] text-[13px] text-[#8E8E93]"
-          >
-            📎 Thêm ảnh bill
-          </button>
-
-          {/* Confirm button */}
           <button
             type="button"
             onClick={handleConfirm}
-            disabled={submitting || !amount || !description.trim()}
-            className="flex h-12 w-full items-center justify-center rounded-xl bg-[#3A5CCC] text-[15px] font-semibold text-white transition-opacity active:opacity-80 disabled:opacity-50"
+            disabled={submitting || !isValid}
+            className={`flex h-12 w-full items-center justify-center rounded-xl text-[15px] font-semibold text-white transition-opacity active:opacity-80 ${
+              isValid && !submitting ? "bg-[#3A5CCC]" : "bg-[#C7C7CC]"
+            }`}
           >
             {submitting
               ? isEdit ? "Đang lưu..." : "Đang tạo..."
-              : isEdit ? "Lưu thay đổi" : "Tạo bill"
-            }
+              : isEdit ? "Lưu thay đổi" : "Tạo"}
           </button>
         </div>
       </div>
 
-      {/* US-3.3 Split Sheet */}
       {showSplit && (
         <SplitSheet
           totalAmount={amount}
@@ -289,6 +250,7 @@ export function BillConfirmSheet({
           payerId={payerId}
           onConfirm={(splits) => {
             setCustomSplits(splits);
+            setPeopleCount(Object.keys(splits).length);
             setShowSplit(false);
           }}
           onClose={() => setShowSplit(false)}

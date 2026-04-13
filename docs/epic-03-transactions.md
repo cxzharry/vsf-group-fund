@@ -2,85 +2,245 @@
 
 US-3.1 định nghĩa **Create Bill Sheet** — half-sheet với đủ field cần thiết để tạo bill. Sheet này dùng chung cho 2 flow:
 - **Flow A — Manual**: US-3.1. Mở sheet **trống trơn** qua nút ➕, user điền từ đầu.
-- **Flow B — AI Quick**: US-3.2. Gõ tin nhắn, AI parse, mở chính sheet của US-3.1 với data **prefilled**.
+- **Flow B — AI Quick**: US-3.3. Gõ tin nhắn, AI parse, mở chính sheet của US-3.1 với data **prefilled**.
 
-US-3.3 là **Bill Details & Actions** — hiển thị bill trong Group Detail feed + tap vào để edit/xoá.
+US-3.2 là **Chọn người chia** — picker chọn thành viên tham gia bill + customize cách chia (đều / % / tuỳ chỉnh), mở từ link "Chọn thành viên" trong Create Bill Sheet.
 
-Cả 2 flow tạo đều có thể chuyển sang **Split Sheet (US-3.4)** khi cần chia không đều, và đều có thể chọn **Bill mở (US-3.5)** thay vì bill thường.
+US-3.4 là **Bill Details & Actions** — hiển thị bill trong Group Detail feed + tap vào để edit/xoá.
+
+Cả 2 flow tạo đều có thể chọn **Bill mở (US-3.5)** thay vì bill thường.
 
 ---
 
 ## US-3.1: Tạo bill thủ công (Create Bill Sheet)
 
-### Function
-Entry point: Nút ➕ trong chat input bar của group detail (44×44px, #3A5CCC, icon plus).
+### Logic
 
-Flow:
-1. Tap ➕ → mở **Create Bill Sheet** (half-sheet) ở trạng thái blank
+**Entry point:** Tap nút ➕ trong chat input bar của group detail.
+
+**Flow:**
+1. Tap ➕ → mở Create Bill Sheet ở trạng thái blank
 2. User điền các field required
-3. Khi đủ required → nút "Tạo" enabled
+3. Khi đủ required → CTA "Tạo" enabled
 4. Tap "Tạo" → validate → tạo bill + bill_participants + debts + chat_message
 5. Toast "Đã tạo bill" → sheet đóng, feed scroll tới bill card mới
 
-### Fields
+**Fields:**
 
-| Field | Required | Default | Ghi chú |
+| Field | Required | Default | Ghi chú logic |
 |-------|----------|---------|---------|
-| **Loại bill** | Yes | Chia tiền | Toggle 2 option: "Chia tiền" \| "Chuyển tiền". Nếu chọn Chuyển tiền → sheet đóng, redirect qua **US-3.6 Chuyển tiền flow** (khác hoàn toàn). US-3.1 chỉ handle "Chia tiền". |
-| **Số tiền** | Yes | — | Number input, VND format. Placeholder "0đ". |
-| **Mô tả** | Yes | — | Text input. Placeholder "VD: Ăn trưa team". |
-| **Người trả tiền** | Yes | User hiện tại | Picker row: avatar + tên + chevron. Tap mở member picker. Default = người tạo bill (currentMember). |
-| **Chia cho & số tiền mỗi người** | Yes | Tất cả members, chia đều | Row hiện: avatars stack + "N người, mỗi người Xđ". Tap mở **US-3.4 Split Sheet** để customize. Default = chia đều tổng số tiền cho tất cả members trong group. |
-| Phân loại (Category) | No | Auto-infer từ description (📋 nếu không match) | Chip row 6 categories — xem US-3.9. |
-| Ảnh bill | No | — | Optional upload (US-3.x future). |
+| Loại bill | Yes | Chia tiền | Toggle "Chia tiền" \| "Chuyển tiền". Chuyển tiền → đóng sheet, redirect US-3.6 |
+| Số tiền | Yes | — | Number, VND format, > 0 |
+| Mô tả | Yes | — | Text, trim().length > 0 |
+| Người trả | Yes | currentMember | member_id từ group |
+| Chia cho | Yes | (mở US-3.2) | Result từ US-3.2 picker |
 
-### Validation & "Tạo" button state
-Nút "Tạo" **disabled** nếu thiếu bất kỳ required field:
-- `!amount || amount <= 0`
-- `!description.trim()`
-- `!payerId`
-- `splitRecipients.length === 0`
+**Phân loại:** auto-infer từ description (US-3.9), không phải field nhập tay.
 
-**Enabled** khi TẤT CẢ required đã điền hợp lệ.
+**Validation rules:**
+- `amount > 0`
+- `description.trim().length > 0`
+- `payerId !== null`
+- `peopleCount > 0` (từ US-3.2 result)
 
-### Edge cases
-- Chọn "Chuyển tiền" → sheet đóng ngay, navigate qua US-3.6 flow (không submit bill)
-- Người trả không nằm trong "Chia cho" → hợp lệ (payer không nợ chính mình)
-- Split customize qua US-3.4 rồi tổng không khớp amount → nút "Tạo" disabled cho đến khi sửa
-- Tap backdrop / ✕ → đóng sheet, data discard (không confirm dialog)
-- Sau submit fail (network error) → toast error, giữ sheet mở với data
+CTA "Tạo" enabled chỉ khi tất cả 4 rule pass.
 
-### UX/UI — Create Bill Sheet
+**Submit side effects:**
+- INSERT `bills` row
+- INSERT `bill_participants` rows cho mỗi người tham gia (có member_id)
+- INSERT `debts` rows: cho mỗi participant !== payer, amount = per-person
+- INSERT `chat_messages` row với `metadata.bill_id` + `metadata.category`
+- Trigger Telegram notify cho debtors (US-3.6 channel)
 
-Half-sheet từ dưới, rounded top 20px, shadow blur 20px, backdrop 40% đen
+**Logic edge cases:**
+- Người trả KHÔNG nằm trong "Chia cho" → hợp lệ, payer không có debt
+- Split customize qua US-3.2 rồi tổng !== amount → CTA disabled
+- Tap backdrop/✕ → discard data, không confirm dialog
+- Submit fail (network) → toast error, giữ sheet mở với data nguyên
 
-**Thành phần (top → bottom):**
-- Drag handle 36×4px
-- Header row: "Tạo bill" 15px bold center + ✕ close button (44×44 tap target)
-- **Bill type toggle** (2 pill tab): 
-  - "Chia tiền" (active #EEF2FF text #3A5CCC) | "Chuyển tiền" (inactive #F2F2F7 text #8E8E93)
-- Row "Số tiền" (right-aligned large input, 22px bold #3A5CCC, placeholder "0đ" gray)
-- Row "Mô tả" (right-aligned text input, 14px #1C1C1E, placeholder "VD: Ăn trưa team")
-- Row "Phân loại" (chip row horizontal, 6 categories, see US-3.9)
-- Row "Người trả" (avatar 22px + tên + chevron, tap mở picker)
-- Row "Chia cho" (avatars stack 22px + "N người · mỗi người Xđ" + chevron, tap mở US-3.4)
-- Divider 0.5px #E5E5EA
-- Optional row "📎 Thêm ảnh bill" (stub, gray disabled)
-- CTA "Tạo" full-width 48px — `bg-[#3A5CCC] text-white` khi enabled, `bg-[#C7C7CC]` khi disabled
+### UI/UX
+
+**Layout:** Half-sheet từ dưới, rounded top 20px, shadow blur 20px, backdrop 40% đen, max-height ~85vh.
+
+**Components (top → bottom):**
+- Drag handle 36×4px #D1D1D6
+- Header row: title "Tạo bill" 15px bold center + ✕ close button
+- Bill type toggle (2 pill): "Chia tiền" active `#EEF2FF/#3A5CCC` | "Chuyển tiền" inactive `#F2F2F7/#8E8E93`
+- Row "Số tiền" — right-aligned, 22px bold, `#3A5CCC` khi có số, placeholder "0đ" `#AEAEB2`
+- Row "Mô tả" — right-aligned, 13px `#1C1C1E`, placeholder "VD: Ăn trưa team" `#AEAEB2`
+- Row "Người trả" — avatar 22px + "{Tên} (bạn)" 14px `#1C1C1E` + chevron `›`
+- Row "Chia cho" — link "Chọn thành viên" 13px `#3A5CCC` gạch chân (no chevron). Khi đã chọn → "N người · Xđ/người" `#3A5CCC`
+- Spacer `fill_container` đẩy CTA xuống đáy
+- CTA "Tạo" full-width 48px — bg `#3A5CCC` text white khi enabled, bg `#C7C7CC` khi disabled
+
+**Input accessory bar** (iOS) — khi focus Số tiền / Mô tả:
+- Frame 402×40 pinned trên keyboard (y=650)
+- Bg `#F2F2F7`, border-top `#E5E5EA`
+- Input field trắng rounded 8px + caret `|`
+- Số tiền: text `#3A5CCC` 16px bold
+- Mô tả: text `#1C1C1E` 13px
+
+**State variations:** blank · focus Mô tả · focus Số tiền · all filled (confirm-ready). CTA pinned đáy ở mọi state.
 
 ### Tiêu chí
 - [ ] Nút ➕ trong chat input bar mở Create Bill Sheet blank
 - [ ] Toggle "Chia tiền" default, "Chuyển tiền" redirect US-3.6
-- [ ] Required: Số tiền, Mô tả, Người trả, Chia cho (default đủ sẵn ngoại trừ amount + description)
-- [ ] Điền đủ required → nút "Tạo" enabled
-- [ ] Người trả default = currentMember, tap picker để đổi
-- [ ] Chia cho default = tất cả members, chia đều. Tap mở US-3.4 để customize
+- [ ] Required: Số tiền, Mô tả, Người trả, Chia cho
+- [ ] Điền đủ required → nút "Tạo" đổi sang màu xanh enabled
+- [ ] Người trả default hiển thị "{Tên} (bạn)" cho currentMember
+- [ ] "Chia cho" là link "Chọn thành viên" xanh gạch chân → mở US-3.2 Split Sheet
+- [ ] Nút "Tạo" pinned ở đáy sheet, không nổi giữa màn
+- [ ] Focus input → hiện input accessory bar trên keyboard
 - [ ] Submit tạo bill + debts + chat_message + toast "Đã tạo bill"
 - [ ] Huỷ (backdrop/✕) đóng sheet không confirm dialog
 
 ---
 
-## US-3.2: Tạo nhanh bill qua chat (AI Quick Parse)
+## US-3.2: Chọn người chia (Member Picker + Split Sheet)
+
+### Logic
+
+**Mục đích:** chọn chính xác ai tham gia bill (members + khách + anonymous slots), sau đó chia tiền cho họ.
+
+**Entry:** US-3.1 tap link "Chọn thành viên".
+
+**Input từ parent:**
+- `knownCount: number | null` — số người AI parser đoán (US-3.3) hoặc null
+- `preselected` — selection lần trước (nếu re-open)
+- `groupMembers` — list member trong nhóm
+- `payerId` — current payer
+- `totalAmount` — tổng bill
+
+**Return cho parent:**
+- `selectedMemberIds: string[]`
+- `guests: { name: string; amount: number }[]`
+- `anonymousCount: number`
+- `customSplits: Record<key, amount>` — chỉ set khi `splitMode === "custom"`
+- `splitMode: "equal" | "custom"`
+
+**Công thức:**
+```
+peopleCount = selectedMemberIds.length + guests.length + anonymousCount
+perPerson (equal mode) = floor(totalAmount / peopleCount)
+remainder = totalAmount - perPerson * peopleCount  // distributed +1đ to first N
+```
+
+**Split modes (2):**
+- **Chia đều** (default): auto compute, không input
+- **Tuỳ chỉnh (VND):** input thủ công per row, tổng phải = totalAmount
+
+**Auto-switch rule:** Đang ở "Chia đều" + user sửa amount row bất kỳ → auto switch sang "Tuỳ chỉnh", giữ nguyên các giá trị, các row chưa sửa giữ baseline equal.
+
+**Số người chia (anonymous slots):**
+- Stepper N với default = `selectedMemberIds.length + guests.length`
+- Tăng N → tạo anonymous slots (count vào per-person, KHÔNG có identity, KHÔNG tạo debt)
+- Giảm N < (members + guests) → block, toast "Bỏ chọn người trước nếu muốn giảm"
+- Check thêm member/guest → N auto +1; uncheck → N auto −1 (min 1)
+
+**Khách (guest):**
+- Có name, KHÔNG có member_id
+- Count vào peopleCount, ảnh hưởng per-person
+- KHÔNG tạo debt row khi submit bill (untracked)
+- Max 10 guest/bill
+
+**Case matrix:**
+
+| # | Tình huống | knownCount | Default | Behaviour |
+|---|---|---|---|---|
+| A | Blank manual full nhóm | null | All checked | Confirm luôn ok |
+| B | Manual subset | null | All checked | User uncheck bớt |
+| C | AI match group size | `= N` | All checked | Hint "đúng cả nhóm" |
+| D | AI < group size | `< N` | Clear all | Banner "Hãy chọn ai tham gia" |
+| E | AI > group size | `> N` | All members | Banner "Thêm khách?" |
+| F | Không biết ai | — | — | Banner "Chuyển Bill mở (US-3.5)?" |
+| G | Có khách ngoài nhóm | — | — | Section "Khách" + input |
+| H | Payer không tham gia | — | — | Payer uncheck mình, không nhận chia |
+| I | 1 người duy nhất | — | — | OK, nhận toàn bộ |
+| J | 0 người | — | — | Disabled |
+
+**Validation:**
+
+| State | Điều kiện | Effect |
+|---|---|---|
+| Disabled | `peopleCount === 0` | CTA disabled |
+| Warning | `knownCount !== peopleCount` | Banner cam, vẫn confirm được |
+| Error | Custom: `total > amount` | CTA disabled, "Vượt {diff}đ" |
+| Error | Custom: `total < amount` | CTA disabled, "Còn {diff}đ" |
+| OK | Match | CTA enabled |
+
+**Logic edge cases:**
+- Custom mode, 1 row = 0đ → cho phép (0 debt row)
+- Payer uncheck mình → valid
+- Mở lại sheet → restore `preselected`
+- Group 1 member → default chọn user, gợi ý guest/anonymous
+- `totalAmount = 0` → cho chọn người, hiện "—đ/người"
+- "Tuỳ chỉnh" → tap "Chia đều" → confirm dialog "Reset về chia đều?"
+
+### UI/UX
+
+**Layout:** Full bottom sheet (~85% height), dim backdrop, handle trên đầu, padding `[6,0,34,0]`.
+
+**Header:**
+- Title "Chia tiền" 17px bold
+- Subtitle "Tổng {amount}đ" 13px `#8E8E93`
+- ✕ close top-right
+
+**Top tabs pill (2 mode):** "Chia đều" active `#EEF2FF/#3A5CCC` | "Tuỳ chỉnh" inactive `#F2F2F7/#8E8E93`
+
+**Số người chia row** (đầu sheet, trên list member):
+- Label "Số người chia" 13px `#8E8E93`
+- Stepper bên phải: nút `−` 28×28 `#F2F2F7` + value 17px bold + nút `+` 28×28 `#3A5CCC`
+
+**Banner (conditional, dưới tabs):**
+| Case | Bg | Text color | Nội dung |
+|---|---|---|---|
+| C | `#EEF2FF` | `#3A5CCC` | "AI đoán {N} người, đúng cả nhóm ✓" |
+| D | `#EEF2FF` | `#3A5CCC` | "AI đoán {K} người. Hãy chọn ai tham gia." |
+| E | `#FFF8EC` | `#FF9500` | "AI đoán {K} người nhưng nhóm có {N}. Thêm khách?" |
+| F | `#FFF3F0` | `#FF3B30` | "Chưa biết ai tham gia? → Chuyển Bill mở" |
+
+**Section "THÀNH VIÊN NHÓM":**
+- Label uppercase 10px `#8E8E93`
+- Member row 56px: avatar 36px màu hash + tên 14px semibold ("Hai Do (bạn)" cho self) + amount pill + checkbox 22px
+- Amount pill: bg `#F2F2F7`, text 13px bold; mode đều = display, mode custom = input field
+- Checkbox checked: bg `#3A5CCC` + ✓ trắng; unchecked: bg trắng + border 1.5px `#D1D1D6`
+
+**Section "KHÁCH KHÔNG TRONG NHÓM":**
+- Label uppercase 10px `#8E8E93`
+- Guest rows (avatar initial + tên + amount + ✕ xoá)
+- Input row: text input "Tên khách" + nút `+ Thêm` `#EEF2FF/#3A5CCC` (disabled khi input rỗng / ≥10)
+
+**Anonymous slot row** (khi `anonymousCount > 0`):
+- Single row mờ (opacity 0.7): avatar xám "?" + "Người ẩn danh × {N}" + per-person amount
+- Không checkbox
+
+**Footer sticky:**
+- Trái vertical: label "Còn lại chưa chia" 12px `#8E8E93` + value 17px bold (xanh `#34C759` = 0, cam `#FF9500` thiếu, đỏ `#FF3B30` vượt)
+- Phải: nút "Xác nhận" 52px width 160 — `#3A5CCC` enabled, `#C7C7CC` disabled
+
+**Frames trong Pencil:** Case A (default), Case D (AI ít), Case E (AI nhiều), Case F (gợi ý Bill mở).
+
+### Tiêu chí
+- [ ] Mở từ link "Chọn thành viên" trong Create Bill Sheet
+- [ ] Case A (blank full group): all checked default, confirm luôn được
+- [ ] Case C (AI match): hint "đúng cả nhóm" hiện
+- [ ] Case D (AI ít hơn): clear preselection, banner yêu cầu chọn
+- [ ] Case E (AI nhiều hơn): banner gợi ý thêm khách
+- [ ] Case F (bill mở): banner gợi ý chuyển US-3.5
+- [ ] Case G (khách): thêm/xoá khách, count vào per-person, không tạo debt
+- [ ] Case H (payer uncheck): hợp lệ, payer không nợ
+- [ ] Toggle 2 modes: Chia đều / Tuỳ chỉnh
+- [ ] Auto-switch về Tuỳ chỉnh khi user sửa amount của row bất kỳ
+- [ ] Tuỳ chỉnh: validate tổng = total
+- [ ] Số người chia stepper: tăng tạo anonymous slots, giảm bị block khi < members+guests
+- [ ] Anonymous slots count vào per-person, không tạo debt
+- [ ] 0 người chọn → disabled, hint "Chọn ít nhất 1 người"
+- [ ] Max 10 khách/bill
+- [ ] Quay về Create Bill Sheet, row "Chia cho" hiện "{N} người · {per}đ/người"
+
+---
+
+## US-3.3: Tạo nhanh bill qua chat (AI Quick Parse)
 
 ### Function
 Entry point: Chat input bar trong group detail. User gõ tin nhắn tự nhiên.
@@ -130,10 +290,10 @@ Flow:
 
 ---
 
-## US-3.3: Bill Details & Actions (hiển thị trong Group Detail)
+## US-3.4: Bill Details & Actions (hiển thị trong Group Detail)
 
 ### Function
-Sau khi tạo bill (qua US-3.1 hoặc US-3.2), bill xuất hiện dưới dạng **bill card** trong chat feed của Group Detail. User có thể:
+Sau khi tạo bill (qua US-3.1 hoặc US-3.3), bill xuất hiện dưới dạng **bill card** trong chat feed của Group Detail. User có thể:
 - **Xem** thông tin cơ bản của bill trên card inline
 - **Tap vào card** → mở **Bill Details Sheet** xem full info
 - **Menu ⋯** (owner only) → "Sửa bill" (US-3.8) hoặc "Xoá bill" (US-3.7)
@@ -205,44 +365,6 @@ Half-sheet, rounded top 20px, same style as US-3.1 Create Bill Sheet nhưng **re
 
 ---
 
-## US-3.4: Split Sheet (chia phức tạp)
-
-### Function
-Opened từ **Create Bill Sheet (US-3.1)** khi user tap row "Chia cho" để customize cách chia.
-
-- **Chia đều:** tổng / số người chọn, dư +1 cho N đầu
-- **Chia %:** mỗi người nhập %, tổng = 100%
-- **Tuỳ chỉnh:** nhập thủ công từng số tiền, tổng = tổng bill
-- Validate: không cho xác nhận nếu tổng không khớp
-
-### Edge cases
-- Bỏ chọn tất cả → nút xác nhận disabled
-- Chia đều 1 người → 1 người nhận toàn bộ
-- Tuỳ chỉnh nhập 0 cho 1 người → cho phép (người đó không nợ)
-- Tổng tuỳ chỉnh > tổng bill → hiện error đỏ "Vượt quá Xđ"
-- Tổng % < 100 → nút disabled, hiện "Còn Y%"
-
-### UX/UI
-Full bottom sheet, dim overlay backdrop
-
-**Top tabs pill**: "Chia đều" (active #EEF2FF #3A5CCC) | "Chia %" | "Tuỳ chỉnh" (inactive #F2F2F7)
-
-**Member row** (60px): avatar 36px + tên 14px bold + amount pill #F2F2F7 + checkbox 22px bên phải
-
-**Footer sticky:**
-- Trái: "Còn lại chưa chia" | "0đ" (xanh #34C759 khi khớp, cam #FF9500 khi lệch)
-- Phải: nút "Xác nhận" #3A5CCC 52px
-
-### Tiêu chí
-- [ ] Toggle 3 modes thay đổi UI
-- [ ] Chia đều: auto-calculate, hiện per-person amount
-- [ ] Chia %: input % cho từng người, tổng phải = 100
-- [ ] Tuỳ chỉnh: input VND cho từng người, tổng phải = tổng bill
-- [ ] "Còn lại" = 0 khi chia hết → xác nhận enabled
-- [ ] Trả về `customSplits: Record<memberId, amount>` cho parent sheet
-
----
-
 ## US-3.5: Bill mở (Open Bill)
 
 ### Function
@@ -250,7 +372,7 @@ Flow đặc biệt cho trường hợp chưa biết ai tham gia lúc tạo (VD: 
 
 Entry points:
 - US-3.1 Manual: bật toggle "Bill mở" trong Create Bill Sheet
-- US-3.2 AI Quick: chọn option "Bill mở" trong AI Follow-up Card
+- US-3.3 AI Quick: chọn option "Bill mở" trong AI Follow-up Card
 
 1. Tạo: bill_type = "open", status = "active", KHÔNG tạo debts ngay
 2. Check-in: thành viên tap "Tôi có ăn" → tạo bill_checkins row
@@ -391,13 +513,13 @@ Flow:
 3. Mở **Create Bill Sheet (US-3.1)** ở `mode="edit"`:
    - Title đổi thành "Sửa bill"
    - CTA đổi thành "Lưu thay đổi"
-   - Prefill: description, amount, category từ bill hiện tại
+   - Prefill: description, amount từ bill hiện tại
    - ẨN "Loại bill" toggle (không cho đổi Chia tiền ↔ Chuyển tiền)
    - ẨN row "Chia cho" và "Người trả" (không cho edit để tránh corrupt audit trail)
 4. User edit → tap "Lưu thay đổi"
 5. UPDATE:
    - `bills.title`, `bills.total_amount`, `bills.updated_at` (trigger)
-   - `chat_messages.metadata.category` (nếu đổi category)
+   - `chat_messages.metadata.category` (nếu đổi category do re-infer từ description mới)
    - Recompute per-person cho pending debts: `newPer = floor(newTotal / numDebtors)`, remainder +1 VND cho N đầu
    - UPDATE `debts.amount` + `debts.remaining` cho debts status=pending (KHÔNG touch confirmed/partial)
 6. Toast "Đã cập nhật bill"
@@ -435,7 +557,7 @@ Y hệt **US-3.1 Create Bill Sheet** với `mode="edit"`:
 ## US-3.9: Phân loại chi tiêu (Expense Categories)
 
 ### Function
-Mỗi bill có 1 category giúp phân loại chi tiêu (enable analytics sau này).
+Mỗi bill có 1 category giúp phân loại chi tiêu (enable analytics sau này). Category **không hiển thị picker trong Create Bill Sheet** (US-3.1) để giảm thao tác — chỉ auto-infer từ description.
 
 **6 categories cố định** (v1, chưa cho custom):
 | ID | Emoji | Label | Keywords |
@@ -455,34 +577,27 @@ Khi tạo bill:
 - `inferCategory(description)` scan keywords của mỗi category, trả về ID đầu tiên match
 - No match → `khac`
 
-User có thể override trong Create Bill Sheet (US-3.1) trước khi submit.
+Category được re-infer mỗi lần description thay đổi (tạo mới hoặc US-3.8 sửa bill).
 
 ### Flow
-1. User gõ "200k pho bo" → AI parser parse → inferCategory → "an_uong"
-2. Bill Confirm Sheet hiện với category 🍽️ Ăn uống được select sẵn
-3. User tap category khác nếu muốn override
-4. Submit → category lưu vào metadata
+1. User gõ "200k pho bo" → AI parser (US-3.3) extract description → inferCategory → "an_uong"
+2. Submit bill → category "an_uong" lưu vào `chat_messages.metadata`
+3. Bill card trong feed hiện badge 🍽️ Ăn uống
 
 ### UX/UI
 
-**Category chip row** trong Create Bill Sheet (US-3.1):
-- Vị trí: giữa row "Mô tả" và row "Chia cho"
-- Horizontal row, 6 chip side-by-side
-- Selected chip: `bg-[#EEF2FF] text-[#3A5CCC]` border 1px #3A5CCC
-- Unselected: `bg-[#F2F2F7] text-[#8E8E93]` no border
-- Chip: emoji + label (optional label hide on mobile nếu quá hẹp)
-- Rounded full, padding 6×12px, text-xs
-
-**Category badge trên bill card** (trong chat feed):
+**Category badge trên bill card** (trong chat feed, US-3.4):
 - Chỉ hiện khi category !== "khac"
 - Vị trí: top-right của title row
 - Style: `bg-[#F2F2F7] text-[11px] px-2 py-0.5 rounded-full`
 - Content: emoji + label (e.g. "🍽️ Ăn uống")
 
+**KHÔNG có picker/chip row** trong Create Bill Sheet — user không chọn category thủ công để giảm thao tác.
+
 ### Tiêu chí
 - [ ] 6 categories fixed, không cho custom v1
-- [ ] AI parser auto-infer từ description
-- [ ] Bill Confirm Sheet có chip row cho user override
-- [ ] Bill card hiện chip khi category !== khac
+- [ ] Auto-infer từ description khi tạo/sửa bill
+- [ ] KHÔNG có chip picker trong Create Bill Sheet
+- [ ] Bill card hiện badge khi category !== khac
 - [ ] Metadata lưu đúng trong chat_messages
 - [ ] getCategoryById fallback khac khi ID không match
