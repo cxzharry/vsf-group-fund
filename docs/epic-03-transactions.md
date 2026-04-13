@@ -1,56 +1,82 @@
 # Epic 3: Giao Dịch (Transactions)
 
-Epic này có **2 flow tạo bill**, cả 2 đều dùng chung **Bill Confirm Sheet (half-sheet)**:
-- **Flow A — Tạo bill thủ công (manual)**: US-3.1. Mở sheet **trống trơn**, user điền từ đầu.
-- **Flow B — Tạo nhanh qua chat (AI quick)**: US-3.2. Gõ tin nhắn, AI parse, mở sheet **prefilled**.
+US-3.1 định nghĩa **Create Bill Sheet** — half-sheet với đủ field cần thiết để tạo bill. Sheet này dùng chung cho 2 flow:
+- **Flow A — Manual**: US-3.1. Mở sheet **trống trơn** qua nút ➕, user điền từ đầu.
+- **Flow B — AI Quick**: US-3.2. Gõ tin nhắn, AI parse, mở chính sheet của US-3.1 với data **prefilled**.
 
-Sự khác biệt duy nhất là entry point + trạng thái initial của sheet. Logic sheet, layout, validation đều giống nhau.
+US-3.3 là **Bill Details & Actions** — hiển thị bill trong Group Detail feed + tap vào để edit/xoá.
 
-Cả 2 flow đều có thể chuyển sang **Split Sheet (US-3.4)** khi cần chia phức tạp, và đều có thể tạo **Bill mở (US-3.5)** thay vì bill thường.
+Cả 2 flow tạo đều có thể chuyển sang **Split Sheet (US-3.4)** khi cần chia không đều, và đều có thể chọn **Bill mở (US-3.5)** thay vì bill thường.
 
 ---
 
-## US-3.1: Tạo bill thủ công (Manual)
+## US-3.1: Tạo bill thủ công (Create Bill Sheet)
 
 ### Function
-Entry point: Nút "+" trong chat input bar của group detail (44×44px, #3A5CCC, icon plus).
+Entry point: Nút ➕ trong chat input bar của group detail (44×44px, #3A5CCC, icon plus).
 
 Flow:
-1. Tap "+" → mở **Bill Confirm Sheet (US-3.3)** ở trạng thái **trống trơn** (blank state):
-   - Mô tả: "" (placeholder "VD: ăn trưa")
-   - Số tiền: 0 (placeholder "0đ")
-   - Phân loại: "khac" (📋 mặc định)
-   - Chia cho: tất cả members (default)
-   - Người trả: user hiện tại (default)
-   - Ảnh bill: none
-2. User điền các field trực tiếp trong sheet
-3. Tap "Tạo bill" → validate + tạo bill + debts + chat_message
-4. Toast "Đã tạo bill" → sheet đóng
+1. Tap ➕ → mở **Create Bill Sheet** (half-sheet) ở trạng thái blank
+2. User điền các field required
+3. Khi đủ required → nút "Tạo" enabled
+4. Tap "Tạo" → validate → tạo bill + bill_participants + debts + chat_message
+5. Toast "Đã tạo bill" → sheet đóng, feed scroll tới bill card mới
 
-### Điểm khác biệt với US-3.2 (AI Quick)
-- **Giống**: cùng dùng Bill Confirm Sheet (US-3.3), cùng layout, cùng validation, cùng logic submit
-- **Khác**:
-  - Entry: tap nút "+" (không qua AI parser)
-  - Initial state: blank (không có data prefilled)
-  - Không có bước AI Follow-up Card
+### Fields
+
+| Field | Required | Default | Ghi chú |
+|-------|----------|---------|---------|
+| **Loại bill** | Yes | Chia tiền | Toggle 2 option: "Chia tiền" \| "Chuyển tiền". Nếu chọn Chuyển tiền → sheet đóng, redirect qua **US-3.6 Chuyển tiền flow** (khác hoàn toàn). US-3.1 chỉ handle "Chia tiền". |
+| **Số tiền** | Yes | — | Number input, VND format. Placeholder "0đ". |
+| **Mô tả** | Yes | — | Text input. Placeholder "VD: Ăn trưa team". |
+| **Người trả tiền** | Yes | User hiện tại | Picker row: avatar + tên + chevron. Tap mở member picker. Default = người tạo bill (currentMember). |
+| **Chia cho & số tiền mỗi người** | Yes | Tất cả members, chia đều | Row hiện: avatars stack + "N người, mỗi người Xđ". Tap mở **US-3.4 Split Sheet** để customize. Default = chia đều tổng số tiền cho tất cả members trong group. |
+| Phân loại (Category) | No | Auto-infer từ description (📋 nếu không match) | Chip row 6 categories — xem US-3.9. |
+| Ảnh bill | No | — | Optional upload (US-3.x future). |
+
+### Validation & "Tạo" button state
+Nút "Tạo" **disabled** nếu thiếu bất kỳ required field:
+- `!amount || amount <= 0`
+- `!description.trim()`
+- `!payerId`
+- `splitRecipients.length === 0`
+
+**Enabled** khi TẤT CẢ required đã điền hợp lệ.
 
 ### Edge cases
-- Mô tả trống → nút "Tạo bill" disabled
-- Số tiền 0 hoặc trống → nút disabled
-- Chia cho 0 người → nút disabled
-- Tap backdrop → đóng sheet, data discard (không confirm dialog vì sheet nhẹ)
+- Chọn "Chuyển tiền" → sheet đóng ngay, navigate qua US-3.6 flow (không submit bill)
+- Người trả không nằm trong "Chia cho" → hợp lệ (payer không nợ chính mình)
+- Split customize qua US-3.4 rồi tổng không khớp amount → nút "Tạo" disabled cho đến khi sửa
+- Tap backdrop / ✕ → đóng sheet, data discard (không confirm dialog)
+- Sau submit fail (network error) → toast error, giữ sheet mở với data
 
-### UX/UI
-Y hệt như **US-3.3 Bill Confirm Sheet** — tham khảo section đó. Chỉ khác initial state là blank thay vì prefilled.
+### UX/UI — Create Bill Sheet
 
-Header title vẫn là "✦ Xác nhận bill" (KHÔNG đổi title theo flow — user experience nhất quán).
+Half-sheet từ dưới, rounded top 20px, shadow blur 20px, backdrop 40% đen
+
+**Thành phần (top → bottom):**
+- Drag handle 36×4px
+- Header row: "Tạo bill" 15px bold center + ✕ close button (44×44 tap target)
+- **Bill type toggle** (2 pill tab): 
+  - "Chia tiền" (active #EEF2FF text #3A5CCC) | "Chuyển tiền" (inactive #F2F2F7 text #8E8E93)
+- Row "Số tiền" (right-aligned large input, 22px bold #3A5CCC, placeholder "0đ" gray)
+- Row "Mô tả" (right-aligned text input, 14px #1C1C1E, placeholder "VD: Ăn trưa team")
+- Row "Phân loại" (chip row horizontal, 6 categories, see US-3.9)
+- Row "Người trả" (avatar 22px + tên + chevron, tap mở picker)
+- Row "Chia cho" (avatars stack 22px + "N người · mỗi người Xđ" + chevron, tap mở US-3.4)
+- Divider 0.5px #E5E5EA
+- Optional row "📎 Thêm ảnh bill" (stub, gray disabled)
+- CTA "Tạo" full-width 48px — `bg-[#3A5CCC] text-white` khi enabled, `bg-[#C7C7CC]` khi disabled
 
 ### Tiêu chí
-- [ ] Nút "+" trong chat input bar mở Confirm Sheet trống
-- [ ] Sheet layout y hệt flow AI (US-3.2 → US-3.3)
-- [ ] Điền đủ description + amount → nút "Tạo bill" enabled
-- [ ] Submit tạo bill + debts + chat_message + toast
-- [ ] Hủy (backdrop/✕) đóng sheet, không confirm dialog
+- [ ] Nút ➕ trong chat input bar mở Create Bill Sheet blank
+- [ ] Toggle "Chia tiền" default, "Chuyển tiền" redirect US-3.6
+- [ ] Required: Số tiền, Mô tả, Người trả, Chia cho (default đủ sẵn ngoại trừ amount + description)
+- [ ] Điền đủ required → nút "Tạo" enabled
+- [ ] Người trả default = currentMember, tap picker để đổi
+- [ ] Chia cho default = tất cả members, chia đều. Tap mở US-3.4 để customize
+- [ ] Submit tạo bill + debts + chat_message + toast "Đã tạo bill"
+- [ ] Huỷ (backdrop/✕) đóng sheet không confirm dialog
 
 ---
 
@@ -66,96 +92,123 @@ Flow:
    - **Mô tả**: "ăn trưa", "bún bò", "café"
    - **Số người**: "6 người", "cả team" (-1 = group size)
 3. Parse result xử lý:
-   - **Đủ info (có amount + description)** → mở thẳng **Bill Confirm Sheet (US-3.3)** với dữ liệu prefilled
-   - **Thiếu split type** → hiện **AI Follow-up Card** inline trước chat input
+   - **Đủ info (có amount + description)** → mở thẳng **Create Bill Sheet (US-3.1)** với dữ liệu prefilled từ parser
+   - **Thiếu split type / description** → hiện **AI Follow-up Card** inline trước chat input
    - **Không có số tiền** → gửi như tin nhắn text thường, không trigger parser
-4. User xác nhận ở Confirm Sheet → tạo bill
+4. User xác nhận ở Create Bill Sheet → tạo bill (cùng submit logic với US-3.1)
 
 ### Điểm khác biệt với US-3.1
-- **Nhanh hơn**: 1 dòng text → sheet đã prefill, chỉ cần confirm
-- **Ít field hơn**: không chọn category thủ công (infer từ description), không pick payer (mặc định user hiện tại), không pick split type (mặc định chia đều, mở Split Sheet nếu cần)
-- **Không có form đầy đủ**: chỉ có Confirm Sheet (half-sheet, US-3.3)
-- **Không upload ảnh được** ở bước này (phải dùng flow manual nếu muốn gắn ảnh)
+- **Giống**: dùng chung **Create Bill Sheet (US-3.1)**, cùng field, cùng validation, cùng submit logic
+- **Khác**:
+  - Entry: gõ tin nhắn trong chat input (không tap ➕)
+  - Initial data: prefilled từ AI parser (description, amount, peopleCount, category inferred)
+  - Có thêm bước **AI Follow-up Card** nếu parser thiếu info
+  - Nhanh hơn vì đã có sẵn data
 
 ### Edge cases
 - Tin nhắn không có số tiền → gửi như chat bình thường, không parse
-- Chỉ có số tiền, không có mô tả → vẫn trigger, description = null, Confirm Sheet mở cho user điền
+- Chỉ có số tiền, không có mô tả → trigger Follow-up Card hỏi "Chi tiêu cho gì?"
 - Số tiền < 1.000đ hoặc > 1 tỷ → bỏ qua, coi như text thường
 - "cả team" → peopleCount = số members hiện tại trong group
-- Parse nhầm (VD "500k tiền nhà" — số 500 là nhà không phải tiền) → user có thể edit Mô tả trong Confirm Sheet
+- Parse nhầm (VD "500k tiền nhà" — số 500 là nhà không phải tiền) → user có thể edit Mô tả trong Create Bill Sheet (US-3.1)
 
 ### UX/UI
-**AI Follow-up Card** — inline card hiện trên chat input bar khi parse thiếu split type:
+**AI Follow-up Card** — inline card hiện trên chat input bar khi parse thiếu info:
 - Nền trắng, rounded 14px, border-top #E5E5EA
 - Text: "Chia 500k cho ăn trưa. Bạn muốn chia như nào?" (14px #1C1C1E)
+- Nếu thiếu description: "Chia 500k. Chi tiêu cho gì? Bạn có thể chọn cách chia bên dưới hoặc gõ lại chi tiết hơn."
 - 3 pill buttons: "Bill mở" | "Chia đều" | "Tuỳ chỉnh" (nền #F2F2F7, 13px, rounded full, padding 8×14px)
-- Chọn 1 option → mở Confirm Sheet tương ứng
+- Chọn 1 option → mở **Create Bill Sheet (US-3.1)** với data từ parser + option đã chọn
 
 ### Tiêu chí
 - [ ] "500k bún bò 6 người" → parse đúng amount=500000, description="bún bò", people=6
 - [ ] "1tr2 ăn trưa" → amount=1200000
 - [ ] "Chào mọi người" (tin nhắn thường) → KHÔNG trigger parser, gửi như chat
-- [ ] Thiếu split type → AI Follow-up Card hiện
-- [ ] Chọn option ở card → mở Confirm Sheet
-- [ ] Confirm Sheet mở với prefilled data từ parser
-- [ ] User có thể edit description + amount trong Confirm Sheet
+- [ ] Thiếu split type → AI Follow-up Card hiện với 3 options
+- [ ] Chọn option → mở Create Bill Sheet (US-3.1) với prefilled data
+- [ ] User có thể edit description + amount trong sheet trước khi submit
 
 ---
 
-## US-3.3: Bill Confirm Sheet (shared half-sheet)
+## US-3.3: Bill Details & Actions (hiển thị trong Group Detail)
 
 ### Function
-Half-sheet **dùng chung** cho cả 2 flow:
-- **Flow manual (US-3.1)**: mở với state blank, user điền từ đầu
-- **Flow AI (US-3.2)**: mở với data prefilled từ parser, user review + điều chỉnh
+Sau khi tạo bill (qua US-3.1 hoặc US-3.2), bill xuất hiện dưới dạng **bill card** trong chat feed của Group Detail. User có thể:
+- **Xem** thông tin cơ bản của bill trên card inline
+- **Tap vào card** → mở **Bill Details Sheet** xem full info
+- **Menu ⋯** (owner only) → "Sửa bill" (US-3.8) hoặc "Xoá bill" (US-3.7)
 
-1. Hiện sau khi user tap "+" (manual) HOẶC sau AI parse đủ info HOẶC chọn follow-up option
-2. Data source khác nhau nhưng sheet layout/validation/submit logic giống hệt:
-   - Mô tả (inline input)
-   - Số tiền (inline input)
-   - Chia cho (mặc định tất cả members, tap avatars 22px để mở Split Sheet)
-   - Người trả (mặc định user hiện tại, có thể đổi)
-3. Xác nhận → tạo bill + bill_participants + debts
-4. Chèn chat_message type "bill_card"
-5. Thông báo participants qua Telegram
-6. Số tiền mỗi người = floor(tổng / số người), dư +1 VND cho N người đầu
+### Bill Card (inline trong chat feed)
+
+Mỗi bill hiện như 1 message card bên trong chat:
+- **Header row**: emoji category (nếu !== khac) + tên bill (15px bold #1C1C1E) + menu ⋯ (owner only, top-right)
+- **Amount**: tổng tiền (17px bold #3A5CCC)
+- **Metadata row** (13px #8E8E93): "Người trả: {payer}" · "{n} người" · "mỗi người Xđ"
+- **Timestamp + badge row** (11px #8E8E93): thời gian tương đối · "Đã sửa" (nếu updated)
+- **Status indicator** (phía dưới): 
+  - "Bạn nợ {payer} Xđ" (red) nếu current user là debtor
+  - "{payer} nợ bạn Xđ" (green) nếu current user là creditor của line này
+  - "Đã thanh toán" (gray) nếu tất cả debts của bill đã confirmed
+
+Card style: `bg-white rounded-[14px] p-4 shadow-sm`
+
+### Bill Details Sheet (tap vào card)
+
+Half-sheet full-info:
+- Header: tên bill + ✕ close
+- Section "Thông tin":
+  - Số tiền tổng (large)
+  - Người trả (avatar + tên)
+  - Loại chia (chia đều / tuỳ chỉnh / bill mở)
+  - Phân loại (emoji + label)
+  - Thời gian tạo
+  - Thời gian sửa cuối (nếu có)
+- Section "Chi tiết chia tiền":
+  - Mỗi participant row: avatar + tên + số tiền nợ + status badge (pending/confirmed)
+- Section "Ảnh bill" (nếu có)
+- Footer actions (owner only):
+  - "Sửa bill" (outline button) → US-3.8
+  - "Xoá bill" (outline đỏ) → US-3.7
+
+### Menu ⋯ (chỉ hiện khi owner)
+Trên bill card top-right, tap → popover menu:
+- "Sửa bill" → mở Create Bill Sheet với `mode="edit"` (US-3.8)
+- "Xoá bill" (đỏ) → confirm dialog → cascade delete (US-3.7)
 
 ### Edge cases
-- Tổng không chia hết → dư phân bổ +1 cho N người đầu
-- Amount = 0 hoặc trống → nút disabled
-- Description trống → nút disabled
-- Đóng sheet bằng tap backdrop hoặc nút X → dữ liệu mất, không confirm
+- Non-owner → menu ⋯ KHÔNG hiện, không có action buttons trong details sheet
+- Bill có payment_confirmation → Sửa bị block với toast (US-3.8 guard)
+- Bill deleted trong lúc đang xem details → sheet đóng + toast "Bill đã bị xoá"
+- Bill status "closed" (bill mở đã đóng) → hiện full participant list với amounts
 
-### UX/UI
-Half-sheet từ dưới, rounded top 20px, shadow blur 20px, backdrop 40% đen
+### UX/UI — Bill Card
+Card trong chat feed:
+- Background: white
+- Rounded: 14px
+- Padding: 16px
+- Shadow: `shadow-sm`
+- Avatar sender (left-side 32px)
+- Content bên phải: header + amount + metadata + status
 
-**Thành phần (top→bottom):**
-- Drag handle 36×4px
-- Header: "✦ Xác nhận bill" bold + nút ✕
-- Row "Mô tả" → input value (editable)
-- Row "Số tiền" → input value (editable)
-- Row "Phân loại" → category chip (tap để đổi)
-- Row "Chia cho" → avatars 22px stack (tap mở Split Sheet)
-- Row "Mỗi người" → amount #3A5CCC
-- Row "Người trả" → avatar + tên
-- Divider
-- Row "📎 Thêm ảnh bill" (optional, stub hiện tại)
-- CTA "Tạo bill" #3A5CCC 48px full-width
+### UX/UI — Bill Details Sheet
+Half-sheet, rounded top 20px, same style as US-3.1 Create Bill Sheet nhưng **read-only** mode.
 
 ### Tiêu chí
-- [ ] Sheet hiện đúng avatars, amount, payer
-- [ ] User có thể edit description + amount
-- [ ] Tap "Chia cho" mở Split Sheet
-- [ ] Confirm tạo bill + debts + chat_message
-- [ ] Sheet đóng sau confirm
-- [ ] Toast "Đã tạo bill!"
+- [ ] Bill card hiện trong chat feed với full info cơ bản
+- [ ] Category emoji + label hiện đúng (US-3.9)
+- [ ] "Đã sửa" badge hiện khi updated_at > created_at + 60s (US-3.8)
+- [ ] Tap card → mở Bill Details Sheet
+- [ ] Owner thấy menu ⋯ + action buttons, non-owner không
+- [ ] Status indicator chính xác (bạn nợ / họ nợ / đã xong)
+- [ ] Menu "Sửa" → mở US-3.8 edit flow
+- [ ] Menu "Xoá" → mở US-3.7 confirm dialog
 
 ---
 
 ## US-3.4: Split Sheet (chia phức tạp)
 
 ### Function
-Opened từ Bill Confirm Sheet (US-3.3) HOẶC Create Bill Sheet (US-3.1) khi user muốn chia không đều.
+Opened từ **Create Bill Sheet (US-3.1)** khi user tap row "Chia cho" để customize cách chia.
 
 - **Chia đều:** tổng / số người chọn, dư +1 cho N đầu
 - **Chia %:** mỗi người nhập %, tổng = 100%
@@ -335,11 +388,12 @@ Chủ bill có thể sửa mô tả + số tiền + category. KHÔNG cho sửa s
 Flow:
 1. Menu ⋯ → tap "Sửa bill"
 2. **Guard**: query `payment_confirmations` cho debts của bill. Nếu có row → toast error "Không thể sửa — bill có xác nhận thanh toán" và abort
-3. Mở **Bill Confirm Sheet (US-3.3)** ở `mode="edit"`:
+3. Mở **Create Bill Sheet (US-3.1)** ở `mode="edit"`:
    - Title đổi thành "Sửa bill"
    - CTA đổi thành "Lưu thay đổi"
    - Prefill: description, amount, category từ bill hiện tại
-   - ẨN row "Chia cho" và "Người trả" (không cho edit)
+   - ẨN "Loại bill" toggle (không cho đổi Chia tiền ↔ Chuyển tiền)
+   - ẨN row "Chia cho" và "Người trả" (không cho edit để tránh corrupt audit trail)
 4. User edit → tap "Lưu thay đổi"
 5. UPDATE:
    - `bills.title`, `bills.total_amount`, `bills.updated_at` (trigger)
@@ -360,9 +414,10 @@ Style: inline text, `text-[11px] text-[#8E8E93]`, không pill/bg/icon (quiet met
 - Không phải owner → menu ⋯ không hiện
 
 ### UX/UI
-Y hệt **US-3.3 Bill Confirm Sheet** với `mode="edit"`:
-- Header title: "Sửa bill" (thay vì "✦ Xác nhận bill")
-- CTA button: "Lưu thay đổi" (thay vì "Tạo bill")
+Y hệt **US-3.1 Create Bill Sheet** với `mode="edit"`:
+- Header title: "Sửa bill" (thay vì "Tạo bill")
+- CTA button: "Lưu thay đổi" (thay vì "Tạo")
+- Ẩn bill type toggle (locked Chia tiền)
 - Ẩn row "Chia cho" (read-only)
 - Ẩn row "Người trả" (read-only)
 - Prefill từ bill hiện tại
@@ -400,7 +455,7 @@ Khi tạo bill:
 - `inferCategory(description)` scan keywords của mỗi category, trả về ID đầu tiên match
 - No match → `khac`
 
-User có thể override trong Bill Confirm Sheet (US-3.3) trước khi submit.
+User có thể override trong Create Bill Sheet (US-3.1) trước khi submit.
 
 ### Flow
 1. User gõ "200k pho bo" → AI parser parse → inferCategory → "an_uong"
@@ -410,7 +465,7 @@ User có thể override trong Bill Confirm Sheet (US-3.3) trước khi submit.
 
 ### UX/UI
 
-**Category chip row** trong Bill Confirm Sheet (US-3.3):
+**Category chip row** trong Create Bill Sheet (US-3.1):
 - Vị trí: giữa row "Mô tả" và row "Chia cho"
 - Horizontal row, 6 chip side-by-side
 - Selected chip: `bg-[#EEF2FF] text-[#3A5CCC]` border 1px #3A5CCC
