@@ -136,7 +136,7 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={loading || !email.trim()}
-              className="w-full rounded-xl py-3.5 text-[15px] font-semibold text-white transition-opacity disabled:opacity-50"
+              className="flex h-[54px] w-full items-center justify-center rounded-[14px] text-[15px] font-semibold text-white transition-opacity disabled:opacity-50"
               style={{ backgroundColor: "#3A5CCC" }}
             >
               {loading ? "Đang gửi..." : "Gửi mã OTP"}
@@ -149,7 +149,7 @@ export default function LoginPage() {
             <button
               type="button"
               onClick={() => { setMode("password"); setError(""); }}
-              className="w-full rounded-xl border border-[#E5E5EA] py-3.5 text-[15px] font-semibold text-[#1C1C1E] transition-colors hover:bg-[#F2F2F7]"
+              className="flex h-[54px] w-full items-center justify-center rounded-[14px] border border-[#E5E5EA] text-[15px] font-semibold text-[#1C1C1E] transition-colors hover:bg-[#F2F2F7]"
             >
               Nhập mật khẩu
             </button>
@@ -181,7 +181,7 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={loading || otp.length < 6}
-              className="w-full rounded-xl py-3.5 text-[15px] font-semibold text-white transition-opacity disabled:opacity-50"
+              className="flex h-[54px] w-full items-center justify-center rounded-[14px] text-[15px] font-semibold text-white transition-opacity disabled:opacity-50"
               style={{ backgroundColor: "#3A5CCC" }}
             >
               {loading ? "Đang xác nhận..." : "Xác nhận"}
@@ -227,7 +227,7 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={loading || !email.trim() || !password}
-              className="w-full rounded-xl py-3.5 text-[15px] font-semibold text-white transition-opacity disabled:opacity-50"
+              className="flex h-[54px] w-full items-center justify-center rounded-[14px] text-[15px] font-semibold text-white transition-opacity disabled:opacity-50"
               style={{ backgroundColor: "#3A5CCC" }}
             >
               {loading ? "Đang đăng nhập..." : "Đăng nhập"}
