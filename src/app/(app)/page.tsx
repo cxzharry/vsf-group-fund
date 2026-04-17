@@ -263,45 +263,51 @@ export default function HomePage() {
               const initials = g.name.split(" ").map(w => w[0]).join("").slice(0, 2).toUpperCase();
               const subtitle = buildDebtSubtitle(g.debt, g.member_count);
               return (
-                <Link
+                <div
                   key={g.id}
-                  href={`/groups/${g.id}`}
-                  className="flex h-[88px] w-full items-center gap-3 rounded-[14px] bg-white px-4 text-left shadow-[0_1px_3px_rgba(0,0,0,0.08)] transition-all active:scale-[0.98]"
+                  className="flex h-[88px] w-full items-center gap-3 rounded-[14px] bg-white px-4 shadow-[0_1px_3px_rgba(0,0,0,0.08)] transition-all"
                 >
-                  {/* Avatar 44px */}
-                  <div
-                    className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-sm font-bold text-white"
-                    style={{ backgroundColor: color }}
+                  {/* Avatar + name area navigates to group detail */}
+                  <Link
+                    href={`/groups/${g.id}`}
+                    className="flex flex-1 items-center gap-3 min-w-0 active:opacity-70"
                   >
-                    {initials}
-                  </div>
+                    <div
+                      className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-sm font-bold text-white"
+                      style={{ backgroundColor: color }}
+                    >
+                      {initials}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[15px] font-semibold text-[#1C1C1E] truncate">{g.name}</p>
+                      <p className={`mt-1 text-[13px] truncate ${subtitle.color}`}>
+                        {subtitle.text}
+                      </p>
+                    </div>
+                  </Link>
 
-                  {/* Name + debt subtitle */}
-                  <div className="flex-1 min-w-0">
-                    <p className="text-[15px] font-semibold text-[#1C1C1E] truncate">{g.name}</p>
-                    <p className={`mt-1 text-[13px] truncate ${subtitle.color}`}>
-                      {subtitle.text}
-                    </p>
-                  </div>
-
-                  {/* Right — debt amount + action button */}
+                  {/* Right — debt amount + action button (standalone, not inside Link) */}
                   {g.debt.netDebt !== 0 ? (
                     <div className="flex shrink-0 flex-col items-end gap-1.5">
                       <span className={`text-[15px] font-semibold ${g.debt.netDebt < 0 ? "text-[#FF3B30]" : "text-[#34C759]"}`}>
                         {g.debt.netDebt < 0 ? "-" : "+"}{Math.abs(g.debt.netDebt).toLocaleString("vi-VN")}đ
                       </span>
-                      <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${
-                        g.debt.netDebt < 0
-                          ? "bg-[#EEF2FF] text-[#3A5CCC]"
-                          : "bg-[#F0FFF4] text-[#34C759]"
-                      }`}>
+                      <button
+                        type="button"
+                        onClick={() => router.push("/debts")}
+                        className={`rounded-full px-2.5 py-1 text-xs font-semibold transition-opacity active:opacity-70 ${
+                          g.debt.netDebt < 0
+                            ? "bg-[#EEF2FF] text-[#3A5CCC]"
+                            : "bg-[#F0FFF4] text-[#34C759]"
+                        }`}
+                      >
                         {g.debt.netDebt < 0 ? "Trả nợ" : "Nhắc nợ"}
-                      </span>
+                      </button>
                     </div>
                   ) : (
                     <span className="shrink-0 text-xs text-[#AEAEB2]">Không có nợ</span>
                   )}
-                </Link>
+                </div>
               );
             })}
           </div>
