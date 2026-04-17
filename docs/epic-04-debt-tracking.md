@@ -23,19 +23,11 @@
 - Nợ ròng = 0 (2 chiều triệt tiêu) → banner ẩn
 - Debt vừa confirmed → banner cập nhật real-time
 
-### UX/UI
-- Vị trí: ngay dưới nav bar, trên chat feed
-- Đỏ #FFF3F0 nếu nợ: "Bạn nợ [Tên] [Số tiền]" + nút "Trả nợ" #FF3B30
-- Xanh #F0FFF4 nếu được nợ: "[Tên] nợ bạn [Số tiền]" + nút "Nhắc nợ" #34C759
-- Cao 56px, padding ngang 16px
-- Ẩn không chiếm space
-
 ### Acceptance Criteria
 - [ ] AC-E4-1.1: Nợ ròng tính đúng
 - [ ] AC-E4-1.2: Chỉ đếm pending
-- [ ] AC-E4-1.3: Đỏ khi nợ, xanh khi được nợ
+- [ ] AC-E4-1.3: Banner hiện trạng thái nợ (người nợ vs người cho vay)
 - [ ] AC-E4-1.4: Ẩn khi không có nợ
-- [ ] AC-E4-1.5: Số tiền format "1.200.000đ"
 
 ---
 
@@ -118,28 +110,6 @@ Hai thuật toán (cả 2 đều đã implement):
 - Multi-hop: A→B 100, B→C 100 → [A→C 100] (1 payment thay 2)
 - Mất traceability per pair
 
-### UX/UI
-
-**Segmented toggle** ở header:
-- `[Chi tiết] [Nợ ròng]` — pill tabs
-- Active: bg #3A5CCC text white
-- Inactive: bg #F2F2F7 text #8E8E93
-- Default: "Chi tiết"
-
-**Khi mode = "Nợ ròng"**:
-- Call `simplifyDebts(allDebts)` (v1) hoặc `simplifyDebtsGraph()` (v2)
-- Render simplified list thay vì debts gốc
-- Mỗi row thêm chip "Nợ ròng · gộp {n}" (n = underlying_ids.length)
-- Chip style: `bg-[#F2F2F7] text-[#8E8E93] rounded-full px-2 py-0.5 text-[11px]`
-
-**Empty state khi nợ ròng rỗng**:
-- "🎉 Tất cả đã cân bằng!" (center, 17px bold)
-- Subtitle "Không còn khoản nợ nào cần thanh toán"
-
-**Batch settle**:
-- Khi user tap "Đã chuyển tiền" ở simplified row → atomic update qua `.in('id', [underlying_ids])`
-- Tạo multiple payment_confirmations (1 per underlying debt) với cùng amount split
-
 ### Edge cases
 - Không có debt → hiện empty state
 - Tất cả đã confirmed → không hiện ở simplified view
@@ -162,16 +132,15 @@ Key test cases:
 - A→B 100, B→C 100 → [A→C 100] (graph, multi-hop)
 
 ### Acceptance Criteria
-- [ ] AC-E4-4.1: Segmented toggle "Chi tiết" / "Nợ ròng" hoạt động
-- [ ] AC-E4-4.2: Mode "Nợ ròng" gộp debts bằng `simplifyDebts()`
-- [ ] AC-E4-4.3: Row chip "Nợ ròng · gộp N" hiện đúng count
-- [ ] AC-E4-4.4: Empty state "🎉 Tất cả đã cân bằng!" khi list rỗng
+- [ ] AC-E4-4.1: Toggle "Chi tiết" / "Nợ ròng" hoạt động
+- [ ] AC-E4-4.2: Mode "Nợ ròng" gộp debts bằng `simplifyDebts()` hoặc `simplifyDebtsGraph()`
+- [ ] AC-E4-4.3: Simplified debt row hiện số lượng debts được gộp
+- [ ] AC-E4-4.4: Empty state hiện khi danh sách nợ ròng rỗng
 - [ ] AC-E4-4.5: Batch settle tạo payment_confirmations cho tất cả underlying debts
 - [ ] AC-E4-4.6: Unit tests 12/12 PASS
-- [ ] AC-E4-4.7: Switch mode không gây flash / lag
 
 ---
 
 ## AC Coverage Summary
-- **Total ACs:** 18
-- **Legacy mapping:** US-4.1 → US-E4-1 (5 ACs), US-4.2 → US-E4-2 (3 ACs), US-4.3 → US-E4-3 (4 ACs), US-4.4 → US-E4-4 (7 ACs)
+- **Total ACs:** 13 (functional only, design specs removed)
+- **Breakdown:** US-E4-1 (4 ACs), US-E4-2 (3 ACs), US-E4-3 (4 ACs), US-E4-4 (6 ACs)

@@ -131,10 +131,10 @@ Các user stories chưa ship hoặc defer sau MVP:
 
 ### AC Coverage Summary
 
-> Derived từ epic files. Dùng cho `/team-uat` verify Playwright spec count.
+> Derived từ epic files. ACs là **functional only** (behavior, state, data) — visual/layout specs thuộc `design-system/`.
 
-- **Total ACs:** 151
-- **Per epic:** E1=20, E2=28, E3=70, E4=18, E5=15
+- **Total functional ACs:** 109
+- **Per epic:** E1=19, E2=18, E3=48, E4=13, E5=11
 - **Total stories:** 28 (E1=5, E2=5, E3=9, E4=4, E5=5)
 
 ---
@@ -246,27 +246,14 @@ Các user stories chưa ship hoặc defer sau MVP:
 
 ---
 
-## Appendix A — Design Tokens (shared)
+## Appendix A — Design System (external)
 
-| Token | Giá trị |
-|-------|---------|
-| Primary Blue | #3A5CCC |
-| Success Green | #34C759 |
-| Error Red | #FF3B30 |
-| Warning Orange | #FF9500 |
-| Text Primary | #1C1C1E |
-| Text Secondary | #8E8E93 |
-| Text Tertiary | #AEAEB2 |
-| Border | #E5E5EA |
-| Background | #F2F2F7 |
-| Card Background | #FFFFFF |
-| Font | Inter |
-| Corner Radius (card) | 14px |
-| Corner Radius (sheet) | 20px |
-| Corner Radius (avatar) | 50% |
-| Tab bar height | 56px + safe-area |
-
-Design file: [`GroupFund.pen`](../GroupFund.pen) (edit via Pencil MCP only)
+> Design tokens + component patterns **không** sống trong PRD nữa. Source of truth:
+> - `design-system/tokens.json` — raw values (color, spacing, typography, radius, shadow, motion)
+> - `design-system/components.md` — component patterns (button, card, sheet, form, etc.)
+> - `GroupFund.pen` — visual implementation via Pencil MCP
+>
+> Design agent + dev agent đọc `design-system/` trực tiếp, KHÔNG đọc PRD cho visual specs.
 
 ---
 

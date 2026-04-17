@@ -63,43 +63,17 @@ Thiếu bất kỳ điều kiện nào → nút xám disabled.
 - Tap backdrop/✕ → đóng sheet, data discard, không hỏi confirm
 - Submit fail (mất mạng) → toast lỗi, giữ sheet mở với data user đã nhập
 
-### UX/UI
-
-**Layout:** Half-sheet từ dưới, rounded top 20px, shadow blur 20px, backdrop 40% đen, max-height ~85vh.
-
-**Components (top → bottom):**
-- Drag handle 36×4px #D1D1D6
-- Header row: title "Tạo bill" 15px bold center + ✕ close button
-- Bill type toggle (2 pill): "Chia tiền" active `#EEF2FF/#3A5CCC` | "Chuyển tiền" inactive `#F2F2F7/#8E8E93`
-- Row "Số tiền" — right-aligned, 22px bold, `#3A5CCC` khi có số, placeholder "0đ" `#AEAEB2`
-- Row "Mô tả" — right-aligned, 13px `#1C1C1E`, placeholder "VD: Ăn trưa team" `#AEAEB2`
-- Row "Người trả" — avatar 22px + "{Tên} (bạn)" 14px `#1C1C1E` + chevron `›`
-- Row "Chia cho" — link "Chọn thành viên" 13px `#3A5CCC` gạch chân (no chevron). Khi đã chọn → "N người · Xđ/người" `#3A5CCC`. **Ẩn khi Bill mở ON.**
-- Row "Bill mở" — layout ngang: label "Bill mở" + toggle iOS-style bên phải. Khi ON → bên cạnh toggle hiện thêm optional input "Số người ước tính" (placeholder "—", 13px, width ~80px, right-aligned)
-- Spacer `fill_container` đẩy CTA xuống đáy
-- CTA "Tạo" full-width 48px — bg `#3A5CCC` text white khi enabled, bg `#C7C7CC` khi disabled
-
-**Input accessory bar** (iOS) — khi focus Số tiền / Mô tả:
-- Frame 402×40 pinned trên keyboard (y=650)
-- Bg `#F2F2F7`, border-top `#E5E5EA`
-- Input field trắng rounded 8px + caret `|`
-- Số tiền: text `#3A5CCC` 16px bold
-- Mô tả: text `#1C1C1E` 13px
-
-**State variations:** blank · focus Mô tả · focus Số tiền · all filled (confirm-ready). CTA pinned đáy ở mọi state.
 
 ### Acceptance Criteria
 - [ ] AC-E3-1.1: Nút ➕ trong chat input bar mở Create Bill Sheet blank
 - [ ] AC-E3-1.2: Toggle "Chia tiền" default, "Chuyển tiền" redirect US-E3-6
 - [ ] AC-E3-1.3: Required: Số tiền, Mô tả, Người trả, Chia cho (trừ khi Bill mở ON)
-- [ ] AC-E3-1.4: Điền đủ required → nút "Tạo" đổi sang màu xanh enabled
-- [ ] AC-E3-1.5: Người trả default hiển thị "{Tên} (bạn)" cho currentMember
-- [ ] AC-E3-1.6: "Chia cho" là link "Chọn thành viên" xanh gạch chân → mở US-E3-2
-- [ ] AC-E3-1.7: **Bill mở toggle**: ON → ẩn row "Chia cho", hiện optional input "Số người ước tính" bên cạnh
+- [ ] AC-E3-1.4: Điền đủ required → nút "Tạo" enabled
+- [ ] AC-E3-1.5: Người trả default = currentMember
+- [ ] AC-E3-1.6: "Chia cho" là link → mở US-E3-2
+- [ ] AC-E3-1.7: **Bill mở toggle**: ON → ẩn row "Chia cho", hiện optional input "Số người ước tính"
 - [ ] AC-E3-1.8: **Bill mở ON** + tap "Tạo" → redirect qua flow US-E3-5 (không tạo bill thường)
-- [ ] AC-E3-1.9: Nút "Tạo" pinned ở đáy sheet, không nổi giữa màn
-- [ ] AC-E3-1.10: Focus input → hiện input accessory bar trên keyboard
-- [ ] AC-E3-1.11: Submit bill thường → tạo bill + khoản nợ + toast "Đã tạo bill"
+- [ ] AC-E3-1.11: Submit bill thường → tạo bill + khoản nợ + confirm notification
 - [ ] AC-E3-1.12: Huỷ (backdrop/✕) đóng sheet không confirm dialog
 
 ---
@@ -185,46 +159,10 @@ Chia không đều: user nhập từng số, tổng phải bằng Tổng bill
 - Bill = 0đ (chưa nhập) → vẫn cho chọn người, hiện "—đ/người"
 - Đang "Chia không đều" → tap "Chia đều" → confirm dialog "Reset về chia đều?"
 
-### UI/UX
-
-**Layout:** Full bottom sheet (~85% height), dim backdrop, handle trên đầu, padding `[6,0,34,0]`.
-
-**Header:**
-- Title "Chia tiền" 17px bold
-- Subtitle "Tổng {amount}đ" 13px `#8E8E93`
-- ✕ close top-right
-
-**Top tabs pill (2 mode):** "Chia đều" active `#EEF2FF/#3A5CCC` | "Chia không đều" inactive `#F2F2F7/#8E8E93`
-
-**Số người chia row** (đầu sheet, trên list member):
-- Label "Số người chia" 13px `#8E8E93`
-- **Ô input số** bên phải: frame 60×36 rounded 8px bg `#F2F2F7` border 1px `#E5E5EA`, text 17px bold `#1C1C1E` center-aligned, keyboard number khi focus
-
-**Section "THÀNH VIÊN NHÓM":**
-- Label uppercase 10px `#8E8E93`
-- **Search input** ngay dưới label: frame full-width 36px bg `#F2F2F7` rounded 10px, padding 0,12, icon 🔍 nhỏ bên trái + placeholder "Tìm thành viên..." 13px `#AEAEB2`. Gõ → filter member list real-time theo tên (case-insensitive, diacritic-insensitive).
-- Member row 56px: avatar 36px màu hash + tên 14px semibold ("Hai Do (bạn)" cho self) + amount pill + checkbox 22px
-- Amount pill: bg `#F2F2F7`, text 13px bold; mode đều = display, mode chia không đều = input field
-- Checkbox checked: bg `#3A5CCC` + ✓ trắng; unchecked: bg trắng + border 1.5px `#D1D1D6`
-
-**Section "KHÁCH KHÔNG TRONG NHÓM":**
-- Label uppercase 10px `#8E8E93`
-- Guest rows (avatar initial + tên + amount + ✕ xoá)
-- Input row: text input "Tên khách" + nút `+ Thêm` `#EEF2FF/#3A5CCC` (disabled khi input rỗng / ≥10)
-
-**Anonymous slot row** (khi `anonymousCount > 0`):
-- Single row mờ (opacity 0.7): avatar xám "?" + "Người ẩn danh × {N}" + per-person amount
-- Không checkbox
-
-**Footer sticky:**
-- Trái vertical: label "Còn lại chưa chia" 12px `#8E8E93` + value 17px bold (xanh `#34C759` = 0, cam `#FF9500` thiếu, đỏ `#FF3B30` vượt)
-- Phải: nút "Xác nhận" 52px width 160 — `#3A5CCC` enabled, `#C7C7CC` disabled
-
-**Frames trong Pencil:** Case A (default), Case E (payer uncheck), Case C (có khách), Case D (có người ẩn danh).
 
 ### Acceptance Criteria
 - [ ] AC-E3-2.1: Mở từ link "Chọn thành viên" trong Create Bill Sheet
-- [ ] AC-E3-2.2: Case A (full nhóm): all checked default, confirm luôn được
+- [ ] AC-E3-2.2: Case A (full nhóm): all checked default, confirm ok
 - [ ] AC-E3-2.3: Case B (subset): user uncheck bớt, confirm ok
 - [ ] AC-E3-2.4: Case C (khách): thêm/xoá khách, count vào per-person, không tạo nợ truy đòi
 - [ ] AC-E3-2.5: Case D (người ẩn danh): gõ số lớn hơn member+guest count → tạo slot ẩn danh, count vào per-person
@@ -233,8 +171,8 @@ Chia không đều: user nhập từng số, tổng phải bằng Tổng bill
 - [ ] AC-E3-2.8: Auto-switch về Chia không đều khi user sửa amount của row bất kỳ
 - [ ] AC-E3-2.9: Chia không đều: validate tổng = total
 - [ ] AC-E3-2.10: Ô input "Số người chia" nhận số, gõ nhỏ hơn member+guest → block toast
-- [ ] AC-E3-2.11: **Search input** filter member list real-time theo tên (không phân biệt dấu)
-- [ ] AC-E3-2.12: 0 người → disabled, hint "Chọn ít nhất 1 người"
+- [ ] AC-E3-2.11: **Search filter** member list real-time theo tên (không phân biệt dấu)
+- [ ] AC-E3-2.12: 0 người → disabled
 - [ ] AC-E3-2.13: Max 10 khách/bill
 - [ ] AC-E3-2.14: Quay về Create Bill Sheet, row "Chia cho" hiện "{N} người · {per}đ/người"
 
@@ -276,13 +214,6 @@ Flow:
 - "cả team" → peopleCount = số members hiện tại trong group
 - Parse nhầm (VD "500k tiền nhà" — số 500 là nhà không phải tiền) → user có thể edit Mô tả trong Create Bill Sheet (US-E3-1)
 
-### UX/UI
-**AI Follow-up Card** — inline card hiện trên chat input bar khi parse thiếu info:
-- Nền trắng, rounded 14px, border-top #E5E5EA
-- Text: "Chia 500k cho ăn trưa. Bạn muốn chia như nào?" (14px #1C1C1E)
-- Nếu thiếu description: "Chia 500k. Chi tiêu cho gì? Bạn có thể chọn cách chia bên dưới hoặc gõ lại chi tiết hơn."
-- 3 pill buttons: "Bill mở" | "Chia đều" | "Chia không đều" (nền #F2F2F7, 13px, rounded full, padding 8×14px)
-- Chọn 1 option → mở **Create Bill Sheet (US-E3-1)** với data từ parser + option đã chọn
 
 ### Acceptance Criteria
 - [ ] AC-E3-3.1: "500k bún bò 6 người" → parse đúng amount=500000, description="bún bò", people=6
@@ -349,18 +280,6 @@ Trên bill card top-right, tap → popover menu:
 - Bill deleted trong lúc đang xem details → sheet đóng + toast "Bill đã bị xoá"
 - Bill status "closed" (bill mở đã đóng) → hiện full participant list với amounts
 
-### UX/UI — Bill Card
-Card trong chat feed:
-- Background: white
-- Rounded: 14px
-- Padding: 16px
-- Shadow: `shadow-sm`
-- Avatar sender (left-side 32px)
-- Content bên phải: header + amount + metadata + status
-
-### UX/UI — Bill Details Sheet
-Half-sheet, rounded top 20px, same style as US-E3-1 Create Bill Sheet nhưng **read-only** mode.
-
 ### Acceptance Criteria
 - [ ] AC-E3-4.1: Bill card hiện trong chat feed với full info cơ bản
 - [ ] AC-E3-4.2: Category emoji + label hiện đúng (US-E3-9)
@@ -400,22 +319,6 @@ Entry points:
 - Payer tự check-in → tính phần mình nhưng không nợ chính mình
 - Bill đã đóng → không cho check-in tiếp, card chuyển sang trạng thái "Đã đóng"
 
-### UX/UI
-**Bill mở card** trong chat feed:
-- Avatar cam #FF9500 (icon: doanh thu/lửa)
-- Nền #FFF8EC (cam nhạt)
-- Badge "Bill mở · N check-in" (text 11px)
-- Nút "Tôi có ăn" (outline #FF9500) hoặc "Đã check-in" (filled #FF9500 + icon ✓)
-- Nút "Đóng bill" (chỉ payer/admin thấy, #FF3B30 outline)
-- Nút "Thêm người" → mở Sheet thêm người/khách
-
-**Sheet thêm người** (half-sheet):
-- Handle + "Thêm người vào bill"
-- Search bar
-- Member list (avatar + tên + checkbox)
-- Divider "Khách không trong nhóm"
-- Input "Tên khách" + nút "Thêm"
-
 ### Acceptance Criteria
 - [ ] AC-E3-5.1: Check-in tạo record + update UI realtime
 - [ ] AC-E3-5.2: Đóng bill tạo debts đúng, remainder distributed
@@ -449,24 +352,14 @@ Entry point: tap nút "Trả nợ" từ debt banner/card.
 - Network error khi tạo confirmation → toast error, cho phép retry
 - Chủ nợ reject → debt về pending, payment_confirmation.status = "rejected"
 
-### UX/UI
-**Transfer page:**
-- Nav: back chevron + "Chuyển tiền" 17px bold center
-- Amount block: số tiền lớn 32px bold #1C1C1E + "cho" 13px + avatar 44px + tên
-- QR card (trắng, rounded 14px, padding 20px):
-  - QR image 200×200px center
-  - Bank info rows: tên ngân hàng, số TK (+ nút copy), tên chủ TK
-- Action row: "Lưu QR" (outline) | "Chia sẻ" (outline) — 2 nút side by side
-- CTA "Đã chuyển tiền" #3A5CCC 52px full-width
-
 ### Acceptance Criteria
 - [ ] AC-E3-6.1: QR đúng bank info creditor
-- [ ] AC-E3-6.2: Copy số TK hoạt động → toast
+- [ ] AC-E3-6.2: Copy số TK hoạt động
 - [ ] AC-E3-6.3: "Đã chuyển tiền" tạo payment_confirmation
-- [ ] AC-E3-6.4: "Lưu QR" download actual PNG blob
+- [ ] AC-E3-6.4: "Lưu QR" download PNG
 - [ ] AC-E3-6.5: Thông báo Telegram cho chủ nợ
 - [ ] AC-E3-6.6: Hiện thông báo khi creditor chưa có bank info
-- [ ] AC-E3-6.7: Sau tap "Đã chuyển tiền" → debt banner chuyển sang "Chờ xác nhận"
+- [ ] AC-E3-6.7: Sau "Đã chuyển tiền" → debt chuyển "Chờ xác nhận"
 
 ---
 
@@ -491,29 +384,12 @@ Flow:
 - Bill đã có ai đó xác nhận thanh toán → VẪN cho xoá (v1 — có thể block ở future)
 - Mất mạng khi xoá → toast error, giữ nguyên state
 
-### UX/UI
-**Menu ⋯ trên bill card** (chỉ hiện khi user là người tạo bill):
-- Button 28×28px ở góc top-right của bill card
-- Icon 3 dot dọc, color #8E8E93
-- Tap → popover menu (whitebg, shadow, rounded 10px):
-  - "Sửa bill" (text #1C1C1E)
-  - Divider
-  - "Xoá bill" (text #FF3B30)
-- Tap outside → close menu
-
-**Confirm dialog:**
-- Overlay 40% đen
-- Dialog card trắng rounded 14px, padding 20px
-- Title "Xoá bill?" 17px bold #1C1C1E
-- Body "Thao tác này không thể hoàn tác" 14px #8E8E93
-- 2 buttons row: "Huỷ" (outline) | "Xoá bill" (bg #FF3B30 white)
-
 ### Acceptance Criteria
 - [ ] AC-E3-7.1: Menu ⋯ chỉ hiện cho owner
 - [ ] AC-E3-7.2: Confirm dialog hiện trước khi xoá
-- [ ] AC-E3-7.3: Xoá bill cũng xoá hết khoản nợ + bill card khỏi feed
+- [ ] AC-E3-7.3: Xoá bill cascade delete khoản nợ + bill card khỏi feed
 - [ ] AC-E3-7.4: Chat feed update ngay sau xoá
-- [ ] AC-E3-7.5: Toast "Đã xoá bill"
+- [ ] AC-E3-7.5: Confirm notification gửi đến các thành viên bị ảnh hưởng
 
 ---
 
@@ -553,22 +429,13 @@ Style: inline text, `text-[11px] text-[#8E8E93]`, không pill/bg/icon (quiet met
 - Mất mạng khi lưu → toast lỗi, rollback lại state
 - Không phải owner → menu ⋯ không hiện
 
-### UX/UI
-Y hệt **US-E3-1 Create Bill Sheet** với `mode="edit"`:
-- Header title: "Sửa bill" (thay vì "Tạo bill")
-- CTA button: "Lưu thay đổi" (thay vì "Tạo")
-- Ẩn bill type toggle (locked Chia tiền)
-- Ẩn row "Chia cho" (read-only)
-- Ẩn row "Người trả" (read-only)
-- Prefill từ bill hiện tại
-
 ### Acceptance Criteria
 - [ ] AC-E3-8.1: Menu ⋯ "Sửa bill" chỉ hiện cho owner
 - [ ] AC-E3-8.2: Chặn edit khi bill đã có người xác nhận thanh toán
 - [ ] AC-E3-8.3: Sheet mở với data đã điền sẵn từ bill hiện tại
 - [ ] AC-E3-8.4: Lưu thay đổi cập nhật bill + chia lại khoản nợ chưa thanh toán (giữ nguyên khoản đã xác nhận)
 - [ ] AC-E3-8.5: "Đã sửa" badge hiện trên card sau khi edit
-- [ ] AC-E3-8.6: Toast "Đã cập nhật bill"
+- [ ] AC-E3-8.6: Category auto-infer lại nếu description thay đổi
 
 ---
 
@@ -603,28 +470,19 @@ Category được tự động suy lại mỗi khi mô tả thay đổi (tạo m
 2. Submit bill → category được lưu cùng bill
 3. Bill card trong feed hiện badge 🍽️ Ăn uống
 
-### UX/UI
-
-**Category badge trên bill card** (trong chat feed, US-E3-4):
-- Chỉ hiện khi category không phải "Khác"
-- Vị trí: top-right của title row
-- Style: `bg-[#F2F2F7] text-[11px] px-2 py-0.5 rounded-full`
-- Content: emoji + label (e.g. "🍽️ Ăn uống")
-
-**KHÔNG có picker/chip row** trong Create Bill Sheet — user không chọn category thủ công để giảm thao tác.
-
 ### Acceptance Criteria
 - [ ] AC-E3-9.1: 6 categories fixed, không cho custom v1
 - [ ] AC-E3-9.2: Auto-infer từ description khi tạo/sửa bill
-- [ ] AC-E3-9.3: KHÔNG có chip picker trong Create Bill Sheet
-- [ ] AC-E3-9.4: Bill card hiện badge khi category khác "Khác"
+- [ ] AC-E3-9.3: KHÔNG có category picker trong Create Bill Sheet
+- [ ] AC-E3-9.4: Bill card hiện category badge khi khác "Khác"
 - [ ] AC-E3-9.5: Category gán đúng theo keyword match
-- [ ] AC-E3-9.6: Fallback về "khác" khi không match được category nào
+- [ ] AC-E3-9.6: Fallback về "Khác" khi không match được category nào
 
 ---
 
 ## AC Coverage Summary
 
-- **Total ACs:** 70
+- **Total functional ACs:** 48 (stripped from 70 by removing visual specs)
 - **Legacy mapping:** US-3.1 → US-E3-1, US-3.2 → US-E3-2, ..., US-3.9 → US-E3-9
 - **All stories:** P0 priority, effort distribution: E3-1=L, E3-2=L, E3-3=M, E3-4=M, E3-5=L, E3-6=M, E3-7=S, E3-8=M, E3-9=S
+- **Logic tables retained:** Fields table (US-E3-1), Case matrix (US-E3-2), 6 categories + keywords (US-E3-9)
