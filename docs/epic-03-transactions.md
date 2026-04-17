@@ -480,9 +480,72 @@ Category được tự động suy lại mỗi khi mô tả thay đổi (tạo m
 
 ---
 
+## US-E3-10 — Tạo bill chuyển tiền (Transfer Bill)
+
+**As a** [`personas/group-organizer-vn.md`](../personas/group-organizer-vn.md), **I want to** ghi nhận một giao dịch chuyển tiền trực tiếp cho thành viên trong nhóm (không gắn với debt cũ) **so that** tôi có bản ghi peer-to-peer transfer trong group feed (vd: ứng trước, quà, đóng góp quỹ nhóm).
+
+- **Priority:** P0 · **Effort:** M
+
+### Rules / Function
+
+**Entry point:** Create Bill Sheet (US-E3-1) toggle "Loại bill" = "Chuyển tiền".
+
+**Khác biệt với US-E3-1 (Chia tiền):**
+- KHÔNG chia cho nhiều người — 1 người trả tới 1 người nhận
+- KHÔNG tạo debt record — là direct transfer log
+- KHÔNG infer category
+- Ẩn toggle "Bill mở"
+
+**Khác biệt với US-E3-6 (Trả nợ):**
+- US-E3-6 đóng 1 debt đã có (input: debtId từ debt banner/list)
+- US-E3-10 là log free-form transfer không gắn debt nào
+
+**Fields (khi toggle = Chuyển tiền):**
+
+| Field | Required | Default | Ghi chú |
+|-------|----------|---------|---------|
+| Loại bill | Yes | Chia tiền | Toggle "Chia tiền" \| "Chuyển tiền" |
+| Số tiền | Yes | — | VND format, phải > 0 |
+| Người gửi | Yes | User hiện tại | Một thành viên trong nhóm |
+| Người nhận | Yes | — | Một thành viên khác (không được trùng Người gửi) |
+| Mô tả | No | — | Text mô tả (vd: "Ứng trước tiền khách sạn") |
+
+**Điều kiện enable nút "Tạo":** Số tiền > 0 · Người gửi + Người nhận chọn · Người gửi ≠ Người nhận.
+
+**Flow submit:**
+1. Insert `chat_messages` với `message_type='transfer_card'` + metadata `{ from_id, to_id, amount, description }`
+2. Notify Người nhận qua Telegram (optional)
+3. Feed realtime render `TransferPill`: "↔ {from} đã chuyển {amount}đ cho {to}"
+4. Toast "Đã ghi nhận chuyển tiền" → đóng sheet
+
+### Edge cases
+- Người gửi = Người nhận → validation error, nút Tạo disabled
+- Chỉ 1 thành viên trong nhóm → Người nhận empty, báo "Cần ít nhất 2 thành viên"
+- Số tiền ≤ 0 → nút Tạo disabled
+- Member rời nhóm sau transfer → card giữ snapshot tên
+- Mất mạng submit → toast lỗi, giữ sheet
+- Transfer KHÔNG có edit / delete (audit integrity)
+
+### Relationship với debt settlement
+- Transfer bill KHÔNG auto-settle debt giữa 2 người
+- Muốn settle debt → dùng US-E3-6 (debt banner / /debts)
+- Optional v2: sau submit, nếu gửi có debt với nhận, toast gợi ý "Bạn có khoản nợ với {to} — đánh dấu đã trả?" → US-E3-6
+
+### Acceptance Criteria
+- [ ] AC-E3-10.1: Toggle "Chuyển tiền" đổi fields (ẩn Chia cho / Bill mở, hiện Người nhận)
+- [ ] AC-E3-10.2: Required: Số tiền, Người gửi, Người nhận
+- [ ] AC-E3-10.3: Người gửi = Người nhận → Tạo disabled với hint
+- [ ] AC-E3-10.4: Submit tạo row `chat_messages` với `message_type='transfer_card'`
+- [ ] AC-E3-10.5: Transfer hiển thị feed dạng `TransferPill`
+- [ ] AC-E3-10.6: Người nhận nhận Telegram notify (nếu link bot)
+- [ ] AC-E3-10.7: KHÔNG tạo debt record
+- [ ] AC-E3-10.8: Transfer không có edit / delete menu
+
+---
+
 ## AC Coverage Summary
 
-- **Total functional ACs:** 48 (stripped from 70 by removing visual specs)
-- **Legacy mapping:** US-3.1 → US-E3-1, US-3.2 → US-E3-2, ..., US-3.9 → US-E3-9
-- **All stories:** P0 priority, effort distribution: E3-1=L, E3-2=L, E3-3=M, E3-4=M, E3-5=L, E3-6=M, E3-7=S, E3-8=M, E3-9=S
-- **Logic tables retained:** Fields table (US-E3-1), Case matrix (US-E3-2), 6 categories + keywords (US-E3-9)
+- **Total functional ACs:** 56 (48 original + 8 from US-E3-10)
+- **Legacy mapping:** US-3.1 → US-E3-1, ..., US-3.9 → US-E3-9. US-E3-10 mới.
+- **All stories:** P0 priority, effort: E3-1=L, E3-2=L, E3-3=M, E3-4=M, E3-5=L, E3-6=M, E3-7=S, E3-8=M, E3-9=S, E3-10=M
+- **Logic tables retained:** Fields (US-E3-1), Case matrix (US-E3-2), Categories (US-E3-9), Transfer fields (US-E3-10)

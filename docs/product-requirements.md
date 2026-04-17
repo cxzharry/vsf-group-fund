@@ -112,7 +112,7 @@ User stories chia theo file epic riêng để dễ quản lý + ownership per-fe
 
 - **E1** → [epic-01-auth.md](epic-01-auth.md) — 5 user stories (US-E1-1 → US-E1-5)
 - **E2** → [epic-02-groups.md](epic-02-groups.md) — 5 user stories (US-E2-1 → US-E2-5)
-- **E3** → [epic-03-transactions.md](epic-03-transactions.md) — 9 user stories (US-E3-1 → US-E3-9)
+- **E3** → [epic-03-transactions.md](epic-03-transactions.md) — 10 user stories (US-E3-1 → US-E3-10)
 - **E4** → [epic-04-debt-tracking.md](epic-04-debt-tracking.md) — 4 user stories (US-E4-1 → US-E4-4)
 - **E5** → [epic-05-account.md](epic-05-account.md) — 5 user stories (US-E5-1 → US-E5-5)
 
@@ -133,9 +133,9 @@ Các user stories chưa ship hoặc defer sau MVP:
 
 > Derived từ epic files. ACs là **functional only** (behavior, state, data) — visual/layout specs thuộc `design-system/`.
 
-- **Total functional ACs:** 109
-- **Per epic:** E1=19, E2=18, E3=48, E4=13, E5=11
-- **Total stories:** 28 (E1=5, E2=5, E3=9, E4=4, E5=5)
+- **Total functional ACs:** 117
+- **Per epic:** E1=19, E2=18, E3=56, E4=13, E5=11
+- **Total stories:** 29 (E1=5, E2=5, E3=10, E4=4, E5=5)
 
 ---
 

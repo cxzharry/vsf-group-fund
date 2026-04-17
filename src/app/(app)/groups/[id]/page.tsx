@@ -348,7 +348,49 @@ export default function GroupDetailPage() {
   async function handleBillConfirm(data: BillConfirmData) {
     if (!currentMember) return;
 
-    // 1. Insert bill
+    // US-E3-10 Transfer Bill — no bill/debt records, just a transfer_card chat message
+    if (data.billType === "transfer") {
+      if (!data.recipientId) {
+        toast.error("Thiếu người nhận");
+        return;
+      }
+      const { error: msgError } = await supabase.from("chat_messages").insert({
+        group_id: id,
+        sender_id: currentMember.id,
+        message_type: "transfer_card",
+        content: data.description || "Chuyển tiền",
+        metadata: {
+          from_id: data.payerId,
+          to_id: data.recipientId,
+          amount: data.amount,
+          description: data.description,
+        },
+      });
+      if (msgError) {
+        toast.error("Lỗi ghi nhận chuyển tiền");
+        return;
+      }
+      // Optional: Telegram notify recipient (fire-and-forget)
+      fetch("/api/notify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          type: "transfer_sent",
+          payload: {
+            fromId: data.payerId,
+            toId: data.recipientId,
+            amount: data.amount,
+            description: data.description,
+          },
+        }),
+      }).catch(() => {});
+      toast.success("Đã ghi nhận chuyển tiền");
+      setShowConfirmSheet(false);
+      setPendingIntent(null);
+      return;
+    }
+
+    // 1. Insert bill (split flow)
     const { data: newBill, error: billError } = await supabase
       .from("bills")
       .insert({

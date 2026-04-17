@@ -25,9 +25,11 @@ export interface BillConfirmData {
   splitType: "equal" | "custom" | "open";
   peopleCount: number;
   payerId: string;
-  billType: "standard" | "open";
+  billType: "standard" | "open" | "transfer";
   category: BillCategoryId;
   customSplits?: Record<string, number>;
+  /** US-E3-10: recipient for transfer bill (only when billType === "transfer") */
+  recipientId?: string;
 }
 
 const AVATAR_COLORS = [
@@ -87,44 +89,60 @@ export function BillConfirmSheet({
   const [submitting, setSubmitting] = useState(false);
   const [showSplit, setShowSplit] = useState(false);
   const [customSplits, setCustomSplits] = useState<Record<string, number> | null>(null);
+  // US-E3-10: recipient for transfer bill
+  const [recipientId, setRecipientId] = useState<string | null>(null);
+  const [showRecipientPicker, setShowRecipientPicker] = useState(false);
 
   const payer = groupMembers.find((m) => m.id === payerId) ?? currentMember;
+  const recipient = groupMembers.find((m) => m.id === recipientId) ?? null;
+  const eligibleRecipients = groupMembers.filter((m) => m.id !== payerId);
   const category = inferCategory(description);
   const perPerson =
     peopleCount > 0 && amount > 0 ? Math.floor(amount / peopleCount) : 0;
 
-  // AC-E3-1.3/1.4: require splits when bill mở OFF; allow no splits when bill mở ON
-  const isValid =
-    amount > 0 &&
-    description.trim().length > 0 &&
-    (isOpenBill
-      ? (estimatedPeople === "" || parseInt(estimatedPeople, 10) > 0)
-      : peopleCount > 0);
+  // AC-E3-1: split mode validation | AC-E3-10.2/3: transfer mode validation
+  const isValid = billType === "transfer"
+    ? amount > 0 && recipientId !== null && recipientId !== payerId
+    : amount > 0 &&
+      description.trim().length > 0 &&
+      (isOpenBill
+        ? (estimatedPeople === "" || parseInt(estimatedPeople, 10) > 0)
+        : peopleCount > 0);
 
   async function handleConfirm() {
     if (!isValid) return;
     setSubmitting(true);
-    await onConfirm({
-      amount,
-      description: description.trim(),
-      splitType: isOpenBill ? "open" : customSplits ? "custom" : "equal",
-      peopleCount: isOpenBill
-        ? (estimatedPeople ? parseInt(estimatedPeople, 10) : 0)
-        : customSplits ? Object.keys(customSplits).length : peopleCount,
-      payerId,
-      billType: isOpenBill ? "open" : "standard",
-      category,
-      customSplits: customSplits ?? undefined,
-    });
+    if (billType === "transfer") {
+      // US-E3-10: transfer bill — no splits, no debts
+      await onConfirm({
+        amount,
+        description: description.trim(),
+        splitType: "equal",
+        peopleCount: 1,
+        payerId,
+        billType: "transfer",
+        category,
+        recipientId: recipientId!,
+      });
+    } else {
+      await onConfirm({
+        amount,
+        description: description.trim(),
+        splitType: isOpenBill ? "open" : customSplits ? "custom" : "equal",
+        peopleCount: isOpenBill
+          ? (estimatedPeople ? parseInt(estimatedPeople, 10) : 0)
+          : customSplits ? Object.keys(customSplits).length : peopleCount,
+        payerId,
+        billType: isOpenBill ? "open" : "standard",
+        category,
+        customSplits: customSplits ?? undefined,
+      });
+    }
     setSubmitting(false);
   }
 
   function handleBillTypeChange(type: "split" | "transfer") {
-    if (type === "transfer") {
-      // US-E3-6 Transfer flow — not yet wired here
-      onClose();
-      return;
-    }
+    // US-E3-10: Chuyển tiền toggle now switches in-place (no redirect/close)
     setBillType(type);
   }
 
@@ -172,7 +190,11 @@ export function BillConfirmSheet({
               <button
                 type="button"
                 onClick={() => handleBillTypeChange("transfer")}
-                className="rounded-full bg-[#F2F2F7] px-3.5 py-1.5 text-[13px] font-medium text-[#8E8E93]"
+                className={`rounded-full px-3.5 py-1.5 text-[13px] font-semibold ${
+                  billType === "transfer"
+                    ? "bg-[#EEF2FF] text-[#3A5CCC]"
+                    : "bg-[#F2F2F7] text-[#8E8E93]"
+                }`}
               >
                 Chuyển tiền
               </button>
@@ -221,8 +243,32 @@ export function BillConfirmSheet({
               </div>
             )}
 
-            {/* Bill mở toggle — AC-E3-1.7: shown in create mode only */}
-            {!isEdit && (
+            {/* US-E3-10: Người nhận — only in transfer mode */}
+            {!isEdit && billType === "transfer" && (
+              <div className="flex items-center justify-between">
+                <span className="text-[13px] text-[#8E8E93]">Người nhận</span>
+                <button
+                  type="button"
+                  onClick={() => setShowRecipientPicker(true)}
+                  className={`flex items-center gap-1.5 text-[13px] font-medium ${
+                    recipient ? "text-[#1C1C1E]" : "text-[#3A5CCC] underline underline-offset-2"
+                  }`}
+                >
+                  {recipient ? (
+                    <>
+                      <MiniAvatar member={recipient} size={22} />
+                      <span>{recipient.display_name}</span>
+                      <span className="text-[15px] text-[#C7C7CC]">›</span>
+                    </>
+                  ) : (
+                    "Chọn người nhận"
+                  )}
+                </button>
+              </div>
+            )}
+
+            {/* Bill mở toggle — AC-E3-1.7: shown in create + split mode only (hidden in transfer) */}
+            {!isEdit && billType === "split" && (
               <div className="flex items-center justify-between">
                 <span className="text-[13px] text-[#8E8E93]">Bill mở</span>
                 <div className="flex items-center gap-2">
@@ -255,8 +301,8 @@ export function BillConfirmSheet({
               </div>
             )}
 
-            {/* Chia cho — hidden when Bill mở ON — AC-E3-1.7 */}
-            {!isEdit && !isOpenBill && (
+            {/* Chia cho — hidden when Bill mở ON or transfer mode — AC-E3-1.7, AC-E3-10.1 */}
+            {!isEdit && !isOpenBill && billType === "split" && (
               <div className="flex items-center justify-between">
                 <span className="text-[13px] text-[#8E8E93]">Chia cho</span>
                 <button
@@ -302,6 +348,63 @@ export function BillConfirmSheet({
           }}
           onClose={() => setShowSplit(false)}
         />
+      )}
+
+      {/* US-E3-10: Recipient picker sheet (single-select) */}
+      {showRecipientPicker && (
+        <>
+          <div
+            className="fixed inset-0 z-[60] bg-black/40"
+            onClick={() => setShowRecipientPicker(false)}
+            aria-hidden="true"
+          />
+          <div className="fixed inset-x-0 bottom-0 z-[70] max-h-[60vh] rounded-t-[20px] bg-white pb-[env(safe-area-inset-bottom)]">
+            <div className="flex justify-center py-2">
+              <div className="h-1 w-9 rounded-full bg-[#D1D1D6]" />
+            </div>
+            <div className="flex items-center justify-between px-5 pb-2">
+              <h3 className="text-[15px] font-bold text-[#1C1C1E]">Chọn người nhận</h3>
+              <button
+                type="button"
+                onClick={() => setShowRecipientPicker(false)}
+                className="text-[#AEAEB2]"
+                aria-label="Đóng"
+              >
+                ✕
+              </button>
+            </div>
+            {eligibleRecipients.length === 0 ? (
+              <p className="px-5 py-8 text-center text-[13px] text-[#8E8E93]">
+                Cần ít nhất 2 thành viên trong nhóm
+              </p>
+            ) : (
+              <ul className="max-h-[400px] overflow-y-auto px-2 pb-4">
+                {eligibleRecipients.map((m) => (
+                  <li key={m.id}>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setRecipientId(m.id);
+                        setShowRecipientPicker(false);
+                      }}
+                      className={`flex w-full items-center gap-3 rounded-[10px] px-3 py-2.5 text-left transition-colors ${
+                        recipientId === m.id ? "bg-[#EEF2FF]" : "hover:bg-[#F2F2F7]"
+                      }`}
+                    >
+                      <MiniAvatar member={m} size={36} />
+                      <span className="flex-1 text-[15px] font-medium text-[#1C1C1E]">
+                        {m.display_name}
+                      </span>
+                      {recipientId === m.id && (
+                        <span className="text-[#3A5CCC]">✓</span>
+                      )}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        </>
       )}
     </>
   );
