@@ -1,0 +1,28 @@
+{
+  "type": "prototype",
+  "name": "Prototype Evaluator (FE-only)",
+  "method": "playwright-basic",
+  "pass_threshold": 7,
+  "tools": ["playwright-basic", "llm-visual-review"],
+  "scoring": {
+    "completeness": { "weight": 5, "description": "All PRD features present in UI" },
+    "clarity": { "weight": 3, "description": "UI purpose obvious, no confusion" },
+    "visual_quality": { "weight": 8, "description": "Visual coherence, consistent identity" },
+    "ux_accessibility": { "weight": 7, "description": "Usable, accessible, responsive" },
+    "design_fidelity": { "weight": 10, "description": "Matches design tokens if design mode != skip" },
+    "functionality": { "weight": 5, "description": "Navigation works, states render, interactions respond" },
+    "performance": { "weight": 3, "description": "Reasonable load time, no jank" }
+  },
+  "playwright_tests": [
+    "All pages load without errors",
+    "Navigation between screens works",
+    "Interactive elements respond (buttons, forms, toggles)",
+    "Responsive layout (mobile + desktop)",
+    "Empty/loading/error states render correctly"
+  ],
+  "no_test": ["auth", "API calls", "database", "server-side logic"],
+  "constraints": {
+    "max_screens": 7,
+    "design_system": "shadcn-ui"
+  }
+}

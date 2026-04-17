@@ -1,12 +1,12 @@
 // Bottom input bar: text field + round blue bill creation button
-// The "+" button opens the Bill Confirm Sheet in manual (blank) mode — US-3.1.
-// Typing a message and sending it triggers AI parser — US-3.2.
+// The "+" button opens the Bill Confirm Sheet in manual (blank) mode — US-E3-1.
+// Typing a message and sending it triggers AI parser — US-E3-2.
 
 interface ChatInputBarProps {
   value: string;
   onChange: (value: string) => void;
   onSend: () => void;
-  /** Opens Bill Confirm Sheet with blank state (US-3.1 manual flow). */
+  /** Opens Bill Confirm Sheet with blank state (US-E3-1 manual flow). */
   onOpenManualBill: () => void;
 }
 

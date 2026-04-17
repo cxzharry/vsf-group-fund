@@ -1,6 +1,6 @@
 "use client";
 
-// US-3.1 Create Bill Sheet — half-sheet with required fields + CTA pinned bottom
+// US-E3-1 Create Bill Sheet — half-sheet with required fields + CTA pinned bottom
 import { useState } from "react";
 import { formatVND } from "@/lib/format-vnd";
 import { SplitSheet } from "@/components/chat/split-sheet";
@@ -110,7 +110,7 @@ export function BillConfirmSheet({
 
   function handleBillTypeChange(type: "split" | "transfer") {
     if (type === "transfer") {
-      // US-3.6 Transfer flow — not yet wired here
+      // US-E3-6 Transfer flow — not yet wired here
       onClose();
       return;
     }

@@ -1,10 +1,17 @@
-# Epic 2: Nhóm (Groups)
+# Epic 2 — Nhóm (Groups)
+
+> **Epic ID:** E2 · **Priority:** P0 · **Persona:** [Minh — Người Tổ Chức](../personas/group-organizer-vn.md) · [Linh — Thành Viên](../personas/group-member-vn.md)
+> **Brief:** Tạo và quản lý nhóm chia bill, mời thành viên qua code/QR, xem Home với nợ ròng, Group Detail chat view, cài đặt nhóm.
 
 ---
 
-## US-2.1: Xem danh sách nhóm (Home)
+## US-E2-1 — Xem danh sách nhóm (Home)
 
-### Function
+**As a** [Minh — Người Tổ Chức](../personas/group-organizer-vn.md) **or** [Linh — Thành Viên](../personas/group-member-vn.md), **I want to** xem danh sách nhóm mà tôi là thành viên với nợ ròng **so that** tôi có cái nhìn tổng quát về tất cả khoản nợ.
+
+- **Priority:** P0 · **Effort:** M
+
+### Rules / Function
 - Sau login, hiện danh sách groups mà user là member
 - Mỗi group: tên, số thành viên, nợ ròng trong nhóm đó
 - Chip tổng nợ: tổng tất cả nợ + được nợ qua tất cả nhóm
@@ -49,20 +56,24 @@ Mỗi card hiện thông tin nợ theo 6 trường hợp:
 
 **Empty state:** icon people 72px gray + "Chưa có nhóm nào" 20px bold + "Tạo nhóm để bắt đầu chia bill với bạn bè." 15px gray + nút "Tạo nhóm mới" outline #3A5CCC
 
-### Tiêu chí
-- [ ] Chỉ hiện 2 tabs
-- [ ] Card nhóm hiện đúng nợ ròng (đỏ/xanh)
-- [ ] Subtitle hiện tên người nợ lớn nhất
-- [ ] Nợ nhiều người → "[Tên] và [N-1] người khác"
-- [ ] Nút Trả nợ (đỏ) / Nhắc nợ (xanh) / Không có nợ (gray)
-- [ ] Empty state khi chưa có group
-- [ ] Chip tổng nợ hiện cả 2 chiều (nợ + được nợ)
+### Acceptance Criteria
+- [ ] AC-E2-1.1: Chỉ hiện 2 tabs
+- [ ] AC-E2-1.2: Card nhóm hiện đúng nợ ròng (đỏ/xanh)
+- [ ] AC-E2-1.3: Subtitle hiện tên người nợ lớn nhất
+- [ ] AC-E2-1.4: Nợ nhiều người → "[Tên] và [N-1] người khác"
+- [ ] AC-E2-1.5: Nút Trả nợ (đỏ) / Nhắc nợ (xanh) / Không có nợ (gray)
+- [ ] AC-E2-1.6: Empty state khi chưa có group
+- [ ] AC-E2-1.7: Chip tổng nợ hiện cả 2 chiều (nợ + được nợ)
 
 ---
 
-## US-2.2: Tạo nhóm (Full-page flow)
+## US-E2-2 — Tạo nhóm (Full-page flow)
 
-### Function
+**As a** [Minh — Người Tổ Chức](../personas/group-organizer-vn.md), **I want to** tạo nhóm mới với tên + emoji tùy chọn **so that** tôi có nhóm để mời bạn bè và chia bill.
+
+- **Priority:** P0 · **Effort:** L
+
+### Rules / Function
 1. Tap "+" trên Home → navigate đến /groups/create (full page, KHÔNG phải dialog)
 2. User nhập tên nhóm + chọn emoji (optional)
 3. Tap "Tạo nhóm" → API tạo group + invite_code (8 ký tự) + creator là admin
@@ -129,28 +140,28 @@ Mỗi card hiện thông tin nợ theo 6 trường hợp:
 
 **Bottom:** Nút "Vào nhóm ngay" → navigate đến group detail
 
-### Tiêu chí
-
-**Function:**
-- [ ] Tạo nhóm full-page (không phải dialog)
-- [ ] Tạo thành công → chuyển sang "Mời thành viên"
-- [ ] Creator là admin
-- [ ] Invite code + link mời được tạo
-- [ ] Copy link hoạt động
-
-**UX/UI:**
-- [ ] Step 1: avatar + name card + emoji card đúng layout
-- [ ] Name input: label uppercase, hint text, divider
-- [ ] Nút "Tạo nhóm" disabled khi tên trống
-- [ ] Step 2: group card + link + QR + share icons
-- [ ] Copy feedback "✓ Đã sao chép link" xanh lá
-- [ ] "Vào nhóm ngay" → navigate group detail
+### Acceptance Criteria
+- [ ] AC-E2-2.1: Tạo nhóm full-page (không phải dialog)
+- [ ] AC-E2-2.2: Tạo thành công → chuyển sang "Mời thành viên"
+- [ ] AC-E2-2.3: Creator là admin
+- [ ] AC-E2-2.4: Invite code + link mời được tạo
+- [ ] AC-E2-2.5: Copy link hoạt động
+- [ ] AC-E2-2.6: Step 1: avatar + name card + emoji card đúng layout
+- [ ] AC-E2-2.7: Name input: label uppercase, hint text, divider
+- [ ] AC-E2-2.8: Nút "Tạo nhóm" disabled khi tên trống
+- [ ] AC-E2-2.9: Step 2: group card + link + QR + share icons
+- [ ] AC-E2-2.10: Copy feedback "✓ Đã sao chép link" xanh lá
+- [ ] AC-E2-2.11: "Vào nhóm ngay" → navigate group detail
 
 ---
 
-## US-2.3: Tham gia nhóm
+## US-E2-3 — Tham gia nhóm
 
-### Function
+**As a** [Linh — Thành Viên](../personas/group-member-vn.md), **I want to** tham gia nhóm bằng invite code **so that** tôi có thể xem bill và nợ trong nhóm đó.
+
+- **Priority:** P0 · **Effort:** S
+
+### Rules / Function
 1. Tap "Tham gia" → dialog nhập invite code 8 ký tự
 2. Tìm group theo code → thêm user là member
 3. Kiểm tra trùng lặp (không cho join 2 lần)
@@ -163,16 +174,20 @@ Mỗi card hiện thông tin nợ theo 6 trường hợp:
 ### UX/UI
 - Dialog: tiêu đề "Tham gia nhóm", ô nhập mã 8 ký tự, nút "Tham gia"
 
-### Tiêu chí
-- [ ] Tham gia thành công bằng invite code
-- [ ] Không cho join trùng
-- [ ] Code sai → error message
+### Acceptance Criteria
+- [ ] AC-E2-3.1: Tham gia thành công bằng invite code
+- [ ] AC-E2-3.2: Không cho join trùng
+- [ ] AC-E2-3.3: Code sai → error message
 
 ---
 
-## US-2.4: Xem Group Detail (Chat View)
+## US-E2-4 — Xem Group Detail (Chat View)
 
-### Function
+**As a** [Minh — Người Tổ Chức](../personas/group-organizer-vn.md) **or** [Linh — Thành Viên](../personas/group-member-vn.md), **I want to** xem chat + bill feed trong nhóm với real-time updates **so that** tôi luôn cập nhật hoạt động nhóm.
+
+- **Priority:** P0 · **Effort:** L
+
+### Rules / Function
 - Load chat_messages + bills theo group_id
 - Real-time subscription (Supabase channel) cho tin nhắn + bill mới
 - Debt banner: query debts → tính nợ ròng lớn nhất
@@ -195,18 +210,22 @@ Mỗi card hiện thông tin nợ theo 6 trường hợp:
 
 **Chat input:** ô nhập + nút tạo bill 44x44px
 
-### Tiêu chí
-- [ ] Feed hiện bill cards, transfers, tin nhắn
-- [ ] Debt banner đúng nợ ròng
-- [ ] Real-time: bill/tin nhắn mới hiện ngay
-- [ ] Empty state khi chưa có hoạt động
-- [ ] Tab bar ẩn trên màn này
+### Acceptance Criteria
+- [ ] AC-E2-4.1: Feed hiện bill cards, transfers, tin nhắn
+- [ ] AC-E2-4.2: Debt banner đúng nợ ròng
+- [ ] AC-E2-4.3: Real-time: bill/tin nhắn mới hiện ngay
+- [ ] AC-E2-4.4: Empty state khi chưa có hoạt động
+- [ ] AC-E2-4.5: Tab bar ẩn trên màn này
 
 ---
 
-## US-2.5: Cài đặt nhóm
+## US-E2-5 — Cài đặt nhóm
 
-### Function
+**As a** [Minh — Người Tổ Chức](../personas/group-organizer-vn.md) **or** [Linh — Thành Viên](../personas/group-member-vn.md), **I want to** quản lý cài đặt nhóm (tên, thành viên, mã mời, rời nhóm) **so that** tôi có thể điều chỉnh nhóm hoặc rời khỏi.
+
+- **Priority:** P0 · **Effort:** M
+
+### Rules / Function
 - Đổi tên (chỉ admin)
 - Xem/copy mã mời
 - Xem danh sách thành viên + role (Admin/Member)
@@ -223,8 +242,15 @@ Mỗi card hiện thông tin nợ theo 6 trường hợp:
 - Gap 16px, padding 8px 16px 32px 16px
 - Nút rời nhóm: nền đỏ nhạt, có dialog xác nhận
 
-### Tiêu chí
-- [ ] Admin đổi tên thành công
-- [ ] Copy mã mời hoạt động
-- [ ] Rời nhóm có dialog xác nhận
-- [ ] Non-admin không thấy nút đổi tên
+### Acceptance Criteria
+- [ ] AC-E2-5.1: Admin đổi tên thành công
+- [ ] AC-E2-5.2: Copy mã mời hoạt động
+- [ ] AC-E2-5.3: Rời nhóm có dialog xác nhận
+- [ ] AC-E2-5.4: Non-admin không thấy nút đổi tên
+
+---
+
+## AC Coverage Summary
+
+- **Total ACs this epic:** 28 (AC-E2-1.1 → AC-E2-5.4)
+- **Legacy ID mapping:** `US-2.1` → `US-E2-1`, `US-2.2` → `US-E2-2`, `US-2.3` → `US-E2-3`, `US-2.4` → `US-E2-4`, `US-2.5` → `US-E2-5`

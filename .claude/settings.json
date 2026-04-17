@@ -1,0 +1,86 @@
+{
+  "mcpServers": {
+    "playwright": {
+      "command": "npx",
+      "args": ["@playwright/mcp"]
+    }
+  },
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "startup|resume|clear|compact",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node .claude/hooks/session-init.cjs"
+          }
+        ]
+      }
+    ],
+    "SubagentStart": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node .claude/hooks/subagent-init.cjs"
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node .claude/hooks/descriptive-name.cjs"
+          }
+        ]
+      },
+      {
+        "matcher": "Bash|Glob|Grep|Read|Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node .claude/hooks/scout-block.cjs"
+          },
+          {
+            "type": "command",
+            "command": "node .claude/hooks/privacy-block.cjs"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node .claude/hooks/eval-reminder.cjs"
+          },
+          {
+            "type": "command",
+            "command": "node .claude/hooks/trace-collector.cjs"
+          },
+          {
+            "type": "command",
+            "command": "node .claude/hooks/post-edit-simplify-reminder.cjs"
+          }
+        ]
+      }
+    ],
+    "TaskCompleted": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node .claude/hooks/task-completed-handler.cjs"
+          }
+        ]
+      }
+    ]
+  }
+}

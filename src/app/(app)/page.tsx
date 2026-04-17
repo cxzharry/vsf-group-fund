@@ -192,7 +192,7 @@ export default function HomePage() {
 
   return (
     <>
-      {/* Header — US-2.1 */}
+      {/* Header — US-E2-1 */}
       <header className="sticky top-0 z-40 bg-[#F2F2F7] px-4 pt-3 pb-2">
         <div className="flex items-center justify-between">
           <h1 className="text-[28px] font-bold text-[#1C1C1E]">Nhóm</h1>

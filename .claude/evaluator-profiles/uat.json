@@ -1,0 +1,26 @@
+{
+  "type": "uat",
+  "name": "UAT Evaluator",
+  "method": "llm-checklist + playwright-execution",
+  "pass_threshold": 7,
+  "tools": ["content-review", "playwright"],
+  "scoring": {
+    "persona_coverage": { "weight": 10, "description": "Mỗi persona trong PRD có ≥1 UAT scenario; primary persona có ≥3 scenarios" },
+    "scenario_quality": { "weight": 10, "description": "Scenario testable (Given/When/Then), map trực tiếp tới persona's UAT Hooks" },
+    "evidence_capture": { "weight": 8, "description": "Mỗi scenario có pass criteria + evidence (screenshot + console log + network HAR)" },
+    "playwright_execution": { "weight": 9, "description": "Playwright runs successfully cho executable target (URL/prototype). Skip chỉ chấp nhận cho .pen design files." }
+  },
+  "checklist": [
+    "PRD personas resolved (file paths exist trong personas/)",
+    "Mỗi primary persona có ≥3 UAT scenarios (1 trigger + 1 success + 1 failure mode)",
+    "Mỗi secondary persona có ≥1 UAT scenario",
+    "Scenario format Given/When/Then, không generic (vd 'user phải hài lòng' = fail)",
+    "Pass criteria đo được (số liệu, regex, screenshot match, DOM selector assertion)",
+    "Failure modes từ persona file đều có Playwright negative assertion",
+    "Trigger conditions match real-world scenario (không lab-only)",
+    "Playwright run cho mọi scenario có executable target — pass rate >= 80%",
+    "Evidence captured per scenario: screenshot.png + console.log + network.har",
+    "Persona's used_by_uat frontmatter đã update sau khi script generated",
+    "Content tiếng Việt cho prose, technical jargon tiếng Anh"
+  ]
+}

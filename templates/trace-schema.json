@@ -1,0 +1,176 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "avengers-team trace",
+  "description": "Trace record produced by meta-harness after each pipeline run. Filename format: {date}-{type}-{slug}.json where {date} = YYMMDD (6 digits, e.g. 260417 for 2026-04-17). {date} produced by session-init hook or shell `date +%y%m%d`.",
+  "type": "object",
+  "required": ["id", "pipeline", "generated", "outcome"],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[0-9]{6}-(prd|design|prototype|fullapp|uat)-[a-z0-9-]+(-[0-9]{4})?$",
+      "description": "Unique trace ID. Format: YYMMDD-{type}-{slug}. Same-day reruns: append `-HHMM` (e.g., `260417-prd-recipe-app-1430`). Examples: 260417-prd-ai-workflow, 260417-uat-ai-english-tutor, 260417-prd-recipe-app-1430",
+      "examples": ["260417-prd-ai-workflow", "260417-prototype-kanban-board", "260417-fullapp-auth-system", "260417-uat-ai-english-tutor", "260417-prd-recipe-app-1430"]
+    },
+    "pipeline": {
+      "type": "string",
+      "description": "Name of the pipeline that produced this trace.",
+      "examples": ["team-prd", "team-design", "team-prototype", "team-vibe", "team-uat"]
+    },
+    "generated": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 timestamp when the trace was written.",
+      "examples": ["2026-04-17T12:16:00Z"]
+    },
+    "plan_dir": {
+      "type": ["string", "null"],
+      "description": "Directory containing plan artifacts (`plans/{date}-{slug}/`). Populated for team-prototype/team-design/team-vibe. May be null/omitted for team-prd/team-uat (which use `prd/<slug>.md` and `uat/<slug>/` directly, no plan folder).",
+      "examples": ["plans/260417-1216-ai-workflow/", "plans/260417-1230-kanban-board/"]
+    },
+    "skills_invoked": {
+      "type": "array",
+      "description": "List of skill names activated during this pipeline run.",
+      "items": {
+        "type": "string"
+      },
+      "examples": [["karpathy-guidelines", "sequential-thinking", "researcher"]]
+    },
+    "evaluator_rounds": {
+      "type": "array",
+      "description": "Per-round evaluator scores and verdicts from the Generator→Evaluator loop.",
+      "items": {
+        "type": "object",
+        "required": ["round", "verdict"],
+        "anyOf": [
+          { "required": ["score"] },
+          { "required": ["scores", "weighted_average"] }
+        ],
+        "properties": {
+          "round": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "Round number (1-based)."
+          },
+          "score": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 10,
+            "description": "Single composite evaluator score (0-10). Use this for single-criterion evaluators. For multi-criterion (evaluator-profiles with weighted criteria), prefer `scores` + `weighted_average`."
+          },
+          "scores": {
+            "type": "object",
+            "description": "Per-criterion scores (criterion-name → 0-10). Used by evaluator-profiles with multiple weighted criteria (e.g. full-app.json, prd.json).",
+            "additionalProperties": { "type": "number", "minimum": 0, "maximum": 10 },
+            "examples": [{ "completeness": 7, "ux_accessibility": 5, "visual_quality": 7 }]
+          },
+          "weighted_average": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 10,
+            "description": "Weighted average across `scores` using evaluator-profile weights. Required when `scores` is present."
+          },
+          "verdict": {
+            "type": "string",
+            "enum": ["pass", "refine", "abandon"],
+            "description": "Evaluator verdict: pass (accepted, equivalent to SHIP), refine (retry with feedback), abandon (give up). Lowercase canonical; legacy uppercase SHIP/REFINE/ABANDON in skill docs maps to these."
+          },
+          "feedback": {
+            "type": "string",
+            "description": "Evaluator feedback used to guide the next generator round."
+          },
+          "fixes": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "List of concrete fixes the evaluator demanded (used by REFINE rounds to drive the next generator iteration)."
+          },
+          "skill_triggered": {
+            "type": "string",
+            "description": "Skill name invoked in this round (if any)."
+          }
+        }
+      }
+    },
+    "friction_summary": {
+      "type": "object",
+      "description": "Aggregated friction data for skill evolution. Written by meta-harness after loop completes.",
+      "properties": {
+        "highest_retry_skill": {
+          "type": ["string", "null"],
+          "description": "Skill that required the most retries across all rounds. NULL when total_retries=0 (first-try SHIP).",
+          "examples": ["researcher", "karpathy-guidelines", null]
+        },
+        "total_retries": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Total number of refine rounds across all skills."
+        },
+        "per_skill_retries": {
+          "type": "object",
+          "description": "Map of skill name → retry count.",
+          "additionalProperties": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "examples": [{ "researcher": 2, "karpathy-guidelines": 1 }]
+        },
+        "lowest_avg_criterion": {
+          "type": "string",
+          "description": "Per-criterion: the criterion with the lowest average score across rounds. Used to target evolve hypotheses at the weakest evaluator dimension. Only populated when `evaluator_rounds[].scores` (multi-criterion) is used.",
+          "examples": ["ux_accessibility", "security"]
+        }
+      }
+    },
+    "outcome": {
+      "type": "string",
+      "enum": ["pass", "refine", "abandon"],
+      "description": "Final pipeline outcome: pass (artifact accepted), refine (returned to caller for revision), abandon (pipeline stopped)."
+    },
+    "artifact_path": {
+      "type": "string",
+      "description": "Path to the primary artifact produced (e.g., PRD file, design file).",
+      "examples": ["prd/ai-workflow.md", "design/kanban-board.pen"]
+    },
+    "notes": {
+      "type": "string",
+      "description": "Free-text notes from the pipeline run (optional)."
+    },
+    "trace_hash": {
+      "type": "string",
+      "description": "SHA-256 of concatenated `id + pipeline + generated + outcome` fields for tamper detection. Computed by trace-collector.cjs after all fields are finalized. Hex string, 64 chars."
+    }
+  },
+  "additionalProperties": false,
+  "examples": [
+    {
+      "id": "260417-prd-ai-workflow",
+      "pipeline": "team-prd",
+      "generated": "2026-04-17T12:16:00Z",
+      "plan_dir": "plans/260417-1216-ai-workflow/",
+      "skills_invoked": ["karpathy-guidelines", "sequential-thinking"],
+      "evaluator_rounds": [
+        {
+          "round": 1,
+          "score": 6.5,
+          "verdict": "refine",
+          "feedback": "Persona section lacks measurable pain points. Metrics are vague.",
+          "skill_triggered": "karpathy-guidelines"
+        },
+        {
+          "round": 2,
+          "score": 8.2,
+          "verdict": "pass",
+          "feedback": "Persona and metrics now concrete and testable."
+        }
+      ],
+      "friction_summary": {
+        "highest_retry_skill": "karpathy-guidelines",
+        "total_retries": 1,
+        "per_skill_retries": {
+          "karpathy-guidelines": 1
+        }
+      },
+      "outcome": "pass",
+      "artifact_path": "prd/ai-workflow.md"
+    }
+  ]
+}

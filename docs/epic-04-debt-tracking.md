@@ -1,10 +1,17 @@
-# Epic 4: Theo Dõi Nợ (Debt Tracking)
+# Epic 4 — Theo Dõi Nợ (Debt Tracking)
+
+> **Epic ID:** E4 · **Priority:** P0 · **Persona:** [Minh — group-organizer-vn](group-organizer-vn.md), [Linh — group-member-vn](group-member-vn.md)
+> **Brief:** Banner nợ trong Group Detail, tính nợ ròng, xác nhận thanh toán 2 chiều qua Telegram, rút gọn nợ (netting).
 
 ---
 
-## US-4.1: Hiện banner nợ trong Group Detail
+## US-E4-1 — Hiện banner nợ trong Group Detail
 
-### Function
+**As a** [Minh — group-organizer-vn](group-organizer-vn.md) **or** [Linh — group-member-vn](group-member-vn.md), **I want to** see a debt banner with my net debt/credit at the top of Group Detail, **so that** I can immediately see who owes whom and tap through to settle.
+
+- **Priority:** P0 · **Effort:** S
+
+### Rules / Function
 - Query debts trong nhóm: user là debtor hoặc creditor
 - Tính nợ ròng mỗi người: sum(nợ họ nợ tôi) - sum(nợ tôi nợ họ)
 - Hiện khoản nợ ròng lớn nhất
@@ -23,18 +30,22 @@
 - Cao 56px, padding ngang 16px
 - Ẩn không chiếm space
 
-### Tiêu chí
-- [ ] Nợ ròng tính đúng
-- [ ] Chỉ đếm pending
-- [ ] Đỏ khi nợ, xanh khi được nợ
-- [ ] Ẩn khi không có nợ
-- [ ] Số tiền format "1.200.000đ"
+### Acceptance Criteria
+- [ ] AC-E4-1.1: Nợ ròng tính đúng
+- [ ] AC-E4-1.2: Chỉ đếm pending
+- [ ] AC-E4-1.3: Đỏ khi nợ, xanh khi được nợ
+- [ ] AC-E4-1.4: Ẩn khi không có nợ
+- [ ] AC-E4-1.5: Số tiền format "1.200.000đ"
 
 ---
 
-## US-4.2: Tính nợ ròng
+## US-E4-2 — Tính nợ ròng
 
-### Function
+**As a** [Minh — group-organizer-vn](group-organizer-vn.md) **or** [Linh — group-member-vn](group-member-vn.md), **I want to** have an accurate pairwise net debt calculation across all pending debts in a group, **so that** the system correctly netts mutual obligations (2-way debt cancellation).
+
+- **Priority:** P0 · **Effort:** M
+
+### Rules / Function
 ```
 Với user A và user B:
   a_nợ_b = sum(debts where debtor=A, creditor=B, status=pending)
@@ -48,16 +59,20 @@ Với user A và user B:
 - Debts từ nhiều bills → sum tất cả
 - Debt status = "confirmed" → không tính
 
-### Tiêu chí
-- [ ] Net debt tính đúng 2 chiều
-- [ ] Chỉ count pending debts
-- [ ] Tổng nợ trên Home khớp với detail
+### Acceptance Criteria
+- [ ] AC-E4-2.1: Net debt tính đúng 2 chiều
+- [ ] AC-E4-2.2: Chỉ count pending debts
+- [ ] AC-E4-2.3: Tổng nợ trên Home khớp với detail
 
 ---
 
-## US-4.3: Xác nhận thanh toán 2 chiều
+## US-E4-3 — Xác nhận thanh toán 2 chiều
 
-### Function
+**As a** [Minh — group-organizer-vn](group-organizer-vn.md) **or** [Linh — group-member-vn](group-member-vn.md), **I want to** confirm payment via 2-way flow (debtor initiates → creditor approves via Telegram), **so that** both parties acknowledge the settlement and the debt status updates to confirmed.
+
+- **Priority:** P0 · **Effort:** M
+
+### Rules / Function
 1. Người nợ tap "Đã chuyển tiền" → payment_confirmation (pending)
 2. Notify chủ nợ qua Telegram
 3. Chủ nợ xác nhận → debt status = "confirmed"
@@ -68,17 +83,21 @@ Với user A và user B:
 - Người nợ bấm nhiều lần → chỉ tạo 1 confirmation
 - Chủ nợ từ chối → chưa implement (future)
 
-### Tiêu chí
-- [ ] Payment confirmation tạo đúng
-- [ ] Debt chuyển "confirmed" sau xác nhận
-- [ ] Telegram notification gửi 2 chiều
-- [ ] Banner cập nhật sau confirm
+### Acceptance Criteria
+- [ ] AC-E4-3.1: Payment confirmation tạo đúng
+- [ ] AC-E4-3.2: Debt chuyển "confirmed" sau xác nhận
+- [ ] AC-E4-3.3: Telegram notification gửi 2 chiều
+- [ ] AC-E4-3.4: Banner cập nhật sau confirm
 
 ---
 
-## US-4.4: Rút gọn nợ (Simplify Debts)
+## US-E4-4 — Rút gọn nợ (Simplify Debts)
 
-### Function
+**As a** [Minh — group-organizer-vn](group-organizer-vn.md), **I want to** toggle between detailed debt list and a simplified (netting-applied) debt view on the /debts page, **so that** I can optimize multi-person trips with fewer payment settlements using multi-hop debt reduction.
+
+- **Priority:** P0 · **Effort:** L
+
+### Rules / Function
 Trên trang `/debts`, user có thể chuyển giữa 2 view:
 - **Chi tiết**: hiện từng debt row gốc (mặc định)
 - **Nợ ròng**: áp thuật toán netting, gộp nhiều debt thành 1 payment, giảm số lần chuyển tiền
@@ -99,7 +118,7 @@ Hai thuật toán (cả 2 đều đã implement):
 - Multi-hop: A→B 100, B→C 100 → [A→C 100] (1 payment thay 2)
 - Mất traceability per pair
 
-### UI — Trang /debts
+### UX/UI
 
 **Segmented toggle** ở header:
 - `[Chi tiết] [Nợ ròng]` — pill tabs
@@ -127,7 +146,7 @@ Hai thuật toán (cả 2 đều đã implement):
 - Mode switch khi đang xử lý → cancel pending UI action
 - Pairwise vs Graph kết quả khác nhau → v1 giữ per-pair history, v2 optimize tối đa
 
-### Thuật toán — tham khảo code
+### Algorithm reference
 ```
 src/lib/simplify-debts.ts
   ├─ simplifyDebts(debts)       — pairwise netting v1
@@ -142,11 +161,17 @@ Key test cases:
 - A→B 50, B→C 50, C→A 50 → [] (graph, fully settled)
 - A→B 100, B→C 100 → [A→C 100] (graph, multi-hop)
 
-### Tiêu chí
-- [ ] Segmented toggle "Chi tiết" / "Nợ ròng" hoạt động
-- [ ] Mode "Nợ ròng" gộp debts bằng `simplifyDebts()`
-- [ ] Row chip "Nợ ròng · gộp N" hiện đúng count
-- [ ] Empty state "🎉 Tất cả đã cân bằng!" khi list rỗng
-- [ ] Batch settle tạo payment_confirmations cho tất cả underlying debts
-- [ ] Unit tests 12/12 PASS
-- [ ] Switch mode không gây flash / lag
+### Acceptance Criteria
+- [ ] AC-E4-4.1: Segmented toggle "Chi tiết" / "Nợ ròng" hoạt động
+- [ ] AC-E4-4.2: Mode "Nợ ròng" gộp debts bằng `simplifyDebts()`
+- [ ] AC-E4-4.3: Row chip "Nợ ròng · gộp N" hiện đúng count
+- [ ] AC-E4-4.4: Empty state "🎉 Tất cả đã cân bằng!" khi list rỗng
+- [ ] AC-E4-4.5: Batch settle tạo payment_confirmations cho tất cả underlying debts
+- [ ] AC-E4-4.6: Unit tests 12/12 PASS
+- [ ] AC-E4-4.7: Switch mode không gây flash / lag
+
+---
+
+## AC Coverage Summary
+- **Total ACs:** 18
+- **Legacy mapping:** US-4.1 → US-E4-1 (5 ACs), US-4.2 → US-E4-2 (3 ACs), US-4.3 → US-E4-3 (4 ACs), US-4.4 → US-E4-4 (7 ACs)

@@ -959,7 +959,7 @@ export default function GroupDetailPage() {
         onChange={setInputText}
         onSend={handleSendText}
         onOpenManualBill={() => {
-          // US-3.1 manual flow: open Confirm Sheet with blank intent
+          // US-E3-1 manual flow: open Confirm Sheet with blank intent
           setPendingIntent({
             hasIntent: true,
             intentType: "split",

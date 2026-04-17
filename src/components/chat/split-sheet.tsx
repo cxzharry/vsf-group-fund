@@ -1,6 +1,6 @@
 "use client";
 
-// US-3.3: Split Sheet — choose members & amounts with equal/percent/custom modes
+// US-E3-3: Split Sheet — choose members & amounts with equal/percent/custom modes
 import { useState, useMemo } from "react";
 import { formatVND } from "@/lib/format-vnd";
 import type { Member } from "@/lib/types";
