@@ -5,7 +5,6 @@ import { useParams, useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase-client";
 import { useAuth } from "@/components/auth-provider";
 import { PageHeader } from "@/components/page-header";
-import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { ScreenshotUpload } from "@/components/screenshot-upload";
@@ -191,8 +190,10 @@ export default function ConfirmPaymentPage() {
               }
             />
             {ocrData && (
-              <Button
-                className="mt-3 w-full bg-[#3A5CCC] hover:bg-[#2d4aaa]"
+              /* Primary CTA: h-[54px] + rounded-[14px] per components.md §1 Button lg size */
+              <button
+                type="button"
+                className="mt-3 flex h-[54px] w-full items-center justify-center rounded-[14px] bg-[#3A5CCC] text-[17px] font-semibold text-white transition-opacity active:scale-[0.98] disabled:opacity-50"
                 onClick={submitWithScreenshot}
                 disabled={submitting}
               >
@@ -201,7 +202,7 @@ export default function ConfirmPaymentPage() {
                   : ocrData.matches
                     ? "Xác nhận (khớp)"
                     : "Gửi ảnh (chờ duyệt)"}
-              </Button>
+              </button>
             )}
           </CardContent>
         </Card>
@@ -219,14 +220,15 @@ export default function ConfirmPaymentPage() {
             </p>
           </CardHeader>
           <CardContent>
-            <Button
-              variant="outline"
-              className="w-full"
+            {/* Secondary CTA: h-[44px] + rounded-[14px] per components.md §1 Button md size */}
+            <button
+              type="button"
+              className="flex h-[44px] w-full items-center justify-center rounded-[14px] border border-[#E5E5EA] text-[15px] font-medium text-[#1C1C1E] transition-opacity active:scale-[0.98] disabled:opacity-50"
               onClick={submitManual}
               disabled={submitting}
             >
               {submitting ? "Đang gửi..." : "Đã chuyển tiền"}
-            </Button>
+            </button>
           </CardContent>
         </Card>
       </main>

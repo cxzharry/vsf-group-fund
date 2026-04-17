@@ -846,8 +846,8 @@ export default function GroupDetailPage() {
         </button>
 
         <div className="flex flex-col items-center">
-          <p className="text-sm font-semibold text-[#1C1C1E]">{group.name}</p>
-          <p className="text-xs text-[#AEAEB2]">{memberCount} thành viên</p>
+          <p className="text-[17px] font-semibold text-[#1C1C1E]">{group.name}</p>
+          <p className="text-[13px] text-[#AEAEB2]">{memberCount} thành viên</p>
         </div>
 
         <button
@@ -889,8 +889,8 @@ export default function GroupDetailPage() {
           /* Empty state: shown when group has no bills or messages yet */
           <div className="flex flex-col items-center justify-center gap-3 px-6 py-16 text-center">
             <svg
-              width="48"
-              height="48"
+              width="64"
+              height="64"
               viewBox="0 0 24 24"
               fill="none"
               stroke="#C7C7CC"
@@ -915,7 +915,7 @@ export default function GroupDetailPage() {
                     toast.info(`Mã mời: ${group.invite_code}`);
                   });
                 }}
-                className="mt-1 flex items-center gap-2 rounded-xl border border-[#3A5CCC] px-5 py-2.5 text-sm font-semibold text-[#3A5CCC] transition-colors active:bg-[#EEF2FF]"
+                className="mt-1 flex items-center gap-2 rounded-[14px] border border-[#3A5CCC] px-5 py-2.5 text-sm font-semibold text-[#3A5CCC] transition-colors active:bg-[#EEF2FF]"
               >
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
                   <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8" />
@@ -1034,23 +1034,23 @@ export default function GroupDetailPage() {
       {/* Delete bill confirmation dialog */}
       {deleteBillId && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-6">
-          <div className="w-full max-w-sm rounded-2xl bg-white p-5 shadow-xl">
-            <h3 className="text-base font-bold text-[#1C1C1E]">Xóa bill?</h3>
-            <p className="mt-2 text-sm text-[#636366]">
+          <div className="w-full max-w-sm rounded-[14px] bg-white p-5 shadow-xl">
+            <h3 className="text-[17px] font-semibold text-[#1C1C1E]">Xóa bill?</h3>
+            <p className="mt-2 text-[14px] text-[#8E8E93]">
               Thao tác này không thể hoàn tác. Tất cả khoản nợ liên quan cũng sẽ bị xóa.
             </p>
             <div className="mt-4 flex gap-2">
               <button
                 type="button"
                 onClick={() => setDeleteBillId(null)}
-                className="flex-1 rounded-xl border border-[#E5E5EA] py-2.5 text-sm font-semibold text-[#1C1C1E] hover:bg-[#F2F2F7]"
+                className="flex-1 rounded-[14px] border border-[#E5E5EA] py-2.5 text-sm font-semibold text-[#1C1C1E] hover:bg-[#F2F2F7]"
               >
                 Hủy
               </button>
               <button
                 type="button"
                 onClick={() => { const bid = deleteBillId; setDeleteBillId(null); handleDeleteBill(bid); }}
-                className="flex-1 rounded-xl bg-[#FF3B30] py-2.5 text-sm font-semibold text-white hover:opacity-90"
+                className="flex-1 rounded-[14px] bg-[#FF3B30] py-2.5 text-sm font-semibold text-white hover:opacity-90"
               >
                 Xóa bill
               </button>

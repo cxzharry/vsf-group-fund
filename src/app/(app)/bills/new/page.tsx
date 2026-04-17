@@ -175,7 +175,7 @@ export default function NewBillPage() {
       <main className="space-y-3 bg-[#F2F2F7] px-4 py-4 pb-8">
 
         {/* Amount — large centered input */}
-        <div className="rounded-2xl bg-white px-4 py-5 shadow-sm">
+        <div className="rounded-[14px] bg-white px-4 py-5 shadow-sm">
           <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-[#8E8E93]">
             Số tiền
           </p>
@@ -201,7 +201,7 @@ export default function NewBillPage() {
         </div>
 
         {/* Title */}
-        <div className="overflow-hidden rounded-2xl bg-white shadow-sm">
+        <div className="overflow-hidden rounded-[14px] bg-white shadow-sm">
           <input
             type="text"
             value={title}
@@ -212,7 +212,7 @@ export default function NewBillPage() {
         </div>
 
         {/* Split type chips */}
-        <div className="rounded-2xl bg-white px-4 py-3 shadow-sm">
+        <div className="rounded-[14px] bg-white px-4 py-3 shadow-sm">
           <p className="mb-2.5 text-xs font-semibold uppercase tracking-wide text-[#8E8E93]">
             Cách chia
           </p>
@@ -240,7 +240,7 @@ export default function NewBillPage() {
         </div>
 
         {/* Who paid */}
-        <div className="rounded-2xl bg-white px-4 py-3 shadow-sm">
+        <div className="rounded-[14px] bg-white px-4 py-3 shadow-sm">
           <p className="mb-2.5 text-xs font-semibold uppercase tracking-wide text-[#8E8E93]">
             Ai trả tiền?
           </p>
@@ -263,7 +263,7 @@ export default function NewBillPage() {
         </div>
 
         {/* Who participated */}
-        <div className="rounded-2xl bg-white shadow-sm overflow-hidden">
+        <div className="rounded-[14px] bg-white shadow-sm overflow-hidden">
           <div className="flex items-center justify-between px-4 py-3 border-b border-[#F2F2F7]">
             <p className="text-xs font-semibold uppercase tracking-wide text-[#8E8E93]">
               Ai tham gia?
@@ -329,13 +329,12 @@ export default function NewBillPage() {
           </div>
         </div>
 
-        {/* Submit */}
+        {/* Submit — primary CTA: h-[54px] rounded-[14px] text-[17px] per components.md §1 Button.lg */}
         <button
           type="button"
           onClick={handleSubmit}
           disabled={submitting || totalAmount <= 0 || !title.trim() || selectedMembers.size === 0}
-          className="w-full rounded-2xl py-4 text-[15px] font-bold text-white shadow transition-opacity disabled:opacity-50 active:opacity-80"
-          style={{ backgroundColor: "#3A5CCC" }}
+          className="flex h-[54px] w-full items-center justify-center rounded-[14px] bg-[#3A5CCC] text-[17px] font-semibold text-white shadow transition-opacity disabled:opacity-50 active:scale-[0.98]"
         >
           {submitting ? "Đang tạo..." : "Tạo hóa đơn"}
         </button>

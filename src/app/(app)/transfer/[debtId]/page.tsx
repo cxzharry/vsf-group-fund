@@ -299,11 +299,12 @@ export default function TransferPage() {
 
       {/* CTAs */}
       <div className="border-t border-[#E5E5EA] bg-white px-4 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-3 space-y-2">
+        {/* Primary CTA: h-[54px] + rounded-[14px] per components.md §1 Button lg size */}
         <button
           type="button"
           onClick={handleConfirmPayment}
           disabled={submitting}
-          className="w-full rounded-2xl bg-[#3A5CCC] py-3.5 text-sm font-bold text-white shadow transition-opacity active:opacity-80 disabled:opacity-50"
+          className="flex h-[54px] w-full items-center justify-center rounded-[14px] bg-[#3A5CCC] text-[17px] font-semibold text-white transition-opacity active:scale-[0.98] disabled:opacity-50"
         >
           {submitting ? "Đang xử lý..." : "Đã chuyển tiền"}
         </button>

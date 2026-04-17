@@ -64,7 +64,7 @@ export function BillCardBubble({
 
   return (
     <div className="mx-4 my-1">
-      <div className="rounded-[14px] bg-white p-3 shadow-sm">
+      <div className="rounded-[14px] bg-white p-4 shadow-sm">
         {/* Header row */}
         <div className="flex items-center gap-2 mb-2">
           <div
@@ -77,19 +77,20 @@ export function BillCardBubble({
               {isMe ? "Bạn" : payerName} đã tạo
             </p>
             <div className="flex items-center gap-1.5">
-              <p className="truncate text-sm font-semibold text-[#1C1C1E]">
+              <p className="truncate text-[15px] font-bold text-[#1C1C1E]">
                 {bill.title}
               </p>
               {catInfo && (
-                <span className="shrink-0 rounded-full bg-[#F2F2F7] px-2 py-0.5 text-[11px] font-medium text-[#1C1C1E]">
-                  <span aria-hidden>{catInfo.emoji}</span>
-                  <span className="sr-only">{catInfo.label}</span>
+                // category badge: tokens §6 category variant — bg-app, text-secondary
+                <span className="shrink-0 rounded-full bg-[#F2F2F7] px-2 py-0.5 text-[11px] font-medium text-[#8E8E93]">
+                  {catInfo.emoji} {catInfo.label}
                 </span>
               )}
             </div>
           </div>
           <div className="flex items-center gap-1 shrink-0">
-            <p className="text-sm font-bold text-[#1C1C1E]">
+            {/* Amount: 17px bold primary color per US-E3-4 spec */}
+            <p className="text-[17px] font-bold text-[#3A5CCC]">
               {formatVND(bill.total_amount)}đ
             </p>
             {/* 3-dot menu: only shown for bill owner */}
@@ -151,13 +152,13 @@ export function BillCardBubble({
             {participantCount} người · {formatVND(perPerson)}đ/người
           </p>
           <div className="flex items-center gap-1.5">
+            {/* "Đã sửa" badge: quiet inline text, no pill/bg — per US-E3-8 style spec */}
             {bill.updated_at && bill.updated_at !== bill.created_at && (
-              <span className="rounded-full bg-[#FFF8EC] px-2 py-0.5 text-xs text-[#FF9500]">
-                Đã sửa
-              </span>
+              <span className="text-[11px] text-[#8E8E93]">· Đã sửa</span>
             )}
             {bill.status === "closed" && (
-              <span className="rounded-full bg-[#F2F2F7] px-2 py-0.5 text-xs text-[#AEAEB2]">
+              // status-confirmed badge style: bg-success-tint text-success
+              <span className="rounded-full bg-[#F0FFF4] px-2 py-0.5 text-[11px] font-medium text-[#34C759]">
                 Đã đóng
               </span>
             )}

@@ -81,6 +81,9 @@ export function BillConfirmSheet({
   );
   const [payerId] = useState<string>(currentMember.id);
   const [billType, setBillType] = useState<"split" | "transfer">("split");
+  // Bill mở toggle — AC-E3-1.7, AC-E3-1.8
+  const [isOpenBill, setIsOpenBill] = useState<boolean>(false);
+  const [estimatedPeople, setEstimatedPeople] = useState<string>("");
   const [submitting, setSubmitting] = useState(false);
   const [showSplit, setShowSplit] = useState(false);
   const [customSplits, setCustomSplits] = useState<Record<string, number> | null>(null);
@@ -90,7 +93,13 @@ export function BillConfirmSheet({
   const perPerson =
     peopleCount > 0 && amount > 0 ? Math.floor(amount / peopleCount) : 0;
 
-  const isValid = amount > 0 && description.trim().length > 0 && peopleCount > 0;
+  // AC-E3-1.3/1.4: require splits when bill mở OFF; allow no splits when bill mở ON
+  const isValid =
+    amount > 0 &&
+    description.trim().length > 0 &&
+    (isOpenBill
+      ? (estimatedPeople === "" || parseInt(estimatedPeople, 10) > 0)
+      : peopleCount > 0);
 
   async function handleConfirm() {
     if (!isValid) return;
@@ -98,10 +107,12 @@ export function BillConfirmSheet({
     await onConfirm({
       amount,
       description: description.trim(),
-      splitType: customSplits ? "custom" : "equal",
-      peopleCount: customSplits ? Object.keys(customSplits).length : peopleCount,
+      splitType: isOpenBill ? "open" : customSplits ? "custom" : "equal",
+      peopleCount: isOpenBill
+        ? (estimatedPeople ? parseInt(estimatedPeople, 10) : 0)
+        : customSplits ? Object.keys(customSplits).length : peopleCount,
       payerId,
-      billType: "standard",
+      billType: isOpenBill ? "open" : "standard",
       category,
       customSplits: customSplits ?? undefined,
     });
@@ -210,7 +221,42 @@ export function BillConfirmSheet({
               </div>
             )}
 
+            {/* Bill mở toggle — AC-E3-1.7: shown in create mode only */}
             {!isEdit && (
+              <div className="flex items-center justify-between">
+                <span className="text-[13px] text-[#8E8E93]">Bill mở</span>
+                <div className="flex items-center gap-2">
+                  {isOpenBill && (
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      value={estimatedPeople}
+                      onChange={(e) => setEstimatedPeople(e.target.value.replace(/\D/g, ""))}
+                      placeholder="Số người ước tính"
+                      className="w-32 text-right text-[13px] text-[#1C1C1E] outline-none placeholder-[#AEAEB2]"
+                    />
+                  )}
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked={isOpenBill}
+                    onClick={() => setIsOpenBill((v) => !v)}
+                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                      isOpenBill ? "bg-[#3A5CCC]" : "bg-[#D1D1D6]"
+                    }`}
+                  >
+                    <span
+                      className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${
+                        isOpenBill ? "translate-x-6" : "translate-x-1"
+                      }`}
+                    />
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Chia cho — hidden when Bill mở ON — AC-E3-1.7 */}
+            {!isEdit && !isOpenBill && (
               <div className="flex items-center justify-between">
                 <span className="text-[13px] text-[#8E8E93]">Chia cho</span>
                 <button
@@ -228,11 +274,12 @@ export function BillConfirmSheet({
 
           <div className="flex-1" />
 
+          {/* Primary CTA: h-[54px] rounded-[14px] per components.md §1 Button.lg */}
           <button
             type="button"
             onClick={handleConfirm}
             disabled={submitting || !isValid}
-            className={`flex h-12 w-full items-center justify-center rounded-xl text-[15px] font-semibold text-white transition-opacity active:opacity-80 ${
+            className={`flex h-[54px] w-full items-center justify-center rounded-[14px] text-[17px] font-semibold text-white transition-opacity active:scale-[0.98] disabled:opacity-50 ${
               isValid && !submitting ? "bg-[#3A5CCC]" : "bg-[#C7C7CC]"
             }`}
           >

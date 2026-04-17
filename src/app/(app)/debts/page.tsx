@@ -245,12 +245,12 @@ export default function DebtsPage() {
     <>
       <PageHeader title="Khoản nợ" backHref="/" />
       <main className="space-y-4 p-4">
-        {/* View mode toggle */}
-        <div className="flex rounded-xl bg-[#F2F2F7] p-1">
+        {/* View mode toggle — segmented control per components.md §6 */}
+        <div className="flex rounded-full bg-[#EEF2FF] p-1">
           <button
             type="button"
             onClick={() => setViewMode("detail")}
-            className={`flex-1 rounded-lg py-1.5 text-sm font-medium transition-colors ${
+            className={`flex-1 rounded-full py-1.5 text-sm font-medium transition-colors ${
               viewMode === "detail"
                 ? "bg-[#3A5CCC] text-white"
                 : "text-[#8E8E93]"
@@ -261,7 +261,7 @@ export default function DebtsPage() {
           <button
             type="button"
             onClick={() => setViewMode("simplified")}
-            className={`flex-1 rounded-lg py-1.5 text-sm font-medium transition-colors ${
+            className={`flex-1 rounded-full py-1.5 text-sm font-medium transition-colors ${
               viewMode === "simplified"
                 ? "bg-[#3A5CCC] text-white"
                 : "text-[#8E8E93]"
@@ -333,7 +333,8 @@ export default function DebtsPage() {
                             <p className="text-xs text-muted-foreground">
                               {formatVND(s.amount)}đ
                             </p>
-                            <span className="rounded-full bg-[#F2F2F7] px-2 py-0.5 text-[11px] text-[#8E8E93]">
+                            {/* count chip per components.md §6: primary_tint bg + primary text */}
+                            <span className="rounded-full bg-[#EEF2FF] px-2 py-0.5 text-[11px] text-[#3A5CCC]">
                               Nợ ròng · gộp {s.underlying_ids.length}
                             </span>
                           </div>
@@ -373,7 +374,8 @@ export default function DebtsPage() {
                             <p className="text-xs text-muted-foreground">
                               {formatVND(s.amount)}đ
                             </p>
-                            <span className="rounded-full bg-[#F2F2F7] px-2 py-0.5 text-[11px] text-[#8E8E93]">
+                            {/* count chip per components.md §6: primary_tint bg + primary text */}
+                            <span className="rounded-full bg-[#EEF2FF] px-2 py-0.5 text-[11px] text-[#3A5CCC]">
                               Nợ ròng · gộp {s.underlying_ids.length}
                             </span>
                           </div>
@@ -395,12 +397,15 @@ export default function DebtsPage() {
             )}
 
             {simplifiedIOwe.length === 0 && simplifiedOwedToMe.length === 0 && (
-              <p className="py-8 text-center text-2xl">
-                🎉{" "}
-                <span className="block mt-2 text-base text-muted-foreground">
-                  Tất cả đã cân bằng!
-                </span>
-              </p>
+              /* Empty state per components.md §11 */
+              <div className="flex flex-col items-center gap-3 py-16 text-center">
+                <svg width="72" height="72" viewBox="0 0 24 24" fill="none" stroke="#C7C7CC" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M12 22C6.477 22 2 17.523 2 12S6.477 2 12 2s10 4.477 10 10-4.477 10-10 10Z" />
+                  <path d="m9 12 2 2 4-4" />
+                </svg>
+                <p className="text-[17px] font-bold text-[#1C1C1E]">Tất cả đã cân bằng!</p>
+                <p className="text-[14px] text-[#8E8E93]">Không có khoản nợ ròng nào cần thanh toán</p>
+              </div>
             )}
           </>
         ) : (
@@ -538,9 +543,15 @@ export default function DebtsPage() {
             )}
 
             {iOwe.length === 0 && owedToMe.length === 0 && (
-              <p className="py-8 text-center text-muted-foreground">
-                Không có khoản nợ nào
-              </p>
+              /* Empty state per components.md §11 */
+              <div className="flex flex-col items-center gap-3 py-16 text-center">
+                <svg width="72" height="72" viewBox="0 0 24 24" fill="none" stroke="#C7C7CC" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M12 22C6.477 22 2 17.523 2 12S6.477 2 12 2s10 4.477 10 10-4.477 10-10 10Z" />
+                  <path d="m9 12 2 2 4-4" />
+                </svg>
+                <p className="text-[17px] font-bold text-[#1C1C1E]">Không có khoản nợ nào</p>
+                <p className="text-[14px] text-[#8E8E93]">Mọi khoản nợ đã được thanh toán</p>
+              </div>
             )}
           </>
         )}
@@ -562,11 +573,12 @@ export default function DebtsPage() {
               </span>
               ?
             </p>
+            {/* Dialog buttons per components.md §9: cancel ghost left, confirm right */}
             <div className="flex gap-3">
               <button
                 type="button"
                 onClick={() => setConfirmDebt(null)}
-                className="flex-1 rounded-2xl border border-border py-3 text-sm font-semibold text-muted-foreground"
+                className="flex-1 rounded-[14px] border border-[#E5E5EA] py-3 text-[15px] font-medium text-[#8E8E93]"
               >
                 Hủy
               </button>
@@ -576,7 +588,7 @@ export default function DebtsPage() {
                   handleCreditorConfirm(confirmDebt);
                   setConfirmDebt(null);
                 }}
-                className="flex-1 rounded-2xl bg-[#34C759] py-3 text-sm font-semibold text-white"
+                className="flex-1 rounded-[14px] bg-[#34C759] py-3 text-[15px] font-semibold text-white"
               >
                 Xác nhận
               </button>
@@ -675,15 +687,17 @@ export default function DebtsPage() {
                 hàng. Liên hệ trực tiếp để chuyển khoản.
               </p>
             )}
-            <Button
-              className="w-full bg-[#3A5CCC] hover:bg-[#2d4aaa]"
+            {/* Primary CTA: h-[54px] + rounded-[14px] per components.md §1 Button lg size */}
+            <button
+              type="button"
+              className="flex h-[54px] w-full items-center justify-center rounded-[14px] bg-[#3A5CCC] text-[17px] font-semibold text-white transition-opacity hover:bg-[#2d4aaa] active:scale-[0.98]"
               onClick={() => {
                 if (qrDebt) handleConfirmPaid(qrDebt);
                 setQrDebt(null);
               }}
             >
               Đã chuyển tiền
-            </Button>
+            </button>
           </div>
         </DialogContent>
       </Dialog>

@@ -139,7 +139,7 @@ export default function CreateGroupPage() {
           </div>
 
           {/* Name card */}
-          <div className="rounded-xl bg-white px-4 pt-3 pb-4 shadow-sm space-y-2">
+          <div className="rounded-[14px] bg-white px-4 pt-3 pb-4 shadow-sm space-y-2">
             <p className="text-[11px] font-bold uppercase tracking-wide text-[#8E8E93]">Tên nhóm</p>
             <div className="flex items-center gap-2">
               <input
@@ -168,7 +168,7 @@ export default function CreateGroupPage() {
           </div>
 
           {/* Emoji card */}
-          <div className="rounded-xl bg-white px-4 pt-3 pb-4 shadow-sm space-y-3">
+          <div className="rounded-[14px] bg-white px-4 pt-3 pb-4 shadow-sm space-y-3">
             <p className="text-[11px] font-bold uppercase tracking-wide text-[#8E8E93]">Emoji nhóm</p>
             <div className="flex gap-2.5 flex-wrap">
               {EMOJI_OPTIONS.map((emoji) => (
@@ -196,7 +196,7 @@ export default function CreateGroupPage() {
             type="button"
             onClick={handleCreate}
             disabled={!name.trim() || submitting}
-            className="w-full h-[52px] rounded-[14px] bg-[#3A5CCC] text-[16px] font-bold text-white transition-opacity disabled:opacity-40"
+            className="w-full h-[54px] rounded-[14px] bg-[#3A5CCC] text-[15px] font-semibold text-white transition-opacity disabled:opacity-40"
           >
             {submitting ? "Đang tạo..." : "Tạo nhóm"}
           </button>
@@ -347,7 +347,7 @@ export default function CreateGroupPage() {
             try { sessionStorage.removeItem("home_groups"); } catch {}
             router.push(`/groups/${createdGroup.id}`);
           }}
-          className="w-full h-[52px] rounded-[14px] bg-[#3A5CCC] text-[16px] font-bold text-white"
+          className="w-full h-[54px] rounded-[14px] bg-[#3A5CCC] text-[15px] font-semibold text-white"
         >
           Vào nhóm ngay
         </button>

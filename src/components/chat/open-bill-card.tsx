@@ -44,7 +44,8 @@ export function OpenBillCard({
 
   return (
     <div className="mx-4 my-1">
-      <div className="rounded-2xl bg-[#FFF8EC] p-3 shadow-sm border border-[#FFE0B2]">
+      {/* Card: rounded-[14px] per tokens.radius.card, p-4 per Card anatomy */}
+      <div className="rounded-[14px] bg-[#FFF8EC] p-4 shadow-sm border border-[#FFE0B2]">
         {/* Badge */}
         <div className="mb-2 flex items-center gap-2">
           <span className="rounded-full bg-[#FF9500] px-2 py-0.5 text-[10px] font-semibold text-white">
@@ -102,17 +103,17 @@ export function OpenBillCard({
           </div>
         )}
 
-        {/* Check-in button */}
+        {/* Check-in button — CTA: rounded-[14px] h-[54px] full-width per Button.lg spec */}
         {!hasCheckedIn ? (
           <button
             type="button"
             onClick={() => onCheckin(bill.id)}
-            className="w-full rounded-xl bg-[#FF9500] py-2 text-sm font-semibold text-white transition-opacity active:opacity-80"
+            className="flex h-[54px] w-full items-center justify-center rounded-[14px] bg-[#FF9500] text-[17px] font-semibold text-white transition-opacity active:scale-[0.98]"
           >
             Tôi có ăn
           </button>
         ) : (
-          <div className="w-full rounded-xl bg-[#F0FFF4] py-2 text-center text-sm font-semibold text-[#34C759] border border-[#34C759]/30">
+          <div className="flex h-[54px] w-full items-center justify-center rounded-[14px] bg-[#F0FFF4] text-[17px] font-semibold text-[#34C759] border border-[#34C759]/30">
             Đã check-in
           </div>
         )}

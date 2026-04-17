@@ -60,10 +60,11 @@ export function AddPeopleSheet({
       />
 
       {/* Sheet */}
-      <div className="fixed inset-x-0 bottom-0 z-50 rounded-t-2xl bg-white pb-[env(safe-area-inset-bottom)] shadow-xl animate-in slide-in-from-bottom duration-300">
-        {/* Drag handle */}
+      {/* Sheet: rounded-t-[20px] per tokens.radius.sheet_top, backdrop already covers */}
+      <div className="fixed inset-x-0 bottom-0 z-50 rounded-t-[20px] bg-white pb-[env(safe-area-inset-bottom)] shadow-[0_-8px_24px_rgba(0,0,0,0.12)] animate-in slide-in-from-bottom duration-300">
+        {/* Drag handle: 36x4 centered — components.md §4 */}
         <div className="flex justify-center pt-3 pb-1">
-          <div className="h-1 w-10 rounded-full bg-[#C7C7CC]" />
+          <div className="h-1 w-9 rounded-full bg-[#D1D1D6]" />
         </div>
 
         {/* Header */}

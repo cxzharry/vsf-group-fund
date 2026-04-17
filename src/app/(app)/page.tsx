@@ -249,7 +249,7 @@ export default function HomePage() {
             <p className="text-[15px] text-[#8E8E93]">Tạo nhóm để bắt đầu chia bill với bạn bè.</p>
             <button
               onClick={() => router.push("/groups/create")}
-              className="mt-1 rounded-[10px] border-[1.5px] border-[#3A5CCC] px-7 py-3 text-[15px] font-semibold text-[#3A5CCC]"
+              className="mt-1 rounded-[14px] border-[1.5px] border-[#3A5CCC] px-7 py-3 text-[15px] font-semibold text-[#3A5CCC]"
             >
               Tạo nhóm mới
             </button>
@@ -290,9 +290,9 @@ export default function HomePage() {
                       <span className={`text-[15px] font-semibold ${g.debt.netDebt < 0 ? "text-[#FF3B30]" : "text-[#34C759]"}`}>
                         {g.debt.netDebt < 0 ? "-" : "+"}{Math.abs(g.debt.netDebt).toLocaleString("vi-VN")}đ
                       </span>
-                      <span className={`rounded-xl px-2.5 py-1 text-xs font-semibold ${
+                      <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${
                         g.debt.netDebt < 0
-                          ? "bg-[#EEF1FB] text-[#3A5CCC]"
+                          ? "bg-[#EEF2FF] text-[#3A5CCC]"
                           : "bg-[#F0FFF4] text-[#34C759]"
                       }`}>
                         {g.debt.netDebt < 0 ? "Trả nợ" : "Nhắc nợ"}
