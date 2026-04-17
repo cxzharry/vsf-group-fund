@@ -161,7 +161,7 @@ export default function SetupPage() {
               type="button"
               onClick={handleStep1Continue}
               disabled={loading}
-              className="w-full rounded-xl py-3.5 text-[15px] font-semibold text-white transition-opacity disabled:opacity-50"
+              className="flex h-[54px] w-full items-center justify-center rounded-[14px] text-[15px] font-semibold text-white transition-opacity disabled:opacity-50"
               style={{ backgroundColor: "#3A5CCC" }}
             >
               {loading ? "Đang lưu..." : "Tiếp tục"}
@@ -232,7 +232,7 @@ export default function SetupPage() {
             <button
               type="submit"
               disabled={loading || !password || !confirmPassword}
-              className="w-full rounded-xl py-3.5 text-[15px] font-semibold text-white transition-opacity disabled:opacity-50"
+              className="flex h-[54px] w-full items-center justify-center rounded-[14px] text-[15px] font-semibold text-white transition-opacity disabled:opacity-50"
               style={{ backgroundColor: "#3A5CCC" }}
             >
               {loading ? "Đang lưu..." : "Hoàn tất"}
