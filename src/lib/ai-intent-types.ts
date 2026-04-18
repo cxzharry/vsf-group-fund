@@ -20,6 +20,10 @@ export interface ParsedBillIntent {
   readyToConfirm: boolean;
   /** Follow-up question if missing info */
   followUp: FollowUpQuestion | null;
+  /** Confidence score 0..1; <0.6 shows warning */
+  confidence?: number;
+  /** If message contained 2+ amounts, list of alt parses */
+  alternates?: Array<{ amount: number; description: string | null }>;
 }
 
 export interface FollowUpQuestion {

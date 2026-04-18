@@ -19,6 +19,18 @@ interface BillConfirmSheetProps {
   initialData?: Partial<BillConfirmData>;
 }
 
+/** US-E3-2 Case C: named guest without NoPay account */
+export interface GuestSplit {
+  name: string;
+  amount: number;
+}
+
+/** US-E3-2 Case D: anonymous participants (N people, no names) */
+export interface AnonSplit {
+  count: number;
+  amountEach: number;
+}
+
 export interface BillConfirmData {
   amount: number;
   description: string;
@@ -28,6 +40,10 @@ export interface BillConfirmData {
   billType: "standard" | "open" | "transfer";
   category: BillCategoryId;
   customSplits?: Record<string, number>;
+  /** US-E3-2 Case C: named guests */
+  guestSplits?: GuestSplit[];
+  /** US-E3-2 Case D: anonymous count */
+  anonSplit?: AnonSplit;
   /** US-E3-10: recipient for transfer bill (only when billType === "transfer") */
   recipientId?: string;
 }
@@ -81,7 +97,9 @@ export function BillConfirmSheet({
   const [peopleCount, setPeopleCount] = useState<number>(
     intent.peopleCount ?? groupMembers.length
   );
-  const [payerId] = useState<string>(currentMember.id);
+  const [payerId, setPayerId] = useState<string>(
+    initialData?.payerId ?? currentMember.id
+  );
   const [billType, setBillType] = useState<"split" | "transfer">("split");
   // Bill mở toggle — AC-E3-1.7, AC-E3-1.8
   const [isOpenBill, setIsOpenBill] = useState<boolean>(false);
@@ -89,16 +107,23 @@ export function BillConfirmSheet({
   const [submitting, setSubmitting] = useState(false);
   const [showSplit, setShowSplit] = useState(false);
   const [customSplits, setCustomSplits] = useState<Record<string, number> | null>(null);
+  // US-E3-2 Case C/D: guest and anon splits from SplitSheet
+  const [guestSplits, setGuestSplits] = useState<GuestSplit[]>([]);
+  const [anonSplit, setAnonSplit] = useState<AnonSplit | null>(null);
   // US-E3-10: recipient for transfer bill
   const [recipientId, setRecipientId] = useState<string | null>(null);
   const [showRecipientPicker, setShowRecipientPicker] = useState(false);
+  const [showPayerPicker, setShowPayerPicker] = useState(false);
 
   const payer = groupMembers.find((m) => m.id === payerId) ?? currentMember;
   const recipient = groupMembers.find((m) => m.id === recipientId) ?? null;
   const eligibleRecipients = groupMembers.filter((m) => m.id !== payerId);
   const category = inferCategory(description);
-  const perPerson =
-    peopleCount > 0 && amount > 0 ? Math.floor(amount / peopleCount) : 0;
+  // Total headcount includes member splits + guest + anon for display
+  const totalHeadcount = (customSplits ? Object.keys(customSplits).length : peopleCount)
+    + guestSplits.length
+    + (anonSplit?.count ?? 0);
+  const perPerson = totalHeadcount > 0 && amount > 0 ? Math.floor(amount / totalHeadcount) : 0;
 
   // AC-E3-1: split mode validation | AC-E3-10.2/3: transfer mode validation
   const isValid = billType === "transfer"
@@ -136,6 +161,9 @@ export function BillConfirmSheet({
         billType: isOpenBill ? "open" : "standard",
         category,
         customSplits: customSplits ?? undefined,
+        // US-E3-2 Case C/D
+        guestSplits: guestSplits.length > 0 ? guestSplits : undefined,
+        anonSplit: anonSplit ?? undefined,
       });
     }
     setSubmitting(false);
@@ -229,19 +257,21 @@ export function BillConfirmSheet({
               />
             </div>
 
-            {!isEdit && (
-              <div className="flex items-center justify-between">
-                <span className="text-[13px] text-[#8E8E93]">Người trả</span>
-                <div className="flex items-center gap-1.5">
-                  <MiniAvatar member={payer} size={22} />
-                  <span className="text-[14px] font-medium text-[#1C1C1E]">
-                    {payer.display_name}
-                    {payer.id === currentMember.id && " (bạn)"}
-                  </span>
-                  <span className="text-[15px] text-[#C7C7CC]">›</span>
-                </div>
-              </div>
-            )}
+            <div className="flex items-center justify-between">
+              <span className="text-[13px] text-[#8E8E93]">Người trả</span>
+              <button
+                type="button"
+                onClick={() => setShowPayerPicker(true)}
+                className="flex items-center gap-1.5"
+              >
+                <MiniAvatar member={payer} size={22} />
+                <span className="text-[14px] font-medium text-[#1C1C1E]">
+                  {payer.display_name}
+                  {payer.id === currentMember.id && " (bạn)"}
+                </span>
+                <span className="text-[15px] text-[#C7C7CC]">›</span>
+              </button>
+            </div>
 
             {/* US-E3-10: Người nhận — only in transfer mode */}
             {!isEdit && billType === "transfer" && (
@@ -311,7 +341,7 @@ export function BillConfirmSheet({
                   className="text-[13px] font-medium text-[#3A5CCC] underline underline-offset-2"
                 >
                   {customSplits
-                    ? `${Object.keys(customSplits).length} người · ${formatVND(perPerson)}đ/người`
+                    ? `${totalHeadcount} người · ${formatVND(perPerson)}đ/người`
                     : "Chọn thành viên"}
                 </button>
               </div>
@@ -341,13 +371,67 @@ export function BillConfirmSheet({
           totalAmount={amount}
           groupMembers={groupMembers}
           payerId={payerId}
-          onConfirm={(splits) => {
+          onConfirm={(splits, guests, anon) => {
             setCustomSplits(splits);
             setPeopleCount(Object.keys(splits).length);
+            setGuestSplits(guests);
+            setAnonSplit(anon);
             setShowSplit(false);
           }}
           onClose={() => setShowSplit(false)}
         />
+      )}
+
+      {/* Payer picker sheet */}
+      {showPayerPicker && (
+        <>
+          <div
+            className="fixed inset-0 z-[60] bg-black/40"
+            onClick={() => setShowPayerPicker(false)}
+            aria-hidden="true"
+          />
+          <div className="fixed inset-x-0 bottom-0 z-[70] max-h-[60vh] rounded-t-[20px] bg-white pb-[env(safe-area-inset-bottom)]">
+            <div className="flex justify-center py-2">
+              <div className="h-1 w-9 rounded-full bg-[#D1D1D6]" />
+            </div>
+            <div className="flex items-center justify-between px-5 pb-2">
+              <h3 className="text-[15px] font-bold text-[#1C1C1E]">Người trả</h3>
+              <button
+                type="button"
+                onClick={() => setShowPayerPicker(false)}
+                className="text-[#AEAEB2]"
+                aria-label="Đóng"
+              >
+                ✕
+              </button>
+            </div>
+            <ul className="max-h-[400px] overflow-y-auto px-2 pb-4">
+              {groupMembers.map((m) => (
+                <li key={m.id}>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setPayerId(m.id);
+                      setShowPayerPicker(false);
+                    }}
+                    className={`flex w-full items-center gap-3 rounded-[10px] px-3 py-2.5 text-left transition-colors ${
+                      payerId === m.id ? "bg-[#EEF2FF]" : "hover:bg-[#F2F2F7]"
+                    }`}
+                  >
+                    <MiniAvatar member={m} size={36} />
+                    <span className="flex-1 text-[15px] font-medium text-[#1C1C1E]">
+                      {m.display_name}
+                      {m.id === currentMember.id && " (bạn)"}
+                    </span>
+                    {payerId === m.id && (
+                      <span className="text-[#3A5CCC]">✓</span>
+                    )}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </>
       )}
 
       {/* US-E3-10: Recipient picker sheet (single-select) */}

@@ -48,13 +48,21 @@ export function simplifyDebts(debts: RawDebt[]): SimplifiedDebt[] {
 }
 
 /**
- * Graph-based multi-hop simplification.
- * Computes net balance per person, then greedily matches creditors with debtors.
- * Result: minimal payment set (≤ N-1 for N non-zero-balance people).
- * Note: result does NOT preserve underlying_ids — payments are fully synthesized.
+ * Graph-based multi-hop simplification (Splitwise "minimum cash flow" algorithm).
+ * Computes net balance per person, then greedily matches max creditor with max debtor.
+ * Result: minimal payment set (≤ N-1 transactions for N people with non-zero balance).
+ *
+ * Edge cases handled:
+ * - Circular debts (A→B→C→A equal amounts) → 0 transactions (net balances all zero)
+ * - Self-loop prevention: debtors/creditors with bal=0 are excluded
+ * - Integer VND amounts — no floating-point rounding issues
+ *
+ * Note: underlying_ids is empty [] because synthesized payments don't map 1:1 to raw debts.
  */
 export function simplifyDebtsGraph(debts: RawDebt[]): SimplifiedDebt[] {
-  // 1. Compute net balance per person
+  if (debts.length === 0) return [];
+
+  // 1. Compute net balance per person: positive = creditor, negative = debtor
   const balance = new Map<string, number>();
   for (const d of debts) {
     balance.set(d.debtor_id, (balance.get(d.debtor_id) ?? 0) - d.remaining);
@@ -71,16 +79,16 @@ export function simplifyDebtsGraph(debts: RawDebt[]): SimplifiedDebt[] {
   creditors.sort((a, b) => b.amount - a.amount);
   debtors.sort((a, b) => b.amount - a.amount);
 
-  // 3. Greedy match: pair largest creditor with largest debtor
+  // 3. Greedy match: pair largest creditor with largest debtor until all settled
   const result: SimplifiedDebt[] = [];
-  const allIds = debts.map(d => d.id);
 
   let ci = 0, di = 0;
   while (ci < creditors.length && di < debtors.length) {
     const c = creditors[ci];
     const d = debtors[di];
     const amount = Math.min(c.amount, d.amount);
-    result.push({ debtor_id: d.id, creditor_id: c.id, amount, underlying_ids: allIds });
+    // underlying_ids is [] — synthesized payments don't map 1:1 to raw debt rows
+    result.push({ debtor_id: d.id, creditor_id: c.id, amount, underlying_ids: [] });
     c.amount -= amount;
     d.amount -= amount;
     if (c.amount === 0) ci++;
@@ -88,4 +96,17 @@ export function simplifyDebtsGraph(debts: RawDebt[]): SimplifiedDebt[] {
   }
 
   return result;
+}
+
+/**
+ * Compute net balance per member across all raw debts.
+ * Returns map: member_id → net amount (positive = owed money, negative = owes money)
+ */
+export function computeNetBalances(debts: RawDebt[]): Map<string, number> {
+  const balance = new Map<string, number>();
+  for (const d of debts) {
+    balance.set(d.debtor_id, (balance.get(d.debtor_id) ?? 0) - d.remaining);
+    balance.set(d.creditor_id, (balance.get(d.creditor_id) ?? 0) + d.remaining);
+  }
+  return balance;
 }

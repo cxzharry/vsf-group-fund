@@ -1,14 +1,18 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { createBrowserClient } from "@supabase/ssr";
 import { useAuth } from "@/components/auth-provider";
 import { ChatMessageList } from "@/components/chat/chat-message-list";
 import { ChatInputBar } from "@/components/chat/chat-input-bar";
 import { BillConfirmSheet } from "@/components/chat/bill-confirm-sheet";
+import { BillDetailsSheet } from "@/components/chat/bill-details-sheet";
 import { AddPeopleSheet } from "@/components/chat/add-people-sheet";
 import { AiFollowupCard } from "@/components/chat/ai-followup-card";
+import { AiProcessingBubble } from "@/components/chat/ai-processing-bubble";
+import { AiErrorBubble } from "@/components/chat/ai-error-bubble";
+import { AiMultiAmountCard } from "@/components/chat/ai-multi-amount-card";
 import { formatVND } from "@/lib/format-vnd";
 import { toast } from "sonner";
 import type {
@@ -17,6 +21,8 @@ import type {
   Bill,
   ChatMessage,
   BillCheckin,
+  BillParticipant,
+  Debt,
 } from "@/lib/types";
 import type { MessageFeedItem } from "@/components/chat/chat-message-list";
 import type { ParsedBillIntent } from "@/lib/ai-intent-types";
@@ -27,6 +33,7 @@ import type { BillConfirmData } from "@/components/chat/bill-confirm-sheet";
 export default function GroupDetailPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { member: currentMember } = useAuth();
 
   const supabase = useMemo(
@@ -86,6 +93,12 @@ export default function GroupDetailPage() {
   // Sprint 7: show follow-up card inline when AI needs more info
   const [showFollowupCard, setShowFollowupCard] = useState(false);
 
+  // AI parse UI state (processing / error / multi-amount picker)
+  const [aiProcessing, setAiProcessing] = useState(false);
+  const [aiError, setAiError] = useState<null | "network" | "rate_limit" | "server">(null);
+  const [lastParsedText, setLastParsedText] = useState<string | null>(null);
+  const [showMultiAmount, setShowMultiAmount] = useState(false);
+
   // Sprint 5: open bill sheet state
   const [addPeopleBillId, setAddPeopleBillId] = useState<string | null>(null);
 
@@ -94,6 +107,11 @@ export default function GroupDetailPage() {
 
   // Edit bill state
   const [editBillId, setEditBillId] = useState<string | null>(null);
+
+  // US-E3-4: Bill detail sheet state
+  const [detailBillId, setDetailBillId] = useState<string | null>(null);
+  const [detailParticipants, setDetailParticipants] = useState<(BillParticipant & { member?: Member })[]>([]);
+  const [detailDebts, setDetailDebts] = useState<(Debt & { debtor?: Member })[]>([]);
 
   // ─── data loading ──────────────────────────────────────────────────────────
 
@@ -280,10 +298,55 @@ export default function GroupDetailPage() {
 
   // ─── Sprint 4: AI parse + send text ───────────────────────────────────────
 
+  async function runParse(text: string) {
+    setAiError(null);
+    setAiProcessing(true);
+    try {
+      const res = await fetch("/api/ai/parse-intent", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message: text }),
+      });
+      if (res.status === 429) {
+        setAiProcessing(false);
+        setAiError("rate_limit");
+        return;
+      }
+      if (!res.ok) {
+        setAiProcessing(false);
+        setAiError("server");
+        return;
+      }
+      const parsed: ParsedBillIntent = await res.json();
+      setAiProcessing(false);
+      if (!parsed.hasIntent) return;
+
+      setTimeout(() => {
+        setPendingIntent(parsed);
+        // Multi-amount branch — show picker first
+        if (parsed.alternates && parsed.alternates.length > 0) {
+          setShowMultiAmount(true);
+          setShowFollowupCard(false);
+          return;
+        }
+        if (parsed.readyToConfirm) {
+          setShowFollowupCard(false);
+          setShowConfirmSheet(true);
+        } else if (parsed.followUp) {
+          setShowFollowupCard(true);
+        }
+      }, 0);
+    } catch {
+      setAiProcessing(false);
+      setAiError("network");
+    }
+  }
+
   async function handleSendText() {
     if (!inputText.trim() || !currentMember) return;
     const text = inputText.trim();
     setInputText("");
+    setLastParsedText(text);
 
     // Insert text message into chat
     await supabase.from("chat_messages").insert({
@@ -293,29 +356,41 @@ export default function GroupDetailPage() {
       content: text,
     });
 
-    // Parse intent
-    try {
-      const res = await fetch("/api/ai/parse-intent", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: text }),
-      });
-      if (!res.ok) return;
-      const parsed: ParsedBillIntent = await res.json();
-      if (!parsed.hasIntent) return;
+    await runParse(text);
+  }
 
-      setTimeout(() => {
-        setPendingIntent(parsed);
-        if (parsed.readyToConfirm) {
-          setShowFollowupCard(false);
-          setShowConfirmSheet(true);
-        } else if (parsed.followUp) {
-          setShowFollowupCard(true);
-        }
-      }, 0);
-    } catch {
-      // Silent fail — chat still works
-    }
+  function handleAiRetry() {
+    if (lastParsedText) runParse(lastParsedText);
+  }
+
+  function handleAiManualFallback() {
+    setAiError(null);
+    setPendingIntent({
+      hasIntent: true,
+      intentType: "split",
+      amount: null,
+      description: lastParsedText,
+      peopleCount: null,
+      peopleNames: [],
+      splitType: "equal",
+      transferTo: null,
+      readyToConfirm: false,
+      followUp: null,
+    });
+    setShowConfirmSheet(true);
+  }
+
+  function handleMultiAmountSelect(amount: number) {
+    if (!pendingIntent) return;
+    const updated: ParsedBillIntent = {
+      ...pendingIntent,
+      amount,
+      alternates: undefined,
+      readyToConfirm: true,
+    };
+    setPendingIntent(updated);
+    setShowMultiAmount(false);
+    setShowConfirmSheet(true);
   }
 
   // ─── Sprint 7: handle follow-up option selection ──────────────────────────
@@ -411,36 +486,76 @@ export default function GroupDetailPage() {
       return;
     }
 
-    // 2. Create equal debts + bill_participants for standard bills (non-open)
-    if (data.billType === "standard" && data.splitType === "equal" && data.peopleCount > 1) {
-      const perPerson = Math.floor(data.amount / data.peopleCount);
-      // Participants: payer + up to (peopleCount-1) other members
-      const otherParticipants = memberList
-        .filter((m) => m.id !== data.payerId)
-        .slice(0, data.peopleCount - 1);
+    // 2. Create debts + bill_participants for standard bills (non-open)
+    if (data.billType === "standard") {
+      const guestCount = data.guestSplits?.length ?? 0;
+      const anonCount = data.anonSplit?.count ?? 0;
+      const memberCount = data.peopleCount;
+      const totalHeadcount = memberCount + guestCount + anonCount;
 
-      // Insert bill_participants (payer + others)
-      const participantInserts = [
-        { bill_id: newBill.id, member_id: data.payerId, amount: perPerson },
-        ...otherParticipants.map((m) => ({
+      if (data.splitType === "equal" && totalHeadcount > 1) {
+        const perPerson = Math.floor(data.amount / totalHeadcount);
+        const otherParticipants = memberList
+          .filter((m) => m.id !== data.payerId)
+          .slice(0, memberCount - 1);
+
+        // Member participants
+        const memberInserts = [
+          { bill_id: newBill.id, member_id: data.payerId, amount: perPerson, guest_name: null, is_anonymous: false },
+          ...otherParticipants.map((m) => ({
+            bill_id: newBill.id, member_id: m.id, amount: perPerson, guest_name: null, is_anonymous: false,
+          })),
+        ];
+        // Case C: named guests — no debt rows (payer tracks offline)
+        const guestInserts = (data.guestSplits ?? []).map((g) => ({
+          bill_id: newBill.id, member_id: null, amount: g.amount, guest_name: g.name, is_anonymous: false,
+        }));
+        // Case D: anonymous rows — no debt rows
+        const anonInserts = Array.from({ length: anonCount }, () => ({
+          bill_id: newBill.id, member_id: null, amount: data.anonSplit!.amountEach, guest_name: null, is_anonymous: true,
+        }));
+
+        await supabase.from("bill_participants").insert([...memberInserts, ...guestInserts, ...anonInserts]);
+
+        // Debts only for non-payer members
+        const debtInserts = otherParticipants.map((m) => ({
           bill_id: newBill.id,
-          member_id: m.id,
+          debtor_id: m.id,
+          creditor_id: data.payerId,
           amount: perPerson,
-        })),
-      ];
-      await supabase.from("bill_participants").insert(participantInserts);
+          remaining: perPerson,
+          status: "pending" as const,
+        }));
+        if (debtInserts.length > 0) {
+          await supabase.from("debts").insert(debtInserts);
+        }
+      } else if (data.splitType === "custom" && data.customSplits) {
+        // Custom splits: use exact amounts from SplitSheet
+        const customInserts = Object.entries(data.customSplits).map(([memberId, amt]) => ({
+          bill_id: newBill.id, member_id: memberId, amount: amt, guest_name: null, is_anonymous: false,
+        }));
+        const guestInserts = (data.guestSplits ?? []).map((g) => ({
+          bill_id: newBill.id, member_id: null, amount: g.amount, guest_name: g.name, is_anonymous: false,
+        }));
+        const anonInserts = Array.from({ length: anonCount }, () => ({
+          bill_id: newBill.id, member_id: null, amount: data.anonSplit!.amountEach, guest_name: null, is_anonymous: true,
+        }));
+        await supabase.from("bill_participants").insert([...customInserts, ...guestInserts, ...anonInserts]);
 
-      // Create debts: others owe the payer
-      const debtInserts = otherParticipants.map((m) => ({
-        bill_id: newBill.id,
-        debtor_id: m.id,
-        creditor_id: data.payerId,
-        amount: perPerson,
-        remaining: perPerson,
-        status: "pending" as const,
-      }));
-      if (debtInserts.length > 0) {
-        await supabase.from("debts").insert(debtInserts);
+        // Debts for non-payer members
+        const debtInserts = Object.entries(data.customSplits)
+          .filter(([memberId]) => memberId !== data.payerId)
+          .map(([memberId, amt]) => ({
+            bill_id: newBill.id,
+            debtor_id: memberId,
+            creditor_id: data.payerId,
+            amount: amt,
+            remaining: amt,
+            status: "pending" as const,
+          }));
+        if (debtInserts.length > 0) {
+          await supabase.from("debts").insert(debtInserts);
+        }
       }
     }
 
@@ -559,7 +674,10 @@ export default function GroupDetailPage() {
   }
 
   // ─── Sprint 5: close open bill ─────────────────────────────────────────────
-
+  // Decision 2026-04-18: "Đóng bill" button removed — bill uses standard edit/delete
+  // via ⋯ menu. This function kept dormant for future auto-close-on-full trigger or
+  // ⋯-menu close option. If still unused after US-E3-5 finalizes, remove entirely.
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   async function handleCloseBill(billId: string) {
     if (!currentMember) return;
 
@@ -766,6 +884,63 @@ export default function GroupDetailPage() {
     } catch {
       toast.error("Lỗi cập nhật bill");
     }
+  }
+
+  // ─── US-E3-4: auto-open sheet from ?billDetail= query param (deep-link) ──
+
+  useEffect(() => {
+    const billDetailParam = searchParams.get("billDetail");
+    if (!billDetailParam || loading) return;
+    // Trigger once data is loaded; clear param from URL immediately
+    router.replace(`/groups/${id}`, { scroll: false });
+    handleViewBill(billDetailParam);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading]);
+
+  // ─── US-E3-4: open bill detail sheet ──────────────────────────────────────
+
+  async function handleViewBill(billId: string) {
+    setDetailBillId(billId);
+
+    // Fetch participants + debts in parallel (light reads — no heavy joins needed)
+    const [partRes, debtRes] = await Promise.all([
+      supabase
+        .from("bill_participants")
+        .select("*")
+        .eq("bill_id", billId)
+        .order("amount", { ascending: false }),
+      supabase
+        .from("debts")
+        .select("*")
+        .eq("bill_id", billId),
+    ]);
+
+    const parts = (partRes.data ?? []).map((p: BillParticipant) => ({
+      ...p,
+      member: p.member_id ? members[p.member_id] : undefined,
+    }));
+    const debtsWithMember = (debtRes.data ?? []).map((d: Debt) => ({
+      ...d,
+      debtor: members[d.debtor_id],
+    }));
+
+    setDetailParticipants(parts);
+    setDetailDebts(debtsWithMember);
+  }
+
+  async function handleNudge(billId: string) {
+    const bill = bills.find((b) => b.id === billId);
+    if (!bill) return;
+    // Fire-and-forget Telegram nudge to all pending debtors
+    fetch("/api/notify", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        type: "nudge_debtors",
+        payload: { billId, billTitle: bill.title },
+      }),
+    }).catch(() => {});
+    toast.success("Đã gửi nhắc nợ");
   }
 
   // ─── build feed items ──────────────────────────────────────────────────────
@@ -978,12 +1153,43 @@ export default function GroupDetailPage() {
             currentMemberId={currentMember?.id ?? null}
             onCheckin={handleCheckin}
             onAddPeople={(billId) => setAddPeopleBillId(billId)}
-            onCloseBill={handleCloseBill}
             onDeleteBill={(billId) => setDeleteBillId(billId)}
             onEditBill={(billId) => setEditBillId(billId)}
+            onViewBill={handleViewBill}
           />
         )}
       </div>
+
+      {/* AI processing (typing dots) */}
+      {aiProcessing && (
+        <div className="shrink-0 bg-[#F2F2F7] pb-1">
+          <AiProcessingBubble />
+        </div>
+      )}
+
+      {/* AI error — retry / manual fallback */}
+      {aiError && !aiProcessing && (
+        <div className="shrink-0 bg-[#F2F2F7] pb-1">
+          <AiErrorBubble
+            kind={aiError}
+            onRetry={handleAiRetry}
+            onManualFallback={handleAiManualFallback}
+          />
+        </div>
+      )}
+
+      {/* Multi-amount picker */}
+      {showMultiAmount && pendingIntent?.amount != null && (
+        <div className="shrink-0 bg-[#F2F2F7] pb-1">
+          <AiMultiAmountCard
+            primary={pendingIntent.amount}
+            alternates={
+              (pendingIntent.alternates ?? []).map((a) => a.amount)
+            }
+            onSelectAmount={handleMultiAmountSelect}
+          />
+        </div>
+      )}
 
       {/* Sprint 7: AI follow-up card shown inline when AI needs more info */}
       {showFollowupCard && pendingIntent?.followUp && (
@@ -1072,6 +1278,25 @@ export default function GroupDetailPage() {
           onClose={() => setAddPeopleBillId(null)}
         />
       )}
+
+      {/* US-E3-4: Bill detail sheet */}
+      {detailBillId && (() => {
+        const detailBill = bills.find((b) => b.id === detailBillId);
+        if (!detailBill) return null;
+        return (
+          <BillDetailsSheet
+            bill={detailBill}
+            payer={members[detailBill.paid_by] ?? null}
+            participants={detailParticipants}
+            debts={detailDebts}
+            currentMemberId={currentMember?.id ?? null}
+            onClose={() => { setDetailBillId(null); setDetailParticipants([]); setDetailDebts([]); }}
+            onEdit={(billId) => { setDetailBillId(null); setEditBillId(billId); }}
+            onDelete={(billId) => { setDetailBillId(null); setDeleteBillId(billId); }}
+            onNudge={handleNudge}
+          />
+        );
+      })()}
 
       {/* Delete bill confirmation dialog */}
       {deleteBillId && (

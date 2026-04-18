@@ -25,6 +25,7 @@ export function AiResponseCard({ intent, onConfirm, onEdit }: AiResponseCardProp
     intent.amount && intent.peopleCount && intent.peopleCount > 0
       ? Math.floor(intent.amount / intent.peopleCount)
       : null;
+  const lowConfidence = typeof intent.confidence === "number" && intent.confidence < 0.6;
 
   return (
     <div className="mx-4 my-1 flex justify-start">
@@ -40,6 +41,14 @@ export function AiResponseCard({ intent, onConfirm, onEdit }: AiResponseCardProp
           {intent.splitType && (
             <span className="rounded-full bg-muted px-2 py-0.5 text-[11px] text-muted-foreground">
               {splitTypeLabel(intent.splitType)}
+            </span>
+          )}
+          {lowConfidence && (
+            <span
+              className="rounded-full bg-[#FFF8EC] px-2 py-0.5 text-[11px] font-semibold text-[#FF9500]"
+              title="AI không chắc lắm — hãy kiểm tra lại"
+            >
+              ⚠ Cần xem lại
             </span>
           )}
         </div>

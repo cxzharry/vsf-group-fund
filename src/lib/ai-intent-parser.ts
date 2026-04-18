@@ -2,7 +2,7 @@
  * AI Intent Parser — detects bill creation intent from Vietnamese chat messages.
  * Uses local regex first (fast), falls back to LLM only when needed.
  */
-import { parseVietnameseAmount } from "./parse-vietnamese-amount";
+import { parseVietnameseAmount, extractAllAmounts } from "./parse-vietnamese-amount";
 import type { ParsedBillIntent, FollowUpQuestion } from "./ai-intent-types";
 import { isReadyToConfirm } from "./ai-intent-types";
 
@@ -133,6 +133,22 @@ export function parseIntentLocal(message: string): ParsedBillIntent {
     // Has amount + intent but no split info → ask
     result.readyToConfirm = false;
     result.followUp = generateSplitFollowUp(result);
+  }
+
+  // Confidence scoring: 0.4 base + description match (+0.25) + people count (+0.2) + split inferred (+0.15)
+  let conf = 0.4;
+  if (result.description) conf += 0.25;
+  if (result.peopleCount !== null) conf += 0.2;
+  if (result.splitType !== null) conf += 0.15;
+  result.confidence = Math.min(1, conf);
+
+  // Multi-item: if 2+ distinct amounts found → surface alternates
+  const allAmounts = extractAllAmounts(trimmed);
+  if (allAmounts.length > 1) {
+    result.alternates = allAmounts
+      .filter((a) => a !== result.amount)
+      .slice(0, 3)
+      .map((a) => ({ amount: a, description: result.description }));
   }
 
   return result;

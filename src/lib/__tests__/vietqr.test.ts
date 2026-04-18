@@ -93,7 +93,7 @@ describe("generateVietQRUrl", () => {
     });
   });
 
-  test("URL format is compact", () => {
+  test("URL format is compact2 (with logo + amount)", () => {
     const url = generateVietQRUrl({
       bankName: "Vietcombank",
       accountNo: "1234567890",
@@ -101,7 +101,7 @@ describe("generateVietQRUrl", () => {
       amount: 500_000,
       description: "Test",
     });
-    expect(url).toContain("compact.png");
+    expect(url).toContain("compact2.jpg");
   });
 
   test("handles zero amount", () => {

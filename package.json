@@ -6,7 +6,10 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "seed:uat": "npx tsx scripts/seed-uat-group.ts",
+    "seed:uat-bills": "npx tsx scripts/seed-uat-bills.ts",
+    "seed:uat-bank-info": "npx tsx scripts/seed-uat-bank-info.ts"
   },
   "dependencies": {
     "@base-ui/react": "^1.3.0",

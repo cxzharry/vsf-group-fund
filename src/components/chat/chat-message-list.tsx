@@ -28,9 +28,10 @@ interface ChatMessageListProps {
   currentMemberId: string | null;
   onCheckin: (billId: string) => void;
   onAddPeople: (billId: string) => void;
-  onCloseBill: (billId: string) => void;
   onDeleteBill?: (billId: string) => void;
   onEditBill?: (billId: string) => void;
+  /** US-E3-4: tap bill card → open detail sheet */
+  onViewBill?: (billId: string) => void;
 }
 
 function formatDateDivider(dateStr: string): string {
@@ -55,9 +56,9 @@ export function ChatMessageList({
   currentMemberId,
   onCheckin,
   onAddPeople,
-  onCloseBill,
   onDeleteBill,
   onEditBill,
+  onViewBill,
 }: ChatMessageListProps) {
   const bottomRef = useRef<HTMLDivElement>(null);
 
@@ -94,9 +95,6 @@ export function ChatMessageList({
       const hasCheckedIn = currentMemberId
         ? checkins.some((c) => c.member_id === currentMemberId)
         : false;
-      // Payer or any member is considered admin for closing (simplification)
-      const isPayerOrAdmin = bill.paid_by === currentMemberId;
-
       if (bill.bill_type === "open" && bill.status === "active") {
         rendered.push(
           <OpenBillCard
@@ -108,23 +106,29 @@ export function ChatMessageList({
             hasCheckedIn={hasCheckedIn}
             onCheckin={onCheckin}
             onAddPeople={onAddPeople}
-            onCloseBill={onCloseBill}
             currentMemberId={currentMemberId}
-            isPayerOrAdmin={isPayerOrAdmin}
           />
         );
       } else {
         rendered.push(
-          <BillCardBubble
+          // US-E3-4: wrap in button so tapping the card body opens detail sheet
+          <button
             key={item.id}
-            bill={bill}
-            payer={payer}
-            participantCount={billParticipantCounts[bill.id] ?? 0}
-            currentMemberId={currentMemberId}
-            category={billCategoryMap?.[bill.id]}
-            onDelete={onDeleteBill}
-            onEdit={onEditBill}
-          />
+            type="button"
+            className="w-full text-left"
+            onClick={() => onViewBill?.(bill.id)}
+            aria-label={`Xem chi tiết bill: ${bill.title}`}
+          >
+            <BillCardBubble
+              bill={bill}
+              payer={payer}
+              participantCount={billParticipantCounts[bill.id] ?? 0}
+              currentMemberId={currentMemberId}
+              category={billCategoryMap?.[bill.id]}
+              onDelete={onDeleteBill}
+              onEdit={onEditBill}
+            />
+          </button>
         );
       }
     } else if (item.type === "chat_message" && item.message) {

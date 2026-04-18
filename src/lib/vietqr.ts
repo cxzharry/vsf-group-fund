@@ -8,6 +8,7 @@ const BANK_BINS: Record<string, string> = {
   "VPBank": "970432",
   "TPBank": "970423",
   "Sacombank": "970403",
+  "Agribank": "970405",
   "VietinBank": "970415",
   "HDBank": "970437",
   "OCB": "970448",
@@ -34,7 +35,8 @@ export function generateVietQRUrl(params: {
     accountName: params.accountName,
   });
 
-  return `https://img.vietqr.io/image/${bin}-${params.accountNo}-compact.png?${qs}`;
+  // compact2: includes bank logo + amount — 25-char addInfo limit enforced by caller
+  return `https://img.vietqr.io/image/${bin}-${params.accountNo}-compact2.jpg?${qs}`;
 }
 
 // Bank app short codes for VietQR deep link
@@ -75,12 +77,12 @@ export function generateBankDeepLink(params: {
   return `https://dl.vietqr.io/pay?${qs}`;
 }
 
-/** Generate a unique transfer description for matching */
+/** Generate a unique transfer description for matching.
+ *  VietQR addInfo limit: 25 chars. Truncate to stay within spec. */
 export function generateTransferDescription(
   billId: string,
   debtorName: string
 ): string {
-  // Short, readable, unique enough for matching
   const shortBill = billId.slice(0, 8).toUpperCase();
   const shortName = debtorName
     .split(" ")
@@ -88,5 +90,6 @@ export function generateTransferDescription(
     ?.normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
     .toUpperCase() ?? "USER";
-  return `GF ${shortBill} ${shortName}`;
+  const desc = `GF ${shortBill} ${shortName}`;
+  return desc.slice(0, 25);
 }

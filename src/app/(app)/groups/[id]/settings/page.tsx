@@ -5,6 +5,8 @@ import { useParams, useRouter } from "next/navigation";
 import { createBrowserClient } from "@supabase/ssr";
 import { useAuth } from "@/components/auth-provider";
 import { toast } from "sonner";
+import { DebtBalancesView } from "@/components/group/debt-balances-view";
+import type { RawDebt } from "@/lib/simplify-debts";
 import type { Group, GroupMember, Member } from "@/lib/types";
 
 interface MemberWithRole extends Member {
@@ -44,6 +46,7 @@ export default function GroupSettingsPage() {
     if (typeof window === "undefined") return true;
     return !sessionStorage.getItem(`group_settings_${id}`);
   });
+  const [groupDebts, setGroupDebts] = useState<RawDebt[]>([]);
   const [editingName, setEditingName] = useState(false);
   const [nameInput, setNameInput] = useState("");
   const [savingName, setSavingName] = useState(false);
@@ -90,6 +93,23 @@ export default function GroupSettingsPage() {
         role: roleMap.get(m.id) ?? "member",
       }));
       setMembers(enrichedMembers);
+    }
+
+    // Fetch all pending/partial debts for this group to power "Ai nợ ai" view
+    const { data: billsForDebts } = await supabase
+      .from("bills")
+      .select("id")
+      .eq("group_id", id);
+    const billIds = (billsForDebts ?? []).map((b: { id: string }) => b.id);
+    if (billIds.length > 0) {
+      const { data: debtRows } = await supabase
+        .from("debts")
+        .select("id, debtor_id, creditor_id, remaining")
+        .in("bill_id", billIds)
+        .in("status", ["pending", "partial"]);
+      setGroupDebts((debtRows ?? []) as RawDebt[]);
+    } else {
+      setGroupDebts([]);
     }
 
     try { sessionStorage.setItem(`group_settings_${id}`, JSON.stringify({ group: groupData, members: enrichedMembers })); } catch {}
@@ -144,7 +164,7 @@ export default function GroupSettingsPage() {
 
     try { sessionStorage.removeItem(`group_settings_${id}`); } catch {}
     toast.success("Đã rời nhóm");
-    router.push("/groups");
+    router.push("/");
   }
 
   if (loading) {
@@ -278,6 +298,9 @@ export default function GroupSettingsPage() {
             </div>
           ))}
         </div>
+
+        {/* "Ai nợ ai" — debt balances + simplified view */}
+        <DebtBalancesView debts={groupDebts} members={members} />
 
         {/* Leave group */}
         <div className="rounded-[14px] bg-white p-4 shadow-sm">

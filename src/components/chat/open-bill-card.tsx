@@ -1,5 +1,5 @@
 // Open bill card with check-in CTA (bill_type = "open", status = "active")
-// Enhanced: member list, add people link, close bill link
+// Edit/delete via ⋯ menu (decision 2026-04-18 — no explicit "Đóng bill" button).
 import { formatVND } from "@/lib/format-vnd";
 import type { Bill, Member, BillCheckin } from "@/lib/types";
 
@@ -11,9 +11,7 @@ interface OpenBillCardProps {
   hasCheckedIn: boolean;
   onCheckin: (billId: string) => void;
   onAddPeople: (billId: string) => void;
-  onCloseBill: (billId: string) => void;
   currentMemberId: string | null;
-  isPayerOrAdmin: boolean;
 }
 
 function getInitials(name: string): string {
@@ -33,9 +31,7 @@ export function OpenBillCard({
   hasCheckedIn,
   onCheckin,
   onAddPeople,
-  onCloseBill,
   currentMemberId,
-  isPayerOrAdmin,
 }: OpenBillCardProps) {
   const payerName = payer?.display_name ?? "Ai đó";
   const isMe = payer?.id === currentMemberId;
@@ -119,7 +115,7 @@ export function OpenBillCard({
         )}
 
         {/* Secondary actions */}
-        <div className="mt-2 flex items-center justify-between">
+        <div className="mt-2 flex items-center justify-start">
           <button
             type="button"
             onClick={() => onAddPeople(bill.id)}
@@ -127,16 +123,6 @@ export function OpenBillCard({
           >
             + Thêm người
           </button>
-
-          {isPayerOrAdmin && (
-            <button
-              type="button"
-              onClick={() => onCloseBill(bill.id)}
-              className="text-xs font-medium text-[#AEAEB2] underline-offset-2 hover:underline"
-            >
-              Đóng bill
-            </button>
-          )}
         </div>
       </div>
     </div>

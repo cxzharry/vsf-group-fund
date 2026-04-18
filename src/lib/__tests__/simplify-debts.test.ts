@@ -1,4 +1,4 @@
-import { simplifyDebts, simplifyDebtsGraph } from "../simplify-debts";
+import { simplifyDebts, simplifyDebtsGraph, computeNetBalances } from "../simplify-debts";
 
 describe("simplifyDebts", () => {
   it("returns empty array for no debts", () => {
@@ -123,5 +123,61 @@ describe("simplifyDebtsGraph", () => {
     for (const r of result) {
       expect(r.debtor_id).toBe("A");
     }
+  });
+
+  it("underlying_ids is always [] (synthesized payments)", () => {
+    const result = simplifyDebtsGraph([
+      { id: "d1", debtor_id: "A", creditor_id: "B", remaining: 100 },
+    ]);
+    expect(result[0].underlying_ids).toEqual([]);
+  });
+
+  it("4-person partial cycle: minimal transactions", () => {
+    // A owes B 300k, B owes C 200k, C owes D 100k, D owes A 50k
+    // Net: A=-250, B=+100, C=+100, D=+50
+    // Greedy: A→B 100, A→C 100, A→D 50 → 3 tx (N-1=3 for 4 people)
+    const result = simplifyDebtsGraph([
+      { id: "d1", debtor_id: "A", creditor_id: "B", remaining: 300000 },
+      { id: "d2", debtor_id: "B", creditor_id: "C", remaining: 200000 },
+      { id: "d3", debtor_id: "C", creditor_id: "D", remaining: 100000 },
+      { id: "d4", debtor_id: "D", creditor_id: "A", remaining: 50000 },
+    ]);
+    expect(result.length).toBeLessThanOrEqual(3);
+    const totalPaid = result.reduce((s, r) => s + r.amount, 0);
+    expect(totalPaid).toBe(250000); // A's total net debt
+  });
+});
+
+describe("computeNetBalances", () => {
+  it("returns empty map for no debts", () => {
+    expect(computeNetBalances([])).toEqual(new Map());
+  });
+
+  it("A→B 100: A=-100, B=+100", () => {
+    const bal = computeNetBalances([
+      { id: "d1", debtor_id: "A", creditor_id: "B", remaining: 100 },
+    ]);
+    expect(bal.get("A")).toBe(-100);
+    expect(bal.get("B")).toBe(100);
+  });
+
+  it("mutual debts: A→B 100, B→A 40 → A=-60, B=+60", () => {
+    const bal = computeNetBalances([
+      { id: "d1", debtor_id: "A", creditor_id: "B", remaining: 100 },
+      { id: "d2", debtor_id: "B", creditor_id: "A", remaining: 40 },
+    ]);
+    expect(bal.get("A")).toBe(-60);
+    expect(bal.get("B")).toBe(60);
+  });
+
+  it("circular A→B→C→A equal amounts → all zero", () => {
+    const bal = computeNetBalances([
+      { id: "d1", debtor_id: "A", creditor_id: "B", remaining: 50 },
+      { id: "d2", debtor_id: "B", creditor_id: "C", remaining: 50 },
+      { id: "d3", debtor_id: "C", creditor_id: "A", remaining: 50 },
+    ]);
+    expect(bal.get("A")).toBe(0);
+    expect(bal.get("B")).toBe(0);
+    expect(bal.get("C")).toBe(0);
   });
 });

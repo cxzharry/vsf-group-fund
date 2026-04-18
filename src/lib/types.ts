@@ -68,8 +68,13 @@ export interface BillCheckin {
 export interface BillParticipant {
   id: string;
   bill_id: string;
-  member_id: string;
+  /** null for guest/anonymous rows */
+  member_id: string | null;
   amount: number;
+  /** Case C: named guest with no NoPay account */
+  guest_name: string | null;
+  /** Case D: anonymous participant — not tracked by name */
+  is_anonymous: boolean;
 }
 
 export interface Debt {

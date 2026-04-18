@@ -12,6 +12,8 @@ interface GroupDebtInfo {
   topPersonName: string; // name of person with largest debt relationship
   debtorCount: number;   // how many people owe me in this group
   creditorCount: number; // how many people I owe in this group
+  /** Single debt id if user has exactly one pending debt as debtor — shortcut for "Trả nợ" → transfer screen */
+  debtId?: string;
 }
 
 interface GroupItem extends Group {
@@ -132,11 +134,13 @@ export default function HomePage() {
     for (const gId of groupIds) {
       // Debts I owe, grouped by creditor
       const creditorTotals: Record<string, number> = {};
+      const myDebtsInGroup: Array<{ id: string; creditor_id: string }> = [];
       (myDebts ?? [])
         .filter((d: Record<string, unknown>) => getGroupId(d) === gId)
         .forEach((d: Record<string, unknown>) => {
           const cId = d.creditor_id as string;
           creditorTotals[cId] = (creditorTotals[cId] ?? 0) + (d.remaining as number);
+          myDebtsInGroup.push({ id: d.id as string, creditor_id: cId });
         });
 
       // Debts owed to me, grouped by debtor
@@ -164,18 +168,28 @@ export default function HomePage() {
         topPersonName = topDebtor ? (nameMap[topDebtor[0]] ?? "Ẩn danh") : "";
       }
 
+      // If user owes exactly 1 creditor in this group, pick that debt's id for quick "Trả nợ" shortcut
+      const creditorIds = Object.keys(creditorTotals);
+      let debtId: string | undefined;
+      if (net < 0 && creditorIds.length === 1) {
+        const creditorId = creditorIds[0];
+        const candidate = myDebtsInGroup.find((d) => d.creditor_id === creditorId);
+        debtId = candidate?.id;
+      }
+
       debtPerGroup[gId] = {
         netDebt: net,
         topPersonName,
-        creditorCount: Object.keys(creditorTotals).length,
+        creditorCount: creditorIds.length,
         debtorCount: Object.keys(debtorTotals).length,
+        debtId,
       };
     }
 
     const items: GroupItem[] = (groupData ?? []).map((g) => ({
       ...g,
       member_count: countMap[g.id] ?? 0,
-      debt: debtPerGroup[g.id] ?? { netDebt: 0, topPersonName: "", debtorCount: 0, creditorCount: 0 },
+      debt: debtPerGroup[g.id] ?? { netDebt: 0, topPersonName: "", debtorCount: 0, creditorCount: 0, debtId: undefined },
     }));
     setGroups(items);
     setLoading(false);
@@ -294,7 +308,16 @@ export default function HomePage() {
                       </span>
                       <button
                         type="button"
-                        onClick={() => router.push("/debts")}
+                        onClick={() => {
+                          if (g.debt.netDebt < 0 && g.debt.debtId) {
+                            // Single debt — go straight to transfer screen
+                            router.push(`/transfer/${g.debt.debtId}`);
+                          } else {
+                            // Multi-debt or nhắc nợ — open group detail
+                            // (user sees debt banner + can tap counterparty → transfer)
+                            router.push(`/groups/${g.id}`);
+                          }
+                        }}
                         className={`rounded-full px-2.5 py-1 text-xs font-semibold transition-opacity active:opacity-70 ${
                           g.debt.netDebt < 0
                             ? "bg-[#EEF2FF] text-[#3A5CCC]"

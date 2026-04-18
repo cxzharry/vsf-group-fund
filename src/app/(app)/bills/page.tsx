@@ -5,7 +5,6 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase-client";
 import { useAuth } from "@/components/auth-provider";
 import { PageHeader } from "@/components/page-header";
-import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { SkeletonList } from "@/components/skeleton-card";
@@ -92,11 +91,6 @@ export default function BillsPage() {
     <>
       <PageHeader title="Hóa đơn" backHref="/" />
       <main className="p-4">
-        <Link href="/bills/new">
-          <Button className="mb-4 w-full bg-[#3A5CCC] hover:bg-[#2d4aaa]">
-            + Tạo hóa đơn mới
-          </Button>
-        </Link>
 
         {loading ? (
           <SkeletonList count={4} />
