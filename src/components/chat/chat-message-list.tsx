@@ -25,6 +25,8 @@ interface ChatMessageListProps {
   billCheckins: Record<string, BillCheckin[]>;
   /** Maps bill_id → category id string, sourced from bill_card chat message metadata */
   billCategoryMap?: Record<string, string>;
+  /** Maps bill_id → remaining amount current user owes on that bill (debtor side) */
+  userOwedPerBill?: Record<string, number>;
   currentMemberId: string | null;
   onCheckin: (billId: string) => void;
   onAddPeople: (billId: string) => void;
@@ -53,6 +55,7 @@ export function ChatMessageList({
   billParticipantCounts,
   billCheckins,
   billCategoryMap,
+  userOwedPerBill,
   currentMemberId,
   onCheckin,
   onAddPeople,
@@ -124,6 +127,7 @@ export function ChatMessageList({
               payer={payer}
               participantCount={billParticipantCounts[bill.id] ?? 0}
               currentMemberId={currentMemberId}
+              userOwedAmount={userOwedPerBill?.[bill.id]}
               category={billCategoryMap?.[bill.id]}
               onDelete={onDeleteBill}
               onEdit={onEditBill}

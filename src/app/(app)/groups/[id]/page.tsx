@@ -85,6 +85,8 @@ export default function GroupDetailPage() {
     return !sessionStorage.getItem(`group_detail_${id}`);
   });
   const [pendingConfirmDebtIds, setPendingConfirmDebtIds] = useState<Set<string>>(new Set());
+  /** billId → remaining amount user owes on that bill (user = debtor, status pending/partial) */
+  const [userOwedPerBill, setUserOwedPerBill] = useState<Record<string, number>>({});
   const [inputText, setInputText] = useState("");
 
   // Sprint 4: AI intent state
@@ -186,7 +188,7 @@ export default function GroupDetailPage() {
     if (currentMember) {
       const { data: owingData } = await supabase
         .from("debts")
-        .select("id, remaining, creditor_id, bills!inner(group_id)")
+        .select("id, remaining, creditor_id, bill_id, bills!inner(group_id)")
         .eq("debtor_id", currentMember.id)
         .eq("bills.group_id", id)
         .in("status", ["pending", "partial"]);
@@ -197,6 +199,15 @@ export default function GroupDetailPage() {
         .eq("creditor_id", currentMember.id)
         .eq("bills.group_id", id)
         .in("status", ["pending", "partial"]);
+
+      // Build per-bill "Bạn nợ X" map from owingData
+      const owedMap: Record<string, number> = {};
+      (owingData ?? []).forEach((d: { bill_id?: string; remaining: number }) => {
+        if (d.bill_id && d.remaining > 0) {
+          owedMap[d.bill_id] = (owedMap[d.bill_id] ?? 0) + d.remaining;
+        }
+      });
+      setUserOwedPerBill(owedMap);
 
       const totalOwing = (owingData ?? []).reduce(
         (s: number, d: { remaining: number }) => s + d.remaining,
@@ -1150,6 +1161,7 @@ export default function GroupDetailPage() {
             billParticipantCounts={billParticipantCounts}
             billCheckins={billCheckins}
             billCategoryMap={billCategoryMap}
+            userOwedPerBill={userOwedPerBill}
             currentMemberId={currentMember?.id ?? null}
             onCheckin={handleCheckin}
             onAddPeople={(billId) => setAddPeopleBillId(billId)}
