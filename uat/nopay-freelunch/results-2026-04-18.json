@@ -1,0 +1,268 @@
+{
+  "date": "2026-04-18",
+  "target": "https://nopay-freelunch.vercel.app",
+  "playwright_run": {
+    "total_specs": 15,
+    "pass": 15,
+    "fail": 0,
+    "duration_ms": 13743
+  },
+  "scenarios": [
+    {
+      "id": "M1",
+      "persona": "Minh",
+      "name": "Tạo bill 2.4M qua AI Quick Parse",
+      "status": "manual-required",
+      "reason": "Requires authenticated session + Telegram integration + multi-user group state. Playwright cannot auto-create 8-member group with pre-seeded bills on deployed app behind auth wall.",
+      "evidence_path": "uat/nopay-freelunch/evidence/minh-s1/",
+      "automatable": false,
+      "playwright_coverage": "Group page auth-gate redirect verified (test #8)"
+    },
+    {
+      "id": "M2",
+      "persona": "Minh",
+      "name": "Tạo bill mở — State A/B/C visual match",
+      "status": "manual-required",
+      "reason": "Requires authenticated group with bill creation. Bill mở UI state (US-E3-5) cannot be reached without auth + group setup. Design frame reference: i0Jex/TRcvd/nmK7P.",
+      "evidence_path": "uat/nopay-freelunch/evidence/minh-s2/",
+      "automatable": false,
+      "playwright_coverage": "Auth-gated structure confirmed (test #5)"
+    },
+    {
+      "id": "M3",
+      "persona": "Minh",
+      "name": "Nhắc nợ qua Telegram — 2 người pending",
+      "status": "manual-required",
+      "reason": "Full Telegram bot interaction required. Cannot drive bot API from Playwright. Cooldown logic (24h) is server-side.",
+      "evidence_path": "uat/nopay-freelunch/evidence/minh-s3/",
+      "automatable": false,
+      "playwright_coverage": "None — pure Telegram integration"
+    },
+    {
+      "id": "M4",
+      "persona": "Minh",
+      "name": "Xem tổng nợ ròng trong group — toggle detail/net",
+      "status": "manual-required",
+      "reason": "Requires multi-bill group state with cross-direction debts. App redirects unauth to /login.",
+      "evidence_path": "uat/nopay-freelunch/evidence/minh-s4/",
+      "automatable": false,
+      "playwright_coverage": "Landing + desktop layout verified (tests #1, #13)"
+    },
+    {
+      "id": "M5",
+      "persona": "Minh",
+      "name": "Edit bill — payer row clickable (regression check 2026-04-18)",
+      "status": "manual-required",
+      "reason": "Edit bill flow requires auth + existing bill. Payer row clickability is a post-fix regression watch — needs auth session to validate picker sheet.",
+      "evidence_path": "uat/nopay-freelunch/evidence/minh-s5/",
+      "automatable": false,
+      "playwright_coverage": "None — requires auth"
+    },
+    {
+      "id": "A1",
+      "persona": "An",
+      "name": "Quick-add bill 180k cafe — VND format + payer default",
+      "status": "manual-required",
+      "reason": "Requires auth + AI chat input. VND format smoke test done at public surface (test #7) but full assertion needs bill card visible.",
+      "evidence_path": "uat/nopay-freelunch/evidence/an-s1/",
+      "automatable": false,
+      "playwright_coverage": "VND format smoke verified (test #7)"
+    },
+    {
+      "id": "A2",
+      "persona": "An",
+      "name": "Nợ ròng 2 chiều — net 255k display",
+      "status": "manual-required",
+      "reason": "Requires 2-user interaction (Minh + An bills cross-created). Multi-user state impossible on deployed auth-walled app.",
+      "evidence_path": "uat/nopay-freelunch/evidence/an-s2/",
+      "automatable": false,
+      "playwright_coverage": "None — multi-user interaction"
+    },
+    {
+      "id": "A3",
+      "persona": "An",
+      "name": "Chia bill không đều — guest/anonymous",
+      "status": "skipped",
+      "reason": "Audit report flags US-E3-2 Case C/D (guest split) as missing code. Scenario expected to fail until implemented. Skipped per instruction to not waste run time on known-missing features.",
+      "evidence_path": "uat/nopay-freelunch/evidence/an-s3/",
+      "automatable": false,
+      "playwright_coverage": "None"
+    },
+    {
+      "id": "A4",
+      "persona": "An",
+      "name": "Settle all với Minh — 5 bills batch clear",
+      "status": "manual-required",
+      "reason": "Requires 5 pre-seeded bills + QR payment flow. Cannot automate VietQR scan or multi-bill settle without auth.",
+      "evidence_path": "uat/nopay-freelunch/evidence/an-s4/",
+      "automatable": false,
+      "playwright_coverage": "None"
+    },
+    {
+      "id": "A5",
+      "persona": "An",
+      "name": "History filter theo counterparty + date range",
+      "status": "manual-required",
+      "reason": "Requires 30+ transaction history. Auth-gated, data-dependent.",
+      "evidence_path": "uat/nopay-freelunch/evidence/an-s5/",
+      "automatable": false,
+      "playwright_coverage": "None"
+    },
+    {
+      "id": "L1",
+      "persona": "Linh",
+      "name": "Nhận Telegram notify → QR payment < 60s",
+      "status": "manual-required",
+      "reason": "Full Telegram → deep link → QR → bank app → confirm flow. Requires real device + Telegram bot.",
+      "evidence_path": "uat/nopay-freelunch/evidence/linh-s1/",
+      "automatable": false,
+      "playwright_coverage": "None — cross-app flow"
+    },
+    {
+      "id": "L2",
+      "persona": "Linh",
+      "name": "Check-in Bill mở — State A → B transition",
+      "status": "manual-required",
+      "reason": "Requires auth + open bill created by Minh in same group. State transition (realtime) needs 2 connected users.",
+      "evidence_path": "uat/nopay-freelunch/evidence/linh-s2/",
+      "automatable": false,
+      "playwright_coverage": "None"
+    },
+    {
+      "id": "L3",
+      "persona": "Linh",
+      "name": "Verify bill breakdown — 8 participants visible",
+      "status": "manual-required",
+      "reason": "Requires auth + bill with 8 participants. L3 also flagged for half-sheet vs standalone layout regression.",
+      "evidence_path": "uat/nopay-freelunch/evidence/linh-s3/",
+      "automatable": false,
+      "playwright_coverage": "None"
+    },
+    {
+      "id": "L4",
+      "persona": "Linh",
+      "name": "Leave group — history preserved after exit",
+      "status": "manual-required",
+      "reason": "Requires auth + group membership. PRD unresolved on leave-with-debt warning UX.",
+      "evidence_path": "uat/nopay-freelunch/evidence/linh-s4/",
+      "automatable": false,
+      "playwright_coverage": "None"
+    },
+    {
+      "id": "D1",
+      "persona": "Duy",
+      "name": "Invite link → join group < 90s (first-time user)",
+      "status": "manual-required",
+      "reason": "Valid invite code required. Real onboarding flow needs actual group + Minh's generated invite. Playwright verified /invite/* gracefully redirects to login (test #6).",
+      "evidence_path": "uat/nopay-freelunch/evidence/duy-s1/",
+      "automatable": false,
+      "playwright_coverage": "Invite link no-500 + redirect verified (test #6); landing TTFB 884ms < 3s (test #1)"
+    },
+    {
+      "id": "D2",
+      "persona": "Duy",
+      "name": "Check-in Bill mở — first-timer understands UI < 10s",
+      "status": "manual-required",
+      "reason": "Cognitive/usability assertion — cannot automate human comprehension. Requires auth + bill card visible.",
+      "evidence_path": "uat/nopay-freelunch/evidence/duy-s2/",
+      "automatable": false,
+      "playwright_coverage": "Mobile layout no-overflow verified (test #11)"
+    },
+    {
+      "id": "D3",
+      "persona": "Duy",
+      "name": "First-time QR payment — trust signal (logo + name visible)",
+      "status": "manual-required",
+      "reason": "QR trust signal is visual assertion requiring auth + payment context.",
+      "evidence_path": "uat/nopay-freelunch/evidence/duy-s3/",
+      "automatable": false,
+      "playwright_coverage": "None"
+    },
+    {
+      "id": "D4",
+      "persona": "Duy",
+      "name": "No spam after event — 14-day silent period",
+      "status": "manual-required",
+      "reason": "14-day soak test. Cannot accelerate time. Requires monitoring Telegram notification log.",
+      "evidence_path": "uat/nopay-freelunch/evidence/duy-s4/",
+      "automatable": false,
+      "playwright_coverage": "None — time-based"
+    },
+    {
+      "id": "T1",
+      "persona": "Tú",
+      "name": "Verify AI parse '1tr2' = 1.200.000 — no off-by-10x",
+      "status": "manual-required",
+      "reason": "AI parse confidence chip + edit inline requires auth + chat. No console errors on landing verified (test #15).",
+      "evidence_path": "uat/nopay-freelunch/evidence/tu-s1/",
+      "automatable": false,
+      "playwright_coverage": "No console errors verified (test #15)"
+    },
+    {
+      "id": "T2",
+      "persona": "Tú",
+      "name": "Edit split ratio — unequal split approval flow",
+      "status": "skipped",
+      "reason": "Audit flags US-E3-2 split edit approval as missing in code. Skipped — known incomplete feature.",
+      "evidence_path": "uat/nopay-freelunch/evidence/tu-s2/",
+      "automatable": false,
+      "playwright_coverage": "None"
+    },
+    {
+      "id": "T3",
+      "persona": "Tú",
+      "name": "Reject bill — opt-out, recompute for 5 people",
+      "status": "skipped",
+      "reason": "Reject/opt-out UI not in design frames. PO decision pending. Skipped per note in bill-skeptic-vn.md.",
+      "evidence_path": "uat/nopay-freelunch/evidence/tu-s3/",
+      "automatable": false,
+      "playwright_coverage": "None"
+    },
+    {
+      "id": "T4",
+      "persona": "Tú",
+      "name": "Audit 30-day history — filter + group by counterparty",
+      "status": "manual-required",
+      "reason": "Requires 40+ transactions + auth. Export CSV is nice-to-have, not blocking.",
+      "evidence_path": "uat/nopay-freelunch/evidence/tu-s4/",
+      "automatable": false,
+      "playwright_coverage": "Keyboard nav + a11y verified (tests #9, #10)"
+    }
+  ],
+  "summary": {
+    "total": 22,
+    "pass": 0,
+    "fail": 0,
+    "manual_required": 16,
+    "skipped": 3,
+    "playwright_specs_pass": 15,
+    "playwright_specs_fail": 0
+  },
+  "playwright_test_mapping": {
+    "test_1_landing_load": ["D1 partial — TTFB < 3s"],
+    "test_2_login_auth_form": ["D1 partial — auth form present; auth = OTP+password, NOT Google OAuth"],
+    "test_3_groups_redirect": ["M4 partial — protected route enforcement"],
+    "test_4_404_behavior": ["D1 — no crash on bad route"],
+    "test_5_app_no_broken_state": ["All personas — app renders without crash"],
+    "test_6_invite_link_no_500": ["D1 — invite link graceful degradation"],
+    "test_7_vnd_format": ["A1, T1 — VND format smoke (unauthenticated)"],
+    "test_8_group_auth_gate": ["M1 partial — group URL structure + auth gate"],
+    "test_9_a11y_buttons": ["T4 partial — accessibility"],
+    "test_10_keyboard_nav": ["T4 partial — keyboard focusable"],
+    "test_11_mobile_landing": ["D1, D2 — mobile no horizontal overflow"],
+    "test_12_mobile_login": ["D1 — mobile auth form functional"],
+    "test_13_desktop_login": ["M4 partial — desktop layout"],
+    "test_14_ttfb": ["D1 — TTFB 174ms well under threshold"],
+    "test_15_no_console_errors": ["T1 partial — no critical JS errors on landing"]
+  },
+  "key_findings": {
+    "auth_method": "OTP + password (NOT Google OAuth — design spec mismatch or UAT script outdated)",
+    "landing_ttfb_ms": 884,
+    "login_ttfb_ms": 174,
+    "mobile_overflow": false,
+    "desktop_overflow": false,
+    "invite_link_behavior": "Redirects to /login gracefully, no 500",
+    "all_routes_auth_gated": true,
+    "console_errors_on_landing": 0
+  }
+}
