@@ -1,0 +1,1036 @@
+{
+  "config": {
+    "configFile": "/Users/haido/claude-code-macmini/vsf-group-fund/playwright.config.ts",
+    "rootDir": "/Users/haido/claude-code-macmini/vsf-group-fund/tests",
+    "forbidOnly": false,
+    "fullyParallel": false,
+    "globalSetup": null,
+    "globalTeardown": null,
+    "globalTimeout": 0,
+    "grep": {},
+    "grepInvert": null,
+    "maxFailures": 0,
+    "metadata": {
+      "actualWorkers": 1
+    },
+    "preserveOutput": "always",
+    "projects": [
+      {
+        "outputDir": "/Users/haido/claude-code-macmini/vsf-group-fund/test-results",
+        "repeatEach": 1,
+        "retries": 1,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "chromium",
+        "name": "chromium",
+        "testDir": "/Users/haido/claude-code-macmini/vsf-group-fund/tests",
+        "testIgnore": [],
+        "testMatch": [
+          "**/*.@(spec|test).?(c|m)[jt]s?(x)"
+        ],
+        "timeout": 30000
+      }
+    ],
+    "quiet": false,
+    "reporter": [
+      [
+        "json",
+        {
+          "outputFile": "uat/nopay-freelunch/playwright-results.json"
+        }
+      ],
+      [
+        "list",
+        null
+      ]
+    ],
+    "reportSlowTests": {
+      "max": 5,
+      "threshold": 300000
+    },
+    "shard": null,
+    "tags": [],
+    "updateSnapshots": "missing",
+    "updateSourceMethod": "patch",
+    "version": "1.59.1",
+    "workers": 4,
+    "webServer": null
+  },
+  "suites": [
+    {
+      "title": "uat-nopay-freelunch.spec.ts",
+      "file": "uat-nopay-freelunch.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [],
+      "suites": [
+        {
+          "title": "Public Surface + Auth Smoke",
+          "file": "uat-nopay-freelunch.spec.ts",
+          "line": 40,
+          "column": 6,
+          "specs": [
+            {
+              "title": "Landing page loads < 3s, shows CTA",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 984,
+                      "errors": [],
+                      "stdout": [
+                        {
+                          "text": "Landing loaded in 875ms, title: \"NoPay FreeLunch\"\n"
+                        }
+                      ],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-04-18T00:44:43.677Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "42d11445bd25c9609df5-8010f45ee94d43fe268e",
+              "file": "uat-nopay-freelunch.spec.ts",
+              "line": 41,
+              "column": 7
+            },
+            {
+              "title": "Login page renders auth form (E1 auth smoke)",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 877,
+                      "errors": [],
+                      "stdout": [
+                        {
+                          "text": "Login buttons: Gửi mã OTP, Nhập mật khẩu\n"
+                        }
+                      ],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-04-18T00:44:44.865Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "42d11445bd25c9609df5-069dcf64df8921bada90",
+              "file": "uat-nopay-freelunch.spec.ts",
+              "line": 58,
+              "column": 7
+            },
+            {
+              "title": "Protected route /groups redirects unauthenticated user",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 890,
+                      "errors": [],
+                      "stdout": [
+                        {
+                          "text": "Redirect from /groups → https://nopay-freelunch.vercel.app/login\n"
+                        }
+                      ],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-04-18T00:44:45.758Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "42d11445bd25c9609df5-c04e384406d33e07e09d",
+              "file": "uat-nopay-freelunch.spec.ts",
+              "line": 78,
+              "column": 7
+            },
+            {
+              "title": "404 page renders for nonexistent route",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 899,
+                      "errors": [],
+                      "stdout": [
+                        {
+                          "text": "Non-existent route landed at: https://nopay-freelunch.vercel.app/login\n"
+                        }
+                      ],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-04-18T00:44:46.655Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "42d11445bd25c9609df5-59d7018d6c58e5a130eb",
+              "file": "uat-nopay-freelunch.spec.ts",
+              "line": 93,
+              "column": 7
+            }
+          ]
+        },
+        {
+          "title": "UI Structure (auth-gated, validates after redirect)",
+          "file": "uat-nopay-freelunch.spec.ts",
+          "line": 107,
+          "column": 6,
+          "specs": [
+            {
+              "title": "App redirects to auth — verifies no broken state",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 890,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-04-18T00:44:47.561Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "42d11445bd25c9609df5-34eaf4a28755fac552b8",
+              "file": "uat-nopay-freelunch.spec.ts",
+              "line": 108,
+              "column": 7
+            }
+          ]
+        },
+        {
+          "title": "D2 — Invite link landing surface",
+          "file": "uat-nopay-freelunch.spec.ts",
+          "line": 123,
+          "column": 6,
+          "specs": [
+            {
+              "title": "Invite link with valid-format code loads landing or auth (no 500)",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 876,
+                      "errors": [],
+                      "stdout": [
+                        {
+                          "text": "Invite link page redirected to: https://nopay-freelunch.vercel.app/login, body: \"NoPay\nFreeLunch\n\nNhập email để đăng nhập\nhoặc tạo tài khoản mới.\n\nGửi mã OTP\nhoặ\"\n"
+                        }
+                      ],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-04-18T00:44:48.458Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "42d11445bd25c9609df5-2887d12b7e860f5fb190",
+              "file": "uat-nopay-freelunch.spec.ts",
+              "line": 124,
+              "column": 7
+            }
+          ]
+        },
+        {
+          "title": "VND Number Format",
+          "file": "uat-nopay-freelunch.spec.ts",
+          "line": 150,
+          "column": 6,
+          "specs": [
+            {
+              "title": "App pages contain VND-formatted numbers when numbers present (dot separator)",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 900,
+                      "errors": [],
+                      "stdout": [
+                        {
+                          "text": "No VND numbers visible on unauthenticated page — acceptable\n"
+                        }
+                      ],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-04-18T00:44:49.341Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "42d11445bd25c9609df5-4fa86cfdf11c284d36fe",
+              "file": "uat-nopay-freelunch.spec.ts",
+              "line": 151,
+              "column": 7
+            }
+          ]
+        },
+        {
+          "title": "AI Quick Parse UI Smoke",
+          "file": "uat-nopay-freelunch.spec.ts",
+          "line": 178,
+          "column": 6,
+          "specs": [
+            {
+              "title": "Chat/group page accessible after login redirect (URL structure valid)",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 955,
+                      "errors": [],
+                      "stdout": [
+                        {
+                          "text": "Group page (unauth) redirected to: https://nopay-freelunch.vercel.app/login\n"
+                        }
+                      ],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-04-18T00:44:50.247Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "42d11445bd25c9609df5-42793c8e0f7a3cb0bf5a",
+              "file": "uat-nopay-freelunch.spec.ts",
+              "line": 179,
+              "column": 7
+            }
+          ]
+        },
+        {
+          "title": "Accessibility Smoke",
+          "file": "uat-nopay-freelunch.spec.ts",
+          "line": 200,
+          "column": 6,
+          "specs": [
+            {
+              "title": "Login page has no major aria violations (basic check)",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 845,
+                      "errors": [],
+                      "stdout": [
+                        {
+                          "text": "Found 2 buttons on login page\n"
+                        }
+                      ],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-04-18T00:44:51.212Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "42d11445bd25c9609df5-c34aaee8b61f50fc024d",
+              "file": "uat-nopay-freelunch.spec.ts",
+              "line": 201,
+              "column": 7
+            },
+            {
+              "title": "Keyboard navigation — login page focusable",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 869,
+                      "errors": [],
+                      "stdout": [
+                        {
+                          "text": "Focused element after 2 tabs: BUTTON\n"
+                        }
+                      ],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-04-18T00:44:52.067Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "42d11445bd25c9609df5-3653b6d98c70caf378ad",
+              "file": "uat-nopay-freelunch.spec.ts",
+              "line": 223,
+              "column": 7
+            }
+          ]
+        },
+        {
+          "title": "Mobile Responsive (375x812)",
+          "file": "uat-nopay-freelunch.spec.ts",
+          "line": 240,
+          "column": 6,
+          "specs": [
+            {
+              "title": "Landing page renders correctly on mobile",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 896,
+                      "errors": [],
+                      "stdout": [
+                        {
+                          "text": "Mobile landing — no horizontal overflow: true\n"
+                        }
+                      ],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-04-18T00:44:52.943Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "42d11445bd25c9609df5-aa2ac5ff2ccac7b0b449",
+              "file": "uat-nopay-freelunch.spec.ts",
+              "line": 243,
+              "column": 7
+            },
+            {
+              "title": "Login page renders correctly on mobile (375px)",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 842,
+                      "errors": [],
+                      "stdout": [
+                        {
+                          "text": "Mobile login buttons: Gửi mã OTP, Nhập mật khẩu\n"
+                        }
+                      ],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-04-18T00:44:53.848Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "42d11445bd25c9609df5-69d1619a4d2904f78cb8",
+              "file": "uat-nopay-freelunch.spec.ts",
+              "line": 256,
+              "column": 7
+            }
+          ]
+        },
+        {
+          "title": "Desktop Responsive (1280x720)",
+          "file": "uat-nopay-freelunch.spec.ts",
+          "line": 283,
+          "column": 6,
+          "specs": [
+            {
+              "title": "Landing / login renders on desktop",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 894,
+                      "errors": [],
+                      "stdout": [
+                        {
+                          "text": "Desktop login — no horizontal overflow\n"
+                        }
+                      ],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-04-18T00:44:54.699Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "42d11445bd25c9609df5-3196d372918db7a0b32b",
+              "file": "uat-nopay-freelunch.spec.ts",
+              "line": 286,
+              "column": 7
+            }
+          ]
+        },
+        {
+          "title": "Performance + Network Smoke",
+          "file": "uat-nopay-freelunch.spec.ts",
+          "line": 302,
+          "column": 6,
+          "specs": [
+            {
+              "title": "Login page TTFB < 2s (basic perf gate)",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 383,
+                      "errors": [],
+                      "stdout": [
+                        {
+                          "text": "Login page TTFB: 340ms\n"
+                        }
+                      ],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-04-18T00:44:55.600Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "42d11445bd25c9609df5-7a67b8350537b0100c26",
+              "file": "uat-nopay-freelunch.spec.ts",
+              "line": 303,
+              "column": 7
+            },
+            {
+              "title": "No console errors on landing page (error-free smoke)",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 906,
+                      "errors": [],
+                      "stdout": [
+                        {
+                          "text": "No console errors on landing\n"
+                        }
+                      ],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-04-18T00:44:55.990Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "42d11445bd25c9609df5-40fa2f13a29304ee7f95",
+              "file": "uat-nopay-freelunch.spec.ts",
+              "line": 312,
+              "column": 7
+            }
+          ]
+        },
+        {
+          "title": "Round 2 — Authenticated Scenarios (Minh persona)",
+          "file": "uat-nopay-freelunch.spec.ts",
+          "line": 360,
+          "column": 6,
+          "specs": [
+            {
+              "title": "R2-A1: Login as Minh → home page loads, groups visible",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 4039,
+                      "errors": [],
+                      "stdout": [
+                        {
+                          "text": "R2-A1: Post-login URL = https://nopay-freelunch.vercel.app/, body length = 5417\n"
+                        }
+                      ],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-04-18T00:44:56.904Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "42d11445bd25c9609df5-85bac9f48817b098525f",
+              "file": "uat-nopay-freelunch.spec.ts",
+              "line": 361,
+              "column": 7
+            },
+            {
+              "title": "R2-A2: VND format — groups page shows dot-separator amounts",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 4036,
+                      "errors": [],
+                      "stdout": [
+                        {
+                          "text": "R2-A2 PASS: VND dot-separator format confirmed in authenticated view\n"
+                        }
+                      ],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-04-18T00:45:00.952Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "42d11445bd25c9609df5-8666c5bd1ae9a878a981",
+              "file": "uat-nopay-freelunch.spec.ts",
+              "line": 378,
+              "column": 7
+            },
+            {
+              "title": "R2-A3: Bottom nav has exactly 2 tabs (Nhóm + Tài khoản)",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 3957,
+                      "errors": [],
+                      "stdout": [
+                        {
+                          "text": "R2-A3: Nhóm tab = true, Tài khoản tab = true\n"
+                        },
+                        {
+                          "text": "R2-A3: nav elements found = 2\n"
+                        }
+                      ],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-04-18T00:45:04.994Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "42d11445bd25c9609df5-32ecb477d5f53f04ddbf",
+              "file": "uat-nopay-freelunch.spec.ts",
+              "line": 403,
+              "column": 7
+            },
+            {
+              "title": "R2-A4: Groups list renders — navigate to first group detail",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 3945,
+                      "errors": [],
+                      "stdout": [
+                        {
+                          "text": "R2-A4: Found 0 group links on home page\n"
+                        },
+                        {
+                          "text": "R2-A4 SKIP: No groups found for Minh UAT account — seeded data may be missing\n"
+                        }
+                      ],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-04-18T00:45:08.957Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "42d11445bd25c9609df5-19f875d6c124e504b969",
+              "file": "uat-nopay-freelunch.spec.ts",
+              "line": 421,
+              "column": 7
+            },
+            {
+              "title": "R2-A5: Bill detail half-sheet — opens on tap, not full-page navigate",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 4038,
+                      "errors": [],
+                      "stdout": [
+                        {
+                          "text": "R2-A5 SKIP: No groups found\n"
+                        }
+                      ],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-04-18T00:45:12.910Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "42d11445bd25c9609df5-b6e87b2a0ba23d9a5cf4",
+              "file": "uat-nopay-freelunch.spec.ts",
+              "line": 451,
+              "column": 7
+            },
+            {
+              "title": "R2-A6: Group settings — debt balances view accessible",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 4367,
+                      "errors": [],
+                      "stdout": [
+                        {
+                          "text": "R2-A6 SKIP: No groups found\n"
+                        }
+                      ],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-04-18T00:45:16.956Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "42d11445bd25c9609df5-262835d80bb2ea407430",
+              "file": "uat-nopay-freelunch.spec.ts",
+              "line": 490,
+              "column": 7
+            },
+            {
+              "title": "R2-A7: Account page — profile + bank + Telegram sections visible",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 7427,
+                      "errors": [],
+                      "stdout": [
+                        {
+                          "text": "R2-A7: Profile = true, Telegram = true, Bank = true\n"
+                        }
+                      ],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-04-18T00:45:21.334Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "42d11445bd25c9609df5-7d881f5cc4ab35b777bd",
+              "file": "uat-nopay-freelunch.spec.ts",
+              "line": 522,
+              "column": 7
+            },
+            {
+              "title": "R2-A8: Mobile viewport — auth flow works on 375px",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 4007,
+                      "errors": [],
+                      "stdout": [
+                        {
+                          "text": "R2-A8: Mobile home no horizontal overflow = true\n"
+                        }
+                      ],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-04-18T00:45:28.771Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "42d11445bd25c9609df5-a1b149673930dd259286",
+              "file": "uat-nopay-freelunch.spec.ts",
+              "line": 544,
+              "column": 7
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "errors": [],
+  "stats": {
+    "startTime": "2026-04-18T00:44:43.210Z",
+    "duration": 49631.587999999996,
+    "expected": 23,
+    "skipped": 0,
+    "unexpected": 0,
+    "flaky": 0
+  }
+}
