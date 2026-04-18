@@ -3,8 +3,7 @@ import { createClient } from "@supabase/supabase-js";
 import {
   notifyNewBill,
   notifyNewDebt,
-  notifyPaymentClaim,
-  notifyPaymentConfirmed,
+  notifyPaymentClaimBatch,
   notifyOpenBillCreated,
   notifyOpenBillCheckin,
   notifyOpenBillClosed,
@@ -75,66 +74,54 @@ export async function POST(request: Request) {
       break;
     }
 
-    case "payment_claim": {
-      // Debtor claims they paid — notify creditor
-      const { debtId, method } = payload;
+    case "payment_claim_batch": {
+      // Aggregated settlement (creditor-transfer page): group debts by creditor,
+      // send ONE message per creditor with total + bill list. Avoids per-bill spam.
+      const { debtIds } = payload as { debtIds: string[] };
+      if (!Array.isArray(debtIds) || debtIds.length === 0) break;
 
-      const { data: debt } = await supabase
+      const { data: debts } = await supabase
         .from("debts")
-        .select("creditor_id, amount, debtor_id")
-        .eq("id", debtId)
-        .single();
+        .select("id, creditor_id, debtor_id, amount, bills(title)")
+        .in("id", debtIds);
 
-      if (debt) {
-        const { data: creditor } = await supabase
-          .from("members")
-          .select("telegram_chat_id")
-          .eq("id", debt.creditor_id)
-          .single();
+      if (!debts || debts.length === 0) break;
 
-        const { data: debtor } = await supabase
-          .from("members")
-          .select("display_name")
-          .eq("id", debt.debtor_id)
-          .single();
+      // Group by creditor_id (typically 1 creditor from UI, but safe for multi)
+      type DebtRow = { id: string; creditor_id: string; debtor_id: string; amount: number; bills: { title: string } | { title: string }[] | null };
+      const byCreditor = new Map<string, DebtRow[]>();
+      for (const d of debts as DebtRow[]) {
+        if (!byCreditor.has(d.creditor_id)) byCreditor.set(d.creditor_id, []);
+        byCreditor.get(d.creditor_id)!.push(d);
+      }
 
-        await notifyPaymentClaim({
+      // Fetch creditor chat ids + debtor display name in bulk
+      const creditorIds = Array.from(byCreditor.keys());
+      const debtorIds = Array.from(new Set((debts as DebtRow[]).map((d) => d.debtor_id)));
+      const [{ data: creditors }, { data: debtors }] = await Promise.all([
+        supabase.from("members").select("id, telegram_chat_id").in("id", creditorIds),
+        supabase.from("members").select("id, display_name").in("id", debtorIds),
+      ]);
+      const creditorMap = new Map((creditors ?? []).map((m) => [m.id, m]));
+      const debtorMap = new Map((debtors ?? []).map((m) => [m.id, m]));
+
+      for (const [creditorId, rows] of byCreditor.entries()) {
+        const creditor = creditorMap.get(creditorId);
+        const debtorId = rows[0]?.debtor_id;
+        const debtor = debtorMap.get(debtorId);
+
+        const total = rows.reduce((s, r) => s + r.amount, 0);
+        const titles = rows.map((r) => {
+          const bRel = r.bills;
+          return Array.isArray(bRel) ? bRel[0]?.title ?? "Bill" : bRel?.title ?? "Bill";
+        });
+
+        await notifyPaymentClaimBatch({
           creditorChatId: creditor?.telegram_chat_id ?? null,
           debtorName: debtor?.display_name ?? "?",
-          amount: debt.amount,
-          method,
-        });
-      }
-      break;
-    }
-
-    case "payment_confirmed": {
-      // Creditor confirmed — notify debtor
-      const { debtId: confirmedDebtId } = payload;
-
-      const { data: debt } = await supabase
-        .from("debts")
-        .select("debtor_id, amount, creditor_id")
-        .eq("id", confirmedDebtId)
-        .single();
-
-      if (debt) {
-        const { data: debtor } = await supabase
-          .from("members")
-          .select("telegram_chat_id")
-          .eq("id", debt.debtor_id)
-          .single();
-
-        const { data: creditor } = await supabase
-          .from("members")
-          .select("display_name")
-          .eq("id", debt.creditor_id)
-          .single();
-
-        await notifyPaymentConfirmed({
-          debtorChatId: debtor?.telegram_chat_id ?? null,
-          creditorName: creditor?.display_name ?? "?",
-          amount: debt.amount,
+          totalAmount: total,
+          debtCount: rows.length,
+          billTitles: titles,
         });
       }
       break;

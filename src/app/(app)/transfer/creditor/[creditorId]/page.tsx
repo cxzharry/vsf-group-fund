@@ -1,8 +1,13 @@
 "use client";
 
-// Full payment screen: VietQR + transfer actions for a specific debt
+// Aggregated per-creditor transfer page.
+// Unlike /transfer/[debtId] (single debt), this page sums ALL pending/partial debts
+// from current user → creditorId (optionally scoped to a specific group).
+// Rationale: when user owes 900k across 3 bills to Minh, one QR with correct total
+// + batch-settle matches the group-detail banner amount. No more 900 vs 400 mismatch.
+
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { createBrowserClient } from "@supabase/ssr";
 import { useAuth } from "@/components/auth-provider";
 import { formatVND } from "@/lib/format-vnd";
@@ -12,10 +17,16 @@ import {
   generateTransferDescription,
 } from "@/lib/vietqr";
 import { toast } from "sonner";
-import type { Debt, Member, Bill } from "@/lib/types";
+import type { Debt, Member } from "@/lib/types";
 
-export default function TransferPage() {
-  const { debtId } = useParams<{ debtId: string }>();
+interface DebtRow extends Pick<Debt, "id" | "remaining" | "bill_id"> {
+  bills?: { group_id: string; title: string } | null;
+}
+
+export default function CreditorTransferPage() {
+  const { creditorId } = useParams<{ creditorId: string }>();
+  const searchParams = useSearchParams();
+  const groupId = searchParams.get("group");
   const router = useRouter();
   const { member: currentMember } = useAuth();
 
@@ -28,114 +39,126 @@ export default function TransferPage() {
     []
   );
 
-  const [debt, setDebt] = useState<Debt | null>(() => {
-    if (typeof window === "undefined") return null;
-    try {
-      const cached = sessionStorage.getItem(`transfer_${debtId}`);
-      return cached ? JSON.parse(cached).debt : null;
-    } catch { return null; }
-  });
-  const [creditor, setCreditor] = useState<Member | null>(() => {
-    if (typeof window === "undefined") return null;
-    try {
-      const cached = sessionStorage.getItem(`transfer_${debtId}`);
-      return cached ? JSON.parse(cached).creditor : null;
-    } catch { return null; }
-  });
-  const [bill, setBill] = useState<Bill | null>(() => {
-    if (typeof window === "undefined") return null;
-    try {
-      const cached = sessionStorage.getItem(`transfer_${debtId}`);
-      return cached ? JSON.parse(cached).bill : null;
-    } catch { return null; }
-  });
-  const [loading, setLoading] = useState(() => {
-    if (typeof window === "undefined") return true;
-    return !sessionStorage.getItem(`transfer_${debtId}`);
-  });
+  const [creditor, setCreditor] = useState<Member | null>(null);
+  const [debts, setDebts] = useState<DebtRow[]>([]);
+  const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
 
   const load = useCallback(async () => {
-    const { data: debtData } = await supabase
-      .from("debts")
-      .select("*")
-      .eq("id", debtId)
-      .single();
+    if (!currentMember) return;
 
-    if (!debtData) { setLoading(false); return; }
-    setDebt(debtData);
-
-    const [{ data: creditorData }, { data: billData }] = await Promise.all([
-      supabase.from("members").select("*").eq("id", debtData.creditor_id).single(),
-      supabase.from("bills").select("*").eq("id", debtData.bill_id).single(),
+    // Fetch creditor + pending debts in parallel
+    // When groupId provided, filter via bills!inner join so we only sum debts in that group
+    const [creditorRes, debtsRes] = await Promise.all([
+      supabase.from("members").select("*").eq("id", creditorId).single(),
+      groupId
+        ? supabase
+            .from("debts")
+            .select("id, remaining, bill_id, bills!inner(group_id, title)")
+            .eq("debtor_id", currentMember.id)
+            .eq("creditor_id", creditorId)
+            .eq("bills.group_id", groupId)
+            .in("status", ["pending", "partial"])
+        : supabase
+            .from("debts")
+            .select("id, remaining, bill_id, bills(group_id, title)")
+            .eq("debtor_id", currentMember.id)
+            .eq("creditor_id", creditorId)
+            .in("status", ["pending", "partial"]),
     ]);
 
-    setCreditor(creditorData);
-    setBill(billData);
-    try { sessionStorage.setItem(`transfer_${debtId}`, JSON.stringify({ debt: debtData, creditor: creditorData, bill: billData })); } catch {}
+    setCreditor(creditorRes.data ?? null);
+    // bills relation returns array from supabase-js when not using !inner single; normalize
+    const normalized = (debtsRes.data ?? []).map((d: Record<string, unknown>) => {
+      const billsRaw = d.bills as { group_id: string; title: string } | { group_id: string; title: string }[] | null;
+      const bills = Array.isArray(billsRaw) ? billsRaw[0] ?? null : billsRaw;
+      return { id: d.id as string, remaining: d.remaining as number, bill_id: d.bill_id as string, bills };
+    });
+    setDebts(normalized);
     setLoading(false);
-  }, [debtId, supabase]);
+  }, [creditorId, groupId, supabase, currentMember]);
 
   useEffect(() => {
     const t = setTimeout(() => load(), 0);
     return () => clearTimeout(t);
   }, [load]);
 
+  const totalRemaining = useMemo(
+    () => debts.reduce((s, d) => s + d.remaining, 0),
+    [debts]
+  );
+
+  // QR description: use "many" marker since amount covers multiple bills
   const qrUrl = useMemo(() => {
-    if (!creditor || !debt) return null;
+    if (!creditor || totalRemaining === 0) return null;
     if (!creditor.bank_name || !creditor.bank_account_no || !creditor.bank_account_name) return null;
-    const desc = generateTransferDescription(debt.bill_id, currentMember?.display_name ?? "User");
+    const desc = generateTransferDescription(
+      debts.length === 1 ? debts[0].bill_id : "MANY",
+      currentMember?.display_name ?? "User"
+    );
     return generateVietQRUrl({
       bankName: creditor.bank_name,
       accountNo: creditor.bank_account_no,
       accountName: creditor.bank_account_name,
-      amount: debt.remaining,
+      amount: totalRemaining,
       description: desc,
     });
-  }, [creditor, debt, currentMember]);
+  }, [creditor, totalRemaining, debts, currentMember]);
 
   const deepLink = useMemo(() => {
-    if (!creditor || !debt) return null;
+    if (!creditor || totalRemaining === 0) return null;
     if (!creditor.bank_name || !creditor.bank_account_no) return null;
-    const desc = generateTransferDescription(debt.bill_id, currentMember?.display_name ?? "User");
+    const desc = generateTransferDescription(
+      debts.length === 1 ? debts[0].bill_id : "MANY",
+      currentMember?.display_name ?? "User"
+    );
     return generateBankDeepLink({
       bankName: creditor.bank_name,
       accountNo: creditor.bank_account_no,
-      amount: debt.remaining,
+      amount: totalRemaining,
       description: desc,
     });
-  }, [creditor, debt, currentMember]);
+  }, [creditor, totalRemaining, debts, currentMember]);
 
   async function handleConfirmPayment() {
-    if (!debt || !currentMember) return;
+    if (!currentMember || debts.length === 0) return;
     setSubmitting(true);
 
-    // Close debt directly — no creditor confirmation needed.
+    // Batch-close all underlying debts — no creditor confirmation needed.
+    const debtIds = debts.map((d) => d.id);
     const { error } = await supabase
       .from("debts")
       .update({ remaining: 0, status: "confirmed" })
-      .eq("id", debt.id);
+      .in("id", debtIds);
 
     if (error) {
-      toast.error("Lỗi đóng khoản nợ");
+      toast.error("Lỗi đóng các khoản nợ");
       setSubmitting(false);
       return;
     }
 
+    // Single aggregated Telegram message per creditor — avoids per-bill spam.
+    fetch("/api/notify", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        type: "payment_claim_batch",
+        payload: { debtIds },
+      }),
+    }).catch(() => {});
+
     try {
-      sessionStorage.removeItem(`transfer_${debtId}`);
       sessionStorage.removeItem("home_groups_v2");
+      if (groupId) sessionStorage.removeItem(`group_detail_${groupId}`);
     } catch {}
-    toast.success("Đã đóng khoản nợ!");
+    toast.success(`Đã đóng ${debts.length} khoản nợ!`);
     setSubmitting(false);
     router.back();
   }
 
   function handleCopyAccount() {
     if (creditor?.bank_account_no) {
-      navigator.clipboard.writeText(creditor.bank_account_no).then(() => {
-        toast.success("Đã copy STK");
-      });
+      navigator.clipboard.writeText(creditor.bank_account_no).then(() => toast.success("Đã copy STK"));
     }
   }
 
@@ -146,8 +169,6 @@ export default function TransferPage() {
       const blob = await response.blob();
       const filename = `vietqr-${Date.now()}.jpg`;
       const file = new File([blob], filename, { type: blob.type || "image/jpeg" });
-
-      // Mobile: Web Share API with file triggers native "Save to Photos"
       if (
         typeof navigator !== "undefined" &&
         "canShare" in navigator &&
@@ -157,8 +178,6 @@ export default function TransferPage() {
         await navigator.share({ files: [file], title: "VietQR chuyển tiền" });
         return;
       }
-
-      // Desktop fallback: download to default folder
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
@@ -166,10 +185,7 @@ export default function TransferPage() {
       a.click();
       URL.revokeObjectURL(url);
     } catch (err) {
-      // User cancelled share sheet → not an error
-      if ((err as Error)?.name !== "AbortError") {
-        toast.error("Không thể lưu QR");
-      }
+      if ((err as Error)?.name !== "AbortError") toast.error("Không thể lưu QR");
     }
   }
 
@@ -182,8 +198,6 @@ export default function TransferPage() {
     }
   }
 
-  const billDate = bill ? new Date(bill.created_at).toLocaleDateString("vi-VN") : "";
-
   if (loading) {
     return (
       <div className="flex h-dvh items-center justify-center bg-[#F2F2F7]">
@@ -192,10 +206,10 @@ export default function TransferPage() {
     );
   }
 
-  if (!debt) {
+  if (debts.length === 0) {
     return (
       <div className="flex h-dvh items-center justify-center bg-[#F2F2F7]">
-        <p className="text-sm text-[#AEAEB2]">Không tìm thấy khoản nợ</p>
+        <p className="text-sm text-[#AEAEB2]">Không còn khoản nợ nào</p>
       </div>
     );
   }
@@ -206,7 +220,6 @@ export default function TransferPage() {
 
   return (
     <div className="flex h-dvh flex-col bg-[#F2F2F7]">
-      {/* Nav bar */}
       <header className="flex h-[52px] shrink-0 items-center justify-between bg-white px-4 shadow-sm">
         <button
           type="button"
@@ -221,18 +234,15 @@ export default function TransferPage() {
         </button>
         <div className="flex flex-col items-center">
           <p className="text-sm font-semibold text-[#1C1C1E]">Chuyển tiền</p>
-          {bill && (
-            <p className="text-[11px] text-[#AEAEB2]">{bill.title} · {billDate}</p>
-          )}
+          <p className="text-[11px] text-[#AEAEB2]">{debts.length} khoản gộp</p>
         </div>
         <div className="h-8 w-8" />
       </header>
 
       <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3">
-        {/* Amount card */}
         <div className="rounded-2xl bg-white p-4 shadow-sm text-center">
           <p className="text-3xl font-bold text-[#1C1C1E]">
-            {formatVND(debt.remaining)}đ
+            {formatVND(totalRemaining)}đ
           </p>
           <div className="mt-2 flex items-center justify-center gap-2">
             <p className="text-sm text-[#8E8E93]">cho</p>
@@ -245,7 +255,19 @@ export default function TransferPage() {
           </div>
         </div>
 
-        {/* QR card */}
+        {/* Breakdown of underlying debts */}
+        <div className="rounded-2xl bg-white p-4 shadow-sm">
+          <p className="mb-2 text-xs font-medium text-[#8E8E93]">Chi tiết</p>
+          <div className="space-y-1.5">
+            {debts.map((d) => (
+              <div key={d.id} className="flex items-center justify-between text-sm">
+                <span className="text-[#1C1C1E]">{d.bills?.title ?? "Bill"}</span>
+                <span className="font-medium text-[#1C1C1E]">{formatVND(d.remaining)}đ</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
         {creditor?.bank_name && creditor?.bank_account_no ? (
           <div className="rounded-2xl bg-white p-4 shadow-sm">
             {qrUrl && (
@@ -259,7 +281,6 @@ export default function TransferPage() {
               </div>
             )}
 
-            {/* Bank info */}
             <div className="space-y-1.5 text-sm">
               <div className="flex justify-between">
                 <span className="text-[#AEAEB2]">NH</span>
@@ -285,7 +306,6 @@ export default function TransferPage() {
               </div>
             </div>
 
-            {/* Action buttons */}
             <div className="mt-4 flex gap-2">
               <button
                 type="button"
@@ -323,9 +343,7 @@ export default function TransferPage() {
         )}
       </div>
 
-      {/* CTAs */}
       <div className="border-t border-[#E5E5EA] bg-white px-4 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-3 space-y-2">
-        {/* Primary CTA: h-[54px] + rounded-[14px] per components.md §1 Button lg size */}
         <button
           type="button"
           onClick={handleConfirmPayment}
@@ -334,16 +352,6 @@ export default function TransferPage() {
         >
           {submitting ? "Đang xử lý..." : "Đã chuyển tiền"}
         </button>
-        <label className="flex w-full cursor-pointer items-center justify-center gap-1.5 py-1 text-sm text-[#AEAEB2]">
-          <span>📎</span>
-          <span>Upload biên lai (tuỳ chọn)</span>
-          <input
-            type="file"
-            accept="image/*"
-            className="sr-only"
-            onChange={() => toast.info("Tính năng upload biên lai sẽ sớm có")}
-          />
-        </label>
       </div>
     </div>
   );

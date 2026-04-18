@@ -16,31 +16,23 @@ export async function notifyNewBill(params: {
   );
 }
 
-/** Notify creditor: debtor claims they paid */
-export async function notifyPaymentClaim(params: {
+/** Notify creditor: debtor settled multiple debts at once (aggregated QR transfer).
+ *  One message listing all closed debts — avoids per-bill spam. */
+export async function notifyPaymentClaimBatch(params: {
   creditorChatId: string | null;
   debtorName: string;
-  amount: number;
-  method: string;
+  totalAmount: number;
+  debtCount: number;
+  billTitles: string[]; // up to 5; rest truncated
 }) {
-  const methodText =
-    params.method === "screenshot_ocr" ? "(có ảnh xác nhận)" : "(chưa có ảnh)";
+  const MAX = 5;
+  const shownTitles = params.billTitles.slice(0, MAX);
+  const extra = params.billTitles.length - shownTitles.length;
+  const lines = shownTitles.map((t) => `• ${t}`).join("\n");
+  const truncatedTail = extra > 0 ? `\n• … và ${extra} khoản khác` : "";
   await notifyMember(
     params.creditorChatId,
-    `💰 <b>${params.debtorName}</b> báo đã chuyển ${formatVND(params.amount)}đ cho bạn ${methodText}\n` +
-      `Vào app để xác nhận.`
-  );
-}
-
-/** Notify debtor: creditor confirmed payment */
-export async function notifyPaymentConfirmed(params: {
-  debtorChatId: string | null;
-  creditorName: string;
-  amount: number;
-}) {
-  await notifyMember(
-    params.debtorChatId,
-    `✅ <b>${params.creditorName}</b> đã xác nhận nhận ${formatVND(params.amount)}đ từ bạn. Khoản nợ đã đóng!`
+    `✅ <b>${params.debtorName}</b> đã trả ${formatVND(params.totalAmount)}đ (gộp ${params.debtCount} khoản)\n${lines}${truncatedTail}\nTất cả đã đóng.`
   );
 }
 

@@ -10,7 +10,8 @@
     "seed:uat": "npx tsx scripts/seed-uat-group.ts",
     "seed:uat-bills": "npx tsx scripts/seed-uat-bills.ts",
     "seed:uat-bank-info": "npx tsx scripts/seed-uat-bank-info.ts",
-    "fix:uat-bill4": "npx tsx scripts/fix-uat-bill4.ts"
+    "fix:uat-bill4": "npx tsx scripts/fix-uat-bill4.ts",
+    "test:noti": "npx tsx scripts/test-noti-new-bill.ts"
   },
   "dependencies": {
     "@base-ui/react": "^1.3.0",

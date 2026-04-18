@@ -40,13 +40,20 @@ export function DebtBalancesView({ debts, members }: Props) {
     relevantIds.add(d.creditor_id);
   }
 
-  // Build per-member helper text (how many they owe / are owed by)
+  // Per-member breakdown: gross amount owed to them vs gross amount they owe.
+  // Shows both sides explicitly so the +/- net number on the right is self-explanatory.
   function helperText(memberId: string): string {
-    const owedBy = debts.filter((d) => d.creditor_id === memberId && d.debtor_id !== memberId).length;
-    const owes = debts.filter((d) => d.debtor_id === memberId && d.creditor_id !== memberId).length;
-    if (owedBy > 0 && owes > 0) return `${owedBy} người nợ · nợ ${owes} người`;
-    if (owedBy > 0) return `Được ${owedBy} người nợ`;
-    if (owes > 0) return `Nợ ${owes} người`;
+    let owedToThem = 0;
+    let theyOwe = 0;
+    for (const d of debts) {
+      if (d.creditor_id === memberId && d.debtor_id !== memberId) owedToThem += d.remaining;
+      else if (d.debtor_id === memberId && d.creditor_id !== memberId) theyOwe += d.remaining;
+    }
+    const owedStr = formatVND(owedToThem);
+    const owesStr = formatVND(theyOwe);
+    if (owedToThem > 0 && theyOwe > 0) return `Được nợ ${owedStr}đ · Đang nợ ${owesStr}đ`;
+    if (owedToThem > 0) return `Được nợ ${owedStr}đ`;
+    if (theyOwe > 0) return `Đang nợ ${owesStr}đ`;
     return "";
   }
 

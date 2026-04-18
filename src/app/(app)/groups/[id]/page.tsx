@@ -81,12 +81,16 @@ export default function GroupDetailPage() {
     debtId?: string;
     /** Amount owed to/from the named counterparty specifically (not the net across all) */
     counterpartyAmount: number;
+    /** # distinct creditors / debtors user has in this group — drives "+N khác" suffix */
+    creditorCount: number;
+    debtorCount: number;
+    /** # debts from me to top creditor in this group (≥2 → aggregated transfer page) */
+    topCreditorDebtCount: number;
   } | null>(null);
   const [loading, setLoading] = useState(() => {
     if (typeof window === "undefined") return true;
     return !sessionStorage.getItem(`group_detail_${id}`);
   });
-  const [pendingConfirmDebtIds, setPendingConfirmDebtIds] = useState<Set<string>>(new Set());
   /** billId → remaining amount user owes on that bill (user = debtor, status pending/partial) */
   const [userOwedPerBill, setUserOwedPerBill] = useState<Record<string, number>>({});
   const [inputText, setInputText] = useState("");
@@ -230,47 +234,43 @@ export default function GroupDetailPage() {
         let otherMemberId = "";
         let debtId: string | undefined;
         let counterpartyAmount = 0;
+        let creditorCount = 0;
+        let debtorCount = 0;
+        let topCreditorDebtCount = 0;
         if (net < 0 && owingData && owingData.length > 0) {
           // Group by creditor to get total owed to each person
-          const creditorTotals: Record<string, { total: number; topDebtId: string }> = {};
+          const creditorTotals: Record<string, { total: number; count: number; firstDebtId: string }> = {};
           for (const d of owingData) {
             const cId = d.creditor_id;
-            if (!creditorTotals[cId]) creditorTotals[cId] = { total: 0, topDebtId: d.id };
+            if (!creditorTotals[cId]) creditorTotals[cId] = { total: 0, count: 0, firstDebtId: d.id };
             creditorTotals[cId].total += d.remaining;
+            creditorTotals[cId].count += 1;
           }
+          creditorCount = Object.keys(creditorTotals).length;
           const topCreditor = Object.entries(creditorTotals).sort((a, b) => b[1].total - a[1].total)[0];
           otherMemberId = topCreditor[0];
-          debtId = topCreditor[1].topDebtId;
           counterpartyAmount = topCreditor[1].total;
+          topCreditorDebtCount = topCreditor[1].count;
+          // Only expose single-debt shortcut when top creditor has exactly 1 debt
+          // (otherwise transfer page would show single debt amount ≠ banner total)
+          debtId = topCreditorDebtCount === 1 ? topCreditor[1].firstDebtId : undefined;
         } else if (net > 0 && owedData && owedData.length > 0) {
-          const debtorTotals: Record<string, { total: number; topDebtId: string }> = {};
+          const debtorTotals: Record<string, { total: number; count: number; firstDebtId: string }> = {};
           for (const d of owedData) {
             const dId = d.debtor_id;
-            if (!debtorTotals[dId]) debtorTotals[dId] = { total: 0, topDebtId: d.id };
+            if (!debtorTotals[dId]) debtorTotals[dId] = { total: 0, count: 0, firstDebtId: d.id };
             debtorTotals[dId].total += d.remaining;
+            debtorTotals[dId].count += 1;
           }
+          debtorCount = Object.keys(debtorTotals).length;
           const topDebtor = Object.entries(debtorTotals).sort((a, b) => b[1].total - a[1].total)[0];
           otherMemberId = topDebtor[0];
-          debtId = topDebtor[1].topDebtId;
           counterpartyAmount = topDebtor[1].total;
+          debtId = topDebtor[1].firstDebtId;
         }
-        setNetDebt({ amount: net, otherMemberId, debtId, counterpartyAmount });
-
-        // Query pending payment confirmations (phase 4 — only when net debt exists)
-        const allDebtIds = (owingData ?? []).map((d) => d.id);
-        if (allDebtIds.length > 0) {
-          const { data: pendingData } = await supabase
-            .from("payment_confirmations")
-            .select("debt_id")
-            .in("debt_id", allDebtIds)
-            .eq("status", "pending");
-          setPendingConfirmDebtIds(new Set((pendingData ?? []).map((p: { debt_id: string }) => p.debt_id)));
-        } else {
-          setPendingConfirmDebtIds(new Set());
-        }
+        setNetDebt({ amount: net, otherMemberId, debtId, counterpartyAmount, creditorCount, debtorCount, topCreditorDebtCount });
       } else {
         setNetDebt(null);
-        setPendingConfirmDebtIds(new Set());
       }
     }
 
@@ -857,19 +857,11 @@ export default function GroupDetailPage() {
 
       if (debtFetchErr) { toast.error("Lỗi tải dữ liệu bill"); return; }
 
-      // 2. Block if any debt has a payment_confirmation
-      if (existingDebts && existingDebts.length > 0) {
-        const debtIds = existingDebts.map((d: { id: string }) => d.id);
-        const { data: confirmRows } = await supabase
-          .from("payment_confirmations")
-          .select("id")
-          .in("debt_id", debtIds)
-          .limit(1);
-
-        if (confirmRows && confirmRows.length > 0) {
-          toast.error("Không thể sửa: bill có xác nhận thanh toán");
-          return;
-        }
+      // 2. Block if any debt already closed (status=confirmed means debtor marked "Đã chuyển tiền")
+      const hasClosedDebt = (existingDebts ?? []).some((d: { status: string }) => d.status === "confirmed");
+      if (hasClosedDebt) {
+        toast.error("Không thể sửa: bill đã có khoản nợ được thanh toán");
+        return;
       }
 
       // 4. UPDATE bill
@@ -1032,42 +1024,31 @@ export default function GroupDetailPage() {
     const otherDisplayName = otherMember?.display_name ?? "thành viên";
 
     if (netDebt.amount < 0) {
-      // Check if debtor already submitted a pending confirmation
-      const hasPendingConfirm = netDebt.debtId
-        ? pendingConfirmDebtIds.has(netDebt.debtId)
-        : false;
-
-      if (hasPendingConfirm) {
-        return {
-          text: `Chờ ${otherDisplayName} xác nhận thanh toán`,
-          action: "Chờ xác nhận",
-          bg: "bg-[#FFF8EC]",
-          textColor: "text-[#FF9500]",
-          btnColor: "bg-[#FF9500] text-white opacity-70 cursor-default",
-          href: null,
-        };
-      }
-
+      const suffix = netDebt.creditorCount > 1 ? ` và ${netDebt.creditorCount - 1} người khác` : "";
+      // Route: single debt → transfer/{id} matches counterpartyAmount exactly.
+      // Multi debt to top creditor → aggregated transfer page with correct total.
+      const href = netDebt.debtId
+        ? `/transfer/${netDebt.debtId}`
+        : `/transfer/creditor/${netDebt.otherMemberId}?group=${id}`;
       return {
-        // Show amount owed to this specific person (counterpartyAmount), not the net across all
-        text: `Bạn nợ ${otherDisplayName} ${formatVND(netDebt.counterpartyAmount)}đ`,
+        text: `Bạn nợ ${otherDisplayName} ${formatVND(netDebt.counterpartyAmount)}đ${suffix}`,
         action: "Trả nợ",
         bg: "bg-[#FFF3F0]",
         textColor: "text-[#FF3B30]",
         btnColor: "bg-[#FF3B30] text-white",
-        href: netDebt.debtId ? `/transfer/${netDebt.debtId}` : "/debts",
+        href,
       };
     }
+    const suffix = netDebt.debtorCount > 1 ? ` và ${netDebt.debtorCount - 1} người khác` : "";
     return {
-      // Show amount owed by this specific person (counterpartyAmount), not the net across all
-      text: `${otherDisplayName} nợ bạn ${formatVND(netDebt.counterpartyAmount)}đ`,
+      text: `${otherDisplayName} nợ bạn ${formatVND(netDebt.counterpartyAmount)}đ${suffix}`,
       action: "Nhắc nợ",
       bg: "bg-[#F0FFF4]",
       textColor: "text-[#34C759]",
       btnColor: "bg-[#34C759] text-white",
-      href: "/debts",
+      href: `/groups/${id}/settings`,
     };
-  }, [netDebt, members, pendingConfirmDebtIds]);
+  }, [netDebt, members, id]);
 
   // ─── add people sheet bill ─────────────────────────────────────────────────
 

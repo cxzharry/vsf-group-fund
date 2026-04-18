@@ -8,12 +8,17 @@ import { useAuth } from "@/components/auth-provider";
 import type { Group } from "@/lib/types";
 
 interface GroupDebtInfo {
-  netDebt: number;       // negative = I owe, positive = owed to me
-  topPersonName: string; // name of person with largest debt relationship
-  debtorCount: number;   // how many people owe me in this group
-  creditorCount: number; // how many people I owe in this group
-  /** Single debt id if user has exactly one pending debt as debtor — shortcut for "Trả nợ" → transfer screen */
+  netDebt: number;           // negative = I owe, positive = owed to me (kept for sign only)
+  topPersonName: string;     // name of person with largest debt relationship
+  topPersonAmount: number;   // GROSS amount to/from top person (NOT net) — matches group banner
+  debtorCount: number;       // how many people owe me in this group
+  creditorCount: number;     // how many people I owe in this group
+  /** Single debt id if user has exactly one pending debt to top creditor — shortcut for "Trả nợ" → transfer screen */
   debtId?: string;
+  /** Top creditor id (for aggregated per-creditor transfer page) — only set when user is net debtor */
+  topCreditorId?: string;
+  /** # debts from me to top creditor in this group (≥2 → use aggregated transfer page) */
+  topCreditorDebtCount: number;
 }
 
 interface GroupItem extends Group {
@@ -21,27 +26,29 @@ interface GroupItem extends Group {
   debt: GroupDebtInfo;
 }
 
-/** Build subtitle text for a group card based on debt info */
+/** Build subtitle text for a group card based on debt info.
+ * Shows GROSS amount to/from top person (not net) so this matches the group-detail banner exactly.
+ * Rationale: avoids "outside says 719k, inside says 900k" mismatch when user is both owed and owing.
+ */
 function buildDebtSubtitle(debt: GroupDebtInfo, memberCount: number): { text: string; color: string } {
-  const { netDebt, topPersonName, debtorCount, creditorCount } = debt;
+  const { netDebt, topPersonName, topPersonAmount, debtorCount, creditorCount } = debt;
 
   if (netDebt === 0) {
     return { text: `${memberCount} thành viên`, color: "text-[#8E8E93]" };
   }
 
+  const amountStr = topPersonAmount.toLocaleString("vi-VN");
+
   if (netDebt < 0) {
-    // I owe others
-    const owingAmount = Math.abs(netDebt);
     const text = creditorCount === 1
-      ? `Bạn nợ ${topPersonName} ${owingAmount.toLocaleString("vi-VN")}đ`
-      : `Bạn nợ ${topPersonName} và ${creditorCount - 1} người khác`;
+      ? `Bạn nợ ${topPersonName} ${amountStr}đ`
+      : `Bạn nợ ${topPersonName} ${amountStr}đ và ${creditorCount - 1} người khác`;
     return { text, color: "text-[#FF3B30]" };
   }
 
-  // Others owe me
   const text = debtorCount === 1
-    ? `${topPersonName} nợ bạn ${netDebt.toLocaleString("vi-VN")}đ`
-    : `${topPersonName} và ${debtorCount - 1} người khác nợ bạn`;
+    ? `${topPersonName} nợ bạn ${amountStr}đ`
+    : `${topPersonName} nợ bạn ${amountStr}đ và ${debtorCount - 1} người khác`;
   return { text, color: "text-[#34C759]" };
 }
 
@@ -158,38 +165,46 @@ export default function HomePage() {
 
       // Find top person (largest individual amount) based on net direction
       let topPersonName = "";
+      let topPersonAmount = 0;
+      let topCreditorId: string | undefined;
       if (net < 0) {
-        // I owe more → show largest creditor
         const topCreditor = Object.entries(creditorTotals).sort((a, b) => b[1] - a[1])[0];
-        topPersonName = topCreditor ? (nameMap[topCreditor[0]] ?? "Ẩn danh") : "";
+        if (topCreditor) {
+          topCreditorId = topCreditor[0];
+          topPersonName = nameMap[topCreditor[0]] ?? "Ẩn danh";
+          topPersonAmount = topCreditor[1];
+        }
       } else if (net > 0) {
-        // Others owe me more → show largest debtor
         const topDebtor = Object.entries(debtorTotals).sort((a, b) => b[1] - a[1])[0];
-        topPersonName = topDebtor ? (nameMap[topDebtor[0]] ?? "Ẩn danh") : "";
+        if (topDebtor) {
+          topPersonName = nameMap[topDebtor[0]] ?? "Ẩn danh";
+          topPersonAmount = topDebtor[1];
+        }
       }
 
-      // If user owes exactly 1 creditor in this group, pick that debt's id for quick "Trả nợ" shortcut
-      const creditorIds = Object.keys(creditorTotals);
-      let debtId: string | undefined;
-      if (net < 0 && creditorIds.length === 1) {
-        const creditorId = creditorIds[0];
-        const candidate = myDebtsInGroup.find((d) => d.creditor_id === creditorId);
-        debtId = candidate?.id;
-      }
+      // Count debts from me to top creditor — if 1, shortcut to transfer page;
+      // if ≥2, route to aggregated per-creditor transfer page so amount matches banner.
+      const topCreditorDebts = topCreditorId
+        ? myDebtsInGroup.filter((d) => d.creditor_id === topCreditorId)
+        : [];
+      const debtId = topCreditorDebts.length === 1 ? topCreditorDebts[0].id : undefined;
 
       debtPerGroup[gId] = {
         netDebt: net,
         topPersonName,
-        creditorCount: creditorIds.length,
+        topPersonAmount,
+        creditorCount: Object.keys(creditorTotals).length,
         debtorCount: Object.keys(debtorTotals).length,
         debtId,
+        topCreditorId,
+        topCreditorDebtCount: topCreditorDebts.length,
       };
     }
 
     const items: GroupItem[] = (groupData ?? []).map((g) => ({
       ...g,
       member_count: countMap[g.id] ?? 0,
-      debt: debtPerGroup[g.id] ?? { netDebt: 0, topPersonName: "", debtorCount: 0, creditorCount: 0, debtId: undefined },
+      debt: debtPerGroup[g.id] ?? { netDebt: 0, topPersonName: "", topPersonAmount: 0, debtorCount: 0, creditorCount: 0, debtId: undefined, topCreditorId: undefined, topCreditorDebtCount: 0 },
     }));
     setGroups(items);
     setLoading(false);
@@ -223,8 +238,10 @@ export default function HomePage() {
           <div className="mt-2">
             <div className="flex h-[52px] items-center gap-1.5 rounded-[12px] bg-white px-4 text-xs">
               {(() => {
-                const totalOwe = groups.filter(g => g.debt.netDebt < 0).reduce((s, g) => s + Math.abs(g.debt.netDebt), 0);
-                const totalOwed = groups.filter(g => g.debt.netDebt > 0).reduce((s, g) => s + g.debt.netDebt, 0);
+                // Sum top-person amounts to stay consistent with per-group right column + subtitle.
+                // Prevents "chip says 719, row says 900" mismatch when user has receivables offsetting debts.
+                const totalOwe = groups.filter(g => g.debt.netDebt < 0).reduce((s, g) => s + g.debt.topPersonAmount, 0);
+                const totalOwed = groups.filter(g => g.debt.netDebt > 0).reduce((s, g) => s + g.debt.topPersonAmount, 0);
                 return (
                   <>
                     {totalOwe > 0 && (
@@ -303,18 +320,21 @@ export default function HomePage() {
                   {/* Right — debt amount + action button (standalone, not inside Link) */}
                   {g.debt.netDebt !== 0 ? (
                     <div className="flex shrink-0 flex-col items-end gap-1.5">
+                      {/* Show GROSS top-person amount (matches subtitle + group banner). Avoid net which confuses "719 outside vs 900 inside". */}
                       <span className={`text-[15px] font-semibold ${g.debt.netDebt < 0 ? "text-[#FF3B30]" : "text-[#34C759]"}`}>
-                        {g.debt.netDebt < 0 ? "-" : "+"}{Math.abs(g.debt.netDebt).toLocaleString("vi-VN")}đ
+                        {g.debt.netDebt < 0 ? "-" : "+"}{g.debt.topPersonAmount.toLocaleString("vi-VN")}đ
                       </span>
                       <button
                         type="button"
                         onClick={() => {
                           if (g.debt.netDebt < 0 && g.debt.debtId) {
-                            // Single debt — go straight to transfer screen
+                            // Single debt to top creditor — go straight to transfer screen
                             router.push(`/transfer/${g.debt.debtId}`);
+                          } else if (g.debt.netDebt < 0 && g.debt.topCreditorId && g.debt.topCreditorDebtCount > 1) {
+                            // Multiple debts to same creditor — aggregated transfer (single QR w/ correct total)
+                            router.push(`/transfer/creditor/${g.debt.topCreditorId}?group=${g.id}`);
                           } else {
-                            // Multi-debt or nhắc nợ — open group detail
-                            // (user sees debt banner + can tap counterparty → transfer)
+                            // Nhắc nợ or fallback — open group detail
                             router.push(`/groups/${g.id}`);
                           }
                         }}
