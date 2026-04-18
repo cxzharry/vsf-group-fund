@@ -1316,7 +1316,12 @@ export default function GroupDetailPage() {
             onEdit={(billId) => { setDetailBillId(null); setEditBillId(billId); }}
             onDelete={(billId) => { setDetailBillId(null); setDeleteBillId(billId); }}
             onNudge={handleNudge}
-            onPayOwnDebt={(debtId) => { setDetailBillId(null); router.push(`/transfer/${debtId}`); }}
+            onPayOwnDebt={(debtId) => {
+              const debt = detailDebts.find((d) => d.id === debtId);
+              if (!debt) return;
+              setDetailBillId(null);
+              router.push(`/groups/${id}/settle/${debt.creditor_id}`);
+            }}
           />
         );
       })()}

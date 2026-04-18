@@ -1,11 +1,8 @@
 "use client";
 
-// Multi-hop settle-up payment page with partial-direct fallback.
-// Modes:
-//   - 'multihop' (default): pay the full multi-hop net amount. Rewrites debts so
-//     counterparty absorbs user's 3rd-party obligations/receivables.
-//   - 'direct':   pay any amount ≤ direct pair gross (sum of user→counterparty).
-//     Greedy closes user's direct owing debts; doesn't touch offset or 3rd-parties.
+// Multi-hop settle-up payment page.
+// Pays the simplified net amount. Closes user's direct debts to counterparty
+// and reassigns user's 3rd-party obligations/receivables to counterparty.
 // Race guard: refetches fresh debts right before mutation. Aborts if plan changed.
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -13,10 +10,7 @@ import { useParams, useRouter } from "next/navigation";
 import { createBrowserClient } from "@supabase/ssr";
 import { useAuth } from "@/components/auth-provider";
 import { formatVND } from "@/lib/format-vnd";
-import {
-  generateVietQRUrl,
-  generateTransferDescription,
-} from "@/lib/vietqr";
+import { generateVietQRUrl, generateTransferDescription } from "@/lib/vietqr";
 import { toast } from "sonner";
 import { simplifyDebts, transfersForMember } from "@/lib/debt-simplifier";
 import type { Member } from "@/lib/types";
@@ -35,9 +29,6 @@ interface RawDebt {
   bill_id: string;
 }
 
-type Mode = "multihop" | "direct";
-
-/** Fetch pending/partial debts in this group. Shared between initial load + race refetch. */
 async function fetchGroupDebts(
   supabase: ReturnType<typeof createBrowserClient>,
   groupId: string
@@ -70,14 +61,6 @@ function computePlan(
   return { amount: 0, direction: "none" };
 }
 
-function computeDirectPair(debts: RawDebt[], meId: string, cpId: string) {
-  const owing = debts.filter((d) => d.debtor_id === meId && d.creditor_id === cpId);
-  const offset = debts.filter((d) => d.creditor_id === meId && d.debtor_id === cpId);
-  const gross = owing.reduce((s, d) => s + d.remaining, 0);
-  const offsetSum = offset.reduce((s, d) => s + d.remaining, 0);
-  return { gross, offsetSum, net: Math.max(0, gross - offsetSum), owing, offset };
-}
-
 export default function MultiHopSettlePage() {
   const { id, counterpartyId } = useParams<{ id: string; counterpartyId: string }>();
   const router = useRouter();
@@ -97,8 +80,6 @@ export default function MultiHopSettlePage() {
   const [rawDebts, setRawDebts] = useState<RawDebt[]>([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
-  const [mode, setMode] = useState<Mode>("multihop");
-  const [amountInput, setAmountInput] = useState<string>("");
   const [confirmSheetOpen, setConfirmSheetOpen] = useState(false);
   const billInputRef = useRef<HTMLInputElement>(null);
 
@@ -121,44 +102,25 @@ export default function MultiHopSettlePage() {
   }, [load]);
 
   const plan = useMemo(
-    () => (currentMember ? computePlan(rawDebts, currentMember.id, counterpartyId) : { amount: 0, direction: "none" as const }),
+    () =>
+      currentMember
+        ? computePlan(rawDebts, currentMember.id, counterpartyId)
+        : { amount: 0, direction: "none" as const },
     [rawDebts, currentMember, counterpartyId]
   );
-
-  const directPair = useMemo(
-    () => (currentMember ? computeDirectPair(rawDebts, currentMember.id, counterpartyId) : { gross: 0, offsetSum: 0, net: 0, owing: [], offset: [] }),
-    [rawDebts, currentMember, counterpartyId]
-  );
-
-  // Seed amount input when user clicks direct mode (handler, not effect).
-  function switchToDirect() {
-    setMode("direct");
-    if (!amountInput) setAmountInput(String(directPair.net || directPair.gross));
-  }
-
-  const directParsedAmount = useMemo(() => {
-    const n = parseInt(amountInput.replace(/\D/g, ""), 10);
-    return isNaN(n) ? 0 : Math.max(0, Math.min(n, directPair.gross));
-  }, [amountInput, directPair.gross]);
-
-  const effectiveAmount = mode === "multihop" ? plan.amount : directParsedAmount;
-
 
   const qrUrl = useMemo(() => {
-    if (!counterparty || effectiveAmount === 0) return null;
+    if (!counterparty || plan.amount === 0) return null;
     if (!counterparty.bank_name || !counterparty.bank_account_no || !counterparty.bank_account_name) return null;
-    const desc = generateTransferDescription(
-      mode === "multihop" ? "SETTLE" : "PARTIAL",
-      currentMember?.display_name ?? "User"
-    );
+    const desc = generateTransferDescription("SETTLE", currentMember?.display_name ?? "User");
     return generateVietQRUrl({
       bankName: counterparty.bank_name,
       accountNo: counterparty.bank_account_no,
       accountName: counterparty.bank_account_name,
-      amount: effectiveAmount,
+      amount: plan.amount,
       description: desc,
     });
-  }, [counterparty, effectiveAmount, currentMember, mode]);
+  }, [counterparty, plan.amount, currentMember]);
 
   /** Try Web Share with QR file → fallback to download. Best-effort. */
   async function handleShareToZalo() {
@@ -170,7 +132,7 @@ export default function MultiHopSettlePage() {
       const res = await fetch(qrUrl);
       const blob = await res.blob();
       const file = new File([blob], "qr-chuyen-khoan.png", { type: "image/png" });
-      const shareText = `Chuyển ${formatVND(effectiveAmount)}đ${counterparty?.bank_name ? ` · ${counterparty.bank_name} ${counterparty.bank_account_no}` : ""}`;
+      const shareText = `Chuyển ${formatVND(plan.amount)}đ${counterparty?.bank_name ? ` · ${counterparty.bank_name} ${counterparty.bank_account_no}` : ""}`;
       const nav = navigator as Navigator & {
         canShare?: (data: { files?: File[] }) => boolean;
         share?: (data: { files?: File[]; text?: string }) => Promise<void>;
@@ -194,10 +156,7 @@ export default function MultiHopSettlePage() {
     }
   }
 
-  /**
-   * Multi-hop mutation: close direct pair + reassign 3rd-party debts to counterparty.
-   * Called with FRESH debts after race re-validation.
-   */
+  /** Close direct pair + reassign 3rd-party debts to counterparty. */
   async function applyMultiHopSettle(fresh: RawDebt[]) {
     const me = currentMember!.id;
     const cp = counterpartyId;
@@ -227,79 +186,36 @@ export default function MultiHopSettlePage() {
     for (const r of results) if (r.error) throw r.error;
   }
 
-  /**
-   * Direct partial: greedily close user→counterparty owing debts up to `amount`.
-   * Leaves offset debts untouched (user can settle those separately later).
-   */
-  async function applyDirectPartial(amount: number, owingDirect: RawDebt[]) {
-    // Sort by id for determinism (any stable order works)
-    const sorted = [...owingDirect].sort((a, b) => a.id.localeCompare(b.id));
-    let left = amount;
-    for (const d of sorted) {
-      if (left <= 0) break;
-      const closeBy = Math.min(left, d.remaining);
-      const newRemaining = d.remaining - closeBy;
-      const newStatus = newRemaining <= 0 ? "confirmed" : "partial";
-      const { error } = await supabase
-        .from("debts")
-        .update({ remaining: newRemaining, status: newStatus })
-        .eq("id", d.id);
-      if (error) throw error;
-      left -= closeBy;
-    }
-  }
-
   async function handleConfirm(hasBillProof: boolean) {
-    if (!currentMember) return;
-    if (effectiveAmount <= 0) {
-      toast.error("Nhập số tiền hợp lệ");
-      return;
-    }
+    if (!currentMember || plan.amount <= 0) return;
     setConfirmSheetOpen(false);
     setSubmitting(true);
     try {
-      // Race guard: fetch fresh debts before mutating.
       const fresh = await fetchGroupDebts(supabase, id);
       const freshPlan = computePlan(fresh, currentMember.id, counterpartyId);
-      const freshDirect = computeDirectPair(fresh, currentMember.id, counterpartyId);
-
-      if (mode === "multihop") {
-        if (freshPlan.direction !== "outgoing" || freshPlan.amount !== plan.amount) {
-          toast.error(
-            freshPlan.direction === "outgoing"
-              ? `Kế hoạch đã đổi: ${formatVND(freshPlan.amount)}đ. Xác nhận lại.`
-              : "Kế hoạch không còn hợp lệ."
-          );
-          setRawDebts(fresh);
-          setSubmitting(false);
-          return;
-        }
-        await applyMultiHopSettle(fresh);
-      } else {
-        if (effectiveAmount > freshDirect.gross) {
-          toast.error(`Số nợ trực tiếp đã đổi: còn ${formatVND(freshDirect.gross)}đ.`);
-          setRawDebts(fresh);
-          setSubmitting(false);
-          return;
-        }
-        await applyDirectPartial(effectiveAmount, freshDirect.owing);
+      if (freshPlan.direction !== "outgoing" || freshPlan.amount !== plan.amount) {
+        toast.error(
+          freshPlan.direction === "outgoing"
+            ? `Kế hoạch đã đổi: ${formatVND(freshPlan.amount)}đ. Xác nhận lại.`
+            : "Kế hoạch không còn hợp lệ."
+        );
+        setRawDebts(fresh);
+        setSubmitting(false);
+        return;
       }
+      await applyMultiHopSettle(fresh);
 
-      // Insert transfer_card chat message
       await supabase.from("chat_messages").insert({
         group_id: id,
         sender_id: currentMember.id,
         message_type: "transfer_card",
-        content:
-          mode === "multihop"
-            ? `Tất toán đa chặng: ${formatVND(effectiveAmount)}đ`
-            : `Chuyển trực tiếp: ${formatVND(effectiveAmount)}đ`,
+        content: `Tất toán đa chặng: ${formatVND(plan.amount)}đ`,
         metadata: {
           from_member_id: currentMember.id,
           to_member_id: counterpartyId,
-          amount: effectiveAmount,
-          description: mode === "multihop" ? "Tất toán đa chặng" : "Chuyển trực tiếp",
-          settle_type: mode,
+          amount: plan.amount,
+          description: "Tất toán đa chặng",
+          settle_type: "multihop",
           has_bill_proof: hasBillProof,
         },
       });
@@ -312,8 +228,8 @@ export default function MultiHopSettlePage() {
           payload: {
             fromId: currentMember.id,
             toId: counterpartyId,
-            amount: effectiveAmount,
-            description: mode === "multihop" ? "Tất toán đa chặng" : "Chuyển trực tiếp",
+            amount: plan.amount,
+            description: "Tất toán đa chặng",
             groupId: id,
           },
         }),
@@ -323,7 +239,7 @@ export default function MultiHopSettlePage() {
         sessionStorage.removeItem("home_groups_v3");
         sessionStorage.removeItem(`group_detail_${id}`);
       } catch {}
-      toast.success(mode === "multihop" ? "Đã tất toán đa chặng!" : "Đã chuyển!");
+      toast.success("Đã tất toán!");
       router.push(`/groups/${id}`);
     } catch {
       toast.error("Lỗi tất toán");
@@ -363,8 +279,7 @@ export default function MultiHopSettlePage() {
     );
   }
 
-  // If user has nothing multi-hop (plan=0) AND no direct gross, there's nothing to settle.
-  if (plan.amount === 0 && directPair.gross === 0) {
+  if (plan.amount === 0) {
     return (
       <div className="flex h-dvh items-center justify-center bg-[#F2F2F7]">
         <p className="text-sm text-[#AEAEB2]">Không cần chuyển tiền cho {counterparty.display_name}</p>
@@ -376,12 +291,8 @@ export default function MultiHopSettlePage() {
     ? counterparty.display_name.split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase()
     : "?";
 
-  const multiHopAvailable = plan.direction === "outgoing" && plan.amount > 0;
-  const directAvailable = directPair.gross > 0;
-
   return (
     <div className="flex h-dvh flex-col bg-[#F2F2F7]">
-      {/* Nav bar */}
       <header className="flex h-[52px] shrink-0 items-center justify-between bg-white px-4">
         <button
           type="button"
@@ -400,30 +311,6 @@ export default function MultiHopSettlePage() {
       <div className="h-px w-full bg-[#E5E5EA]" />
 
       <div className="flex-1 overflow-y-auto bg-[#F2F2F7] px-4 py-5 space-y-4">
-        {/* Mode tabs — my addition when both modes available */}
-        {multiHopAvailable && directAvailable && (
-          <div className="flex gap-1 rounded-full bg-[#E5E5EA] p-1">
-            <button
-              type="button"
-              onClick={() => setMode("multihop")}
-              className={`flex-1 rounded-full py-2 text-[13px] font-semibold transition-all ${
-                mode === "multihop" ? "bg-white text-[#3A5CCC] shadow-sm" : "text-[#636366]"
-              }`}
-            >
-              Tất toán sạch
-            </button>
-            <button
-              type="button"
-              onClick={switchToDirect}
-              className={`flex-1 rounded-full py-2 text-[13px] font-semibold transition-all ${
-                mode === "direct" ? "bg-white text-[#3A5CCC] shadow-sm" : "text-[#636366]"
-              }`}
-            >
-              Trả 1 phần
-            </button>
-          </div>
-        )}
-
         {/* Recipient card */}
         <div className="flex flex-col gap-3 rounded-2xl bg-white p-5">
           <div className="flex items-center gap-3">
@@ -439,32 +326,14 @@ export default function MultiHopSettlePage() {
               )}
             </div>
           </div>
-          {mode === "direct" ? (
-            <div>
-              <input
-                type="text"
-                inputMode="numeric"
-                value={amountInput}
-                onChange={(e) => setAmountInput(e.target.value)}
-                className="w-full bg-transparent text-[36px] font-bold leading-tight text-black outline-none"
-                placeholder="0đ"
-              />
-              <p className="mt-1 text-[11px] text-[#AEAEB2]">
-                Tối đa {formatVND(directPair.gross)}đ nợ trực tiếp
-              </p>
-            </div>
-          ) : (
-            <p className="text-[36px] font-bold leading-tight text-black">{formatVND(effectiveAmount)}đ</p>
-          )}
+          <p className="text-[36px] font-bold leading-tight text-black">{formatVND(plan.amount)}đ</p>
           {groupName && (
-            <p className="text-[13px] text-[#8E8E93]">
-              {mode === "multihop" ? `Tất toán đa chặng trong nhóm ${groupName}` : `Nợ nhóm ${groupName}`}
-            </p>
+            <p className="text-[13px] text-[#8E8E93]">Tất toán trong nhóm {groupName}</p>
           )}
         </div>
 
         {/* QR card */}
-        {counterparty.bank_name && counterparty.bank_account_no && effectiveAmount > 0 ? (
+        {counterparty.bank_name && counterparty.bank_account_no ? (
           <div className="flex flex-col items-center gap-3 rounded-2xl bg-white p-5">
             <p className="text-[13px] text-[#8E8E93]">Quét QR để chuyển tiền</p>
             {qrUrl ? (
@@ -492,11 +361,11 @@ export default function MultiHopSettlePage() {
             </button>
             <p className="text-[11px] text-[#8E8E93]">Tự lưu ảnh + mở app TCB</p>
           </div>
-        ) : effectiveAmount > 0 ? (
+        ) : (
           <div className="rounded-2xl bg-white p-5 text-center">
             <p className="text-sm text-[#AEAEB2]">{counterparty.display_name} chưa cài ngân hàng</p>
           </div>
-        ) : null}
+        )}
 
         {/* Bank info card */}
         {counterparty.bank_name && counterparty.bank_account_no && (
@@ -529,13 +398,6 @@ export default function MultiHopSettlePage() {
             </div>
           </div>
         )}
-
-        {/* Explain — compact */}
-        <p className="px-1 text-[11px] leading-relaxed text-[#8A6D1F]">
-          {mode === "multihop"
-            ? `Đóng mọi nợ của bạn trong nhóm. Các khoản qua trung gian chuyển giao cho ${counterparty.display_name}. Kế hoạch tính lại mỗi lần bấm.`
-            : `Chỉ giảm nợ trực tiếp bạn → ${counterparty.display_name}. Không ảnh hưởng khoản qua người khác.`}
-        </p>
       </div>
 
       {/* Bottom bar */}
@@ -543,7 +405,7 @@ export default function MultiHopSettlePage() {
         <button
           type="button"
           onClick={() => setConfirmSheetOpen(true)}
-          disabled={submitting || effectiveAmount <= 0}
+          disabled={submitting || plan.amount <= 0}
           className="flex h-[52px] w-full items-center justify-center rounded-[14px] bg-[#3A5CCC] text-[16px] font-bold text-white transition-opacity active:scale-[0.98] disabled:opacity-50"
         >
           {submitting ? "Đang xử lý..." : "Tôi đã chuyển"}
