@@ -274,7 +274,7 @@ async function main() {
     }
   }
 
-  // ── Bill 4: Open bill — BBQ (2 days ago, Minh created, open) ──
+  // ── Bill 4: BBQ dinner (2 days ago, Minh paid, standard, 6 participants) ──
   {
     const title = "Ăn tối BBQ";
     const at = daysAgo(2);
@@ -284,26 +284,57 @@ async function main() {
       console.log(`  [skip] "${title}"`);
       billsSkipped++;
     } else {
-      const perPerson = 200_000;
+      const share = 200_000;
       const id = await insertBill({
         title, total_amount: 1_200_000, paid_by: minh, created_by: minh,
+        split_type: "equal", bill_type: "standard", status: "active", created_at: at,
+      });
+
+      // 6 participants (all members)
+      const allMembers = [minh, an, linh, duy, tu, po];
+      await insertParticipants(id, allMembers.map((mid) => ({ member_id: mid, amount: share })));
+
+      // 5 debts: non-payers → Minh
+      for (const debtor of [an, linh, duy, tu, po]) {
+        await insertDebt({ bill_id: id, debtor_id: debtor, creditor_id: minh, amount: share, remaining: share, status: "pending", created_at: at });
+        debtsCreated++;
+      }
+
+      billsCreated++;
+      console.log(`  [created] "${title}" (standard, 6 participants, 5 debts, id: ${id})`);
+    }
+  }
+
+  // ── Bill 7: Open bill — Ăn trưa T5 mở (3 days ago, An created, open) ──
+  {
+    const title = "Ăn trưa T5 mở";
+    const at = daysAgo(3);
+    const existing = await billExists(title, at);
+
+    if (existing) {
+      console.log(`  [skip] "${title}"`);
+      billsSkipped++;
+    } else {
+      const perPerson = 150_000; // 900k / 6 per-person rate
+      const id = await insertBill({
+        title, total_amount: 900_000, paid_by: an, created_by: an,
         split_type: "equal", bill_type: "open", status: "active", created_at: at,
       });
 
-      // 3 check-ins: An, Tú, PO
-      for (const mid of [an, tu, po]) {
+      // 2 check-ins: Linh + Tú
+      for (const mid of [linh, tu]) {
         const { error } = await supabase.from("bill_checkins").insert({
-          bill_id: id, member_id: mid, added_by: minh, checked_in_at: at,
+          bill_id: id, member_id: mid, added_by: an, checked_in_at: at,
         });
         if (error && !error.message.includes("duplicate")) throw new Error(`checkin: ${error.message}`);
         checkinsCreated++;
       }
 
-      // Participants = all who checked in
-      await insertParticipants(id, [an, tu, po].map((mid) => ({ member_id: mid, amount: perPerson })));
+      // Participants = checked-in members only (no debts — bill still open)
+      await insertParticipants(id, [linh, tu].map((mid) => ({ member_id: mid, amount: perPerson })));
 
       billsCreated++;
-      console.log(`  [created] "${title}" (open bill, 3 check-ins, id: ${id})`);
+      console.log(`  [created] "${title}" (open bill, 2 check-ins, id: ${id})`);
     }
   }
 
