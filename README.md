@@ -1,36 +1,76 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# VSF Group Fund
+
+Next.js app cho chia tiền nhóm — bill splitting với chat-first interface, AI intent parsing, VietQR payment.
 
 ## Getting Started
 
-First, run the development server:
-
 ```bash
-npm run dev
-# or
-yarn dev
-# or
 pnpm dev
-# or
-bun dev
+# http://localhost:3000
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Edit entry: `app/page.tsx` (auto-reload).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+Stack: Next.js (App Router), TypeScript, Tailwind, Supabase (Postgres + Realtime), Claude Haiku (intent).
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## `.claude/` Workflow Setup
 
-## Learn More
+Shared workflow assets symlinked from master repo `avengers-team`:
 
-To learn more about Next.js, take a look at the following resources:
+```
+.claude/
+├── commands/           → ../../avengers-team/.claude/commands/       (symlinked)
+├── agents/             → ../../avengers-team/.claude/agents/         (symlinked)
+├── skills/             → ../../avengers-team/.claude/skills/         (symlinked)
+├── evaluator-profiles/ → ../../avengers-team/.claude/evaluator-profiles/ (symlinked)
+├── hooks/              (project-local — runtime logs + minor custom tweaks)
+├── settings.json       (project-local)
+├── traces/             (project-local — evolution log per project)
+└── agent-memory/       (project-local)
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+**Commands / agents / skills / evaluator-profiles update tự động** khi `avengers-team` thay đổi. Không edit trong vsf-group-fund — edit ở avengers-team rồi commit.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+### Recreate symlinks sau khi clone
 
-## Deploy on Vercel
+Symlinks đã tracked trong git (relative path). Chỉ cần clone cùng cấp `avengers-team`:
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+```bash
+cd /path/to/workspace
+git clone https://github.com/cxzharry/avengers-team.git
+git clone <vsf-group-fund-repo>
+# symlinks tự resolve — không cần recreate
+```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Nếu layout khác (không sibling `avengers-team/`) → symlinks broken. Recreate tay:
+
+```bash
+cd vsf-group-fund/.claude
+rm -rf commands agents skills evaluator-profiles
+ln -s <path-to-avengers-team>/.claude/commands commands
+ln -s <path-to-avengers-team>/.claude/agents agents
+ln -s <path-to-avengers-team>/.claude/skills skills
+ln -s <path-to-avengers-team>/.claude/evaluator-profiles evaluator-profiles
+```
+
+### Project-specific dirs (KHÔNG symlink)
+
+| Dir | Lý do giữ local |
+|---|---|
+| `hooks/` | Runtime logs mix nếu symlink; identical scripts nhưng logs cần separate |
+| `settings.json` | Project-specific config |
+| `traces/` | Evolve log per project (friction data) |
+| `agent-memory/` | Per-project context memory |
+| `personas/` (root) | Project-specific personas (bill-skeptic, co-payer-member, ...); library chung ở `avengers-team/personas/` |
+
+## Docs
+
+- Project PRDs: `prd/`
+- UAT scripts: `uat/<slug>/`
+- Design system: `design-system/`
+- Plans + reports: `plans/`
+- Architecture & roadmap: `docs/`
+
+## Deployment
+
+Vercel. Preview: `.vercel/`.
