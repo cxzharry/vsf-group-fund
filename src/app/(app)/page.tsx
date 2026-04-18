@@ -107,10 +107,10 @@ export default function HomePage() {
       supabase.from("groups").select("*").in("id", groupIds).order("created_at", { ascending: false }),
       supabase.from("group_members").select("group_id").in("group_id", groupIds),
       supabase.from("debts")
-        .select("remaining, creditor_id, bill_id, bills!inner(group_id)")
+        .select("id, remaining, creditor_id, bill_id, bills!inner(group_id)")
         .eq("debtor_id", member.id).in("status", ["pending", "partial"]),
       supabase.from("debts")
-        .select("remaining, debtor_id, bill_id, bills!inner(group_id)")
+        .select("id, remaining, debtor_id, bill_id, bills!inner(group_id)")
         .eq("creditor_id", member.id).in("status", ["pending", "partial"]),
     ]);
 
