@@ -14,6 +14,7 @@ import { AiProcessingBubble } from "@/components/chat/ai-processing-bubble";
 import { AiErrorBubble } from "@/components/chat/ai-error-bubble";
 import { AiMultiAmountCard } from "@/components/chat/ai-multi-amount-card";
 import { formatVND } from "@/lib/format-vnd";
+import { simplifyDebts, transfersForMember } from "@/lib/debt-simplifier";
 import { toast } from "sonner";
 import type {
   Group,
@@ -179,23 +180,14 @@ export default function GroupDetailPage() {
         ])
       : [{ data: [] as { bill_id: string }[] }, { data: [] as BillCheckin[] }];
 
-    // 3b: debts for current member
-    const [owingRes, owedRes] = currentMember
-      ? await Promise.all([
-          supabase
-            .from("debts")
-            .select("id, remaining, creditor_id, bill_id, bills!inner(group_id)")
-            .eq("debtor_id", currentMember.id)
-            .eq("bills.group_id", id)
-            .in("status", ["pending", "partial"]),
-          supabase
-            .from("debts")
-            .select("id, remaining, debtor_id, bills!inner(group_id)")
-            .eq("creditor_id", currentMember.id)
-            .eq("bills.group_id", id)
-            .in("status", ["pending", "partial"]),
-        ])
-      : [{ data: null }, { data: null }];
+    // 3b: ALL debts in this group (needed for multi-hop simplification + user's own per-bill owe map)
+    const { data: allGroupDebts } = currentMember
+      ? await supabase
+          .from("debts")
+          .select("id, remaining, debtor_id, creditor_id, bill_id, bills!inner(group_id)")
+          .eq("bills.group_id", id)
+          .in("status", ["pending", "partial"])
+      : { data: null };
 
     // Process bill_participants counts
     const counts: Record<string, number> = {};
@@ -212,68 +204,52 @@ export default function GroupDetailPage() {
     });
     setBillCheckins(checkinMap);
 
-    // Process debts
+    // Process debts — multi-hop simplification
     if (currentMember) {
-      const owingData = owingRes.data as Array<{ id: string; remaining: number; creditor_id: string; bill_id?: string }> | null;
-      const owedData = owedRes.data as Array<{ id: string; remaining: number; debtor_id: string }> | null;
+      const rawDebts = (allGroupDebts ?? []) as Array<{
+        id: string; remaining: number; debtor_id: string; creditor_id: string; bill_id?: string;
+      }>;
 
-      // Build per-bill "Bạn nợ X" map
+      // Per-bill "Bạn nợ X" map (used by chat feed bill cards; pair-level, not multi-hop)
       const owedMap: Record<string, number> = {};
-      (owingData ?? []).forEach((d) => {
-        if (d.bill_id && d.remaining > 0) {
+      for (const d of rawDebts) {
+        if (d.debtor_id === currentMember.id && d.bill_id && d.remaining > 0) {
           owedMap[d.bill_id] = (owedMap[d.bill_id] ?? 0) + d.remaining;
         }
-      });
+      }
       setUserOwedPerBill(owedMap);
 
-      // Pair-net per counterparty (simplified everywhere):
-      //   pairNet[X] = Σ (X owes me) − Σ (I owe X). Positive → X net-owes me.
-      const pairNet: Record<string, { net: number; myDebtIds: string[]; theirDebtIds: string[] }> = {};
-      for (const d of owingData ?? []) {
-        const cId = d.creditor_id;
-        if (!pairNet[cId]) pairNet[cId] = { net: 0, myDebtIds: [], theirDebtIds: [] };
-        pairNet[cId].net -= d.remaining;
-        pairNet[cId].myDebtIds.push(d.id);
-      }
-      for (const d of owedData ?? []) {
-        const dId = d.debtor_id;
-        if (!pairNet[dId]) pairNet[dId] = { net: 0, myDebtIds: [], theirDebtIds: [] };
-        pairNet[dId].net += d.remaining;
-        pairNet[dId].theirDebtIds.push(d.id);
-      }
+      // Multi-hop simplification for banner display
+      const transfers = simplifyDebts(
+        rawDebts.map((d) => ({
+          debtor_id: d.debtor_id,
+          creditor_id: d.creditor_id,
+          remaining: d.remaining,
+        }))
+      );
+      const mine = transfersForMember(transfers, currentMember.id);
+      const topOut = mine.outgoing.sort((a, b) => b.amount - a.amount)[0];
+      const topIn = mine.incoming.sort((a, b) => b.amount - a.amount)[0];
 
-      const pairs = Object.entries(pairNet);
-      const creditorPairs = pairs.filter(([, p]) => p.net < -1);
-      const debtorPairs = pairs.filter(([, p]) => p.net > 1);
-      const net = pairs.reduce((s, [, p]) => s + p.net, 0);
-
-      if (Math.abs(net) >= 1000) {
-        let otherMemberId = "";
-        let debtId: string | undefined;
-        let counterpartyAmount = 0;
-        let topCreditorDebtCount = 0;
-
-        if (net < 0 && creditorPairs.length > 0) {
-          const top = creditorPairs.sort((a, b) => a[1].net - b[1].net)[0];
-          otherMemberId = top[0];
-          counterpartyAmount = -top[1].net;
-          topCreditorDebtCount = top[1].myDebtIds.length + top[1].theirDebtIds.length;
-          if (top[1].myDebtIds.length === 1 && top[1].theirDebtIds.length === 0) {
-            debtId = top[1].myDebtIds[0];
-          }
-        } else if (net > 0 && debtorPairs.length > 0) {
-          const top = debtorPairs.sort((a, b) => b[1].net - a[1].net)[0];
-          otherMemberId = top[0];
-          counterpartyAmount = top[1].net;
-        }
+      if (topOut) {
         setNetDebt({
-          amount: net,
-          otherMemberId,
-          debtId,
-          counterpartyAmount,
-          creditorCount: creditorPairs.length,
-          debtorCount: debtorPairs.length,
-          topCreditorDebtCount,
+          amount: -topOut.amount,
+          otherMemberId: topOut.to,
+          debtId: undefined,
+          counterpartyAmount: topOut.amount,
+          creditorCount: mine.outgoing.length,
+          debtorCount: mine.incoming.length,
+          topCreditorDebtCount: 0,
+        });
+      } else if (topIn) {
+        setNetDebt({
+          amount: topIn.amount,
+          otherMemberId: topIn.from,
+          debtId: undefined,
+          counterpartyAmount: topIn.amount,
+          creditorCount: mine.outgoing.length,
+          debtorCount: mine.incoming.length,
+          topCreditorDebtCount: 0,
         });
       } else {
         setNetDebt(null);
@@ -1045,11 +1021,8 @@ export default function GroupDetailPage() {
 
     if (netDebt.amount < 0) {
       const suffix = netDebt.creditorCount > 1 ? ` và ${netDebt.creditorCount - 1} người khác` : "";
-      // Route: single debt → transfer/{id} matches counterpartyAmount exactly.
-      // Multi debt to top creditor → aggregated transfer page with correct total.
-      const href = netDebt.debtId
-        ? `/transfer/${netDebt.debtId}`
-        : `/transfer/creditor/${netDebt.otherMemberId}?group=${id}`;
+      // Route directly to multi-hop settle (handles full + partial modes, recomputes on render).
+      const href = `/groups/${id}/settle/${netDebt.otherMemberId}`;
       return {
         text: `Bạn nợ ${otherDisplayName} ${formatVND(netDebt.counterpartyAmount)}đ${suffix}`,
         action: "Trả nợ",

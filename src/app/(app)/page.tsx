@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createBrowserClient } from "@supabase/ssr";
 import { useAuth } from "@/components/auth-provider";
+import { simplifyDebts, transfersForMember } from "@/lib/debt-simplifier";
 import type { Group } from "@/lib/types";
 
 interface GroupDebtInfo {
@@ -101,105 +102,88 @@ export default function HomePage() {
     const [
       { data: groupData },
       { data: allGm },
-      { data: myDebts },
-      { data: owedToMe },
+      { data: allDebts },
     ] = await Promise.all([
       supabase.from("groups").select("*").in("id", groupIds).order("created_at", { ascending: false }),
       supabase.from("group_members").select("group_id").in("group_id", groupIds),
+      // Fetch ALL debts in user's groups — needed for multi-hop simplification (not just user's own debts)
       supabase.from("debts")
-        .select("id, remaining, creditor_id, bill_id, bills!inner(group_id)")
-        .eq("debtor_id", member.id).in("status", ["pending", "partial"]),
-      supabase.from("debts")
-        .select("id, remaining, debtor_id, bill_id, bills!inner(group_id)")
-        .eq("creditor_id", member.id).in("status", ["pending", "partial"]),
+        .select("debtor_id, creditor_id, remaining, bills!inner(group_id)")
+        .in("bills.group_id", groupIds)
+        .in("status", ["pending", "partial"]),
     ]);
 
     // Count members per group
     const countMap: Record<string, number> = {};
     allGm?.forEach((g) => { countMap[g.group_id] = (countMap[g.group_id] ?? 0) + 1; });
 
-    // Collect unique member IDs we need names for
-    const memberIdsToFetch = new Set<string>();
-    myDebts?.forEach((d) => memberIdsToFetch.add(d.creditor_id));
-    owedToMe?.forEach((d) => memberIdsToFetch.add(d.debtor_id));
-
-    // Fetch member names in one query
-    const nameMap: Record<string, string> = {};
-    if (memberIdsToFetch.size > 0) {
-      const { data: members } = await supabase
-        .from("members")
-        .select("id, display_name")
-        .in("id", Array.from(memberIdsToFetch));
-      members?.forEach((m) => { nameMap[m.id] = m.display_name || "Ẩn danh"; });
-    }
-
-    // Calculate debt info per group
-    const debtPerGroup: Record<string, GroupDebtInfo> = {};
+    // Collect unique counterparty IDs appearing in user's simplified plans — name lookup
     const getGroupId = (d: Record<string, unknown>) =>
       (d.bills as Record<string, unknown>)?.group_id as string | undefined;
 
+    const debtPerGroup: Record<string, GroupDebtInfo> = {};
+    const pendingNameIds = new Set<string>();
+
+    // First pass: compute multi-hop plan per group, collect counterparty ids
     for (const gId of groupIds) {
-      // Pair-net per counterparty (simplified view everywhere):
-      //   pairNet[X] = sum(X owes me) - sum(I owe X)
-      //   positive → X net-owes me | negative → I net-owe X | ~0 → settled.
-      const pairNet: Record<string, number> = {};
-      const myDebtsInGroup: Array<{ id: string; creditor_id: string }> = [];
-
-      (myDebts ?? [])
+      const debtsInGroup = (allDebts ?? [])
         .filter((d: Record<string, unknown>) => getGroupId(d) === gId)
-        .forEach((d: Record<string, unknown>) => {
-          const cId = d.creditor_id as string;
-          pairNet[cId] = (pairNet[cId] ?? 0) - (d.remaining as number);
-          myDebtsInGroup.push({ id: d.id as string, creditor_id: cId });
-        });
-      (owedToMe ?? [])
-        .filter((d: Record<string, unknown>) => getGroupId(d) === gId)
-        .forEach((d: Record<string, unknown>) => {
-          const dId = d.debtor_id as string;
-          pairNet[dId] = (pairNet[dId] ?? 0) + (d.remaining as number);
-        });
+        .map((d: Record<string, unknown>) => ({
+          debtor_id: d.debtor_id as string,
+          creditor_id: d.creditor_id as string,
+          remaining: d.remaining as number,
+        }));
 
-      const creditorPairs = Object.entries(pairNet).filter(([, n]) => n < -1);  // I net-owe
-      const debtorPairs = Object.entries(pairNet).filter(([, n]) => n > 1);     // they net-owe me
-      const net = Object.values(pairNet).reduce((s, n) => s + n, 0);
+      const transfers = simplifyDebts(debtsInGroup);
+      const mine = transfersForMember(transfers, member.id);
+      // User is either net-debtor (has outgoing) or net-creditor (has incoming), not both
+      const topOut = mine.outgoing.sort((a, b) => b.amount - a.amount)[0];
+      const topIn = mine.incoming.sort((a, b) => b.amount - a.amount)[0];
 
-      let topPersonName = "";
+      let netSign = 0;
+      let topPersonId: string | undefined;
       let topPersonAmount = 0;
-      let topCreditorId: string | undefined;
-      let topCreditorDebtCount = 0;
-      let debtId: string | undefined;
-
-      if (net < 0 && creditorPairs.length > 0) {
-        const top = creditorPairs.sort((a, b) => a[1] - b[1])[0]; // most negative
-        topCreditorId = top[0];
-        topPersonName = nameMap[top[0]] ?? "Ẩn danh";
-        topPersonAmount = -top[1];
-        // Count underlying debts in BOTH directions with this person (aggregated page closes all).
-        const myToThem = myDebtsInGroup.filter((d) => d.creditor_id === topCreditorId).length;
-        const theirToMe = (owedToMe ?? []).filter((d: Record<string, unknown>) =>
-          getGroupId(d) === gId && (d.debtor_id as string) === topCreditorId
-        ).length;
-        topCreditorDebtCount = myToThem + theirToMe;
-        // Single-debt shortcut only when no offsetting + exactly 1 debt to them.
-        if (myToThem === 1 && theirToMe === 0) {
-          debtId = myDebtsInGroup.find((d) => d.creditor_id === topCreditorId)?.id;
-        }
-      } else if (net > 0 && debtorPairs.length > 0) {
-        const top = debtorPairs.sort((a, b) => b[1] - a[1])[0];
-        topPersonName = nameMap[top[0]] ?? "Ẩn danh";
-        topPersonAmount = top[1];
+      if (topOut) {
+        netSign = -1;
+        topPersonId = topOut.to;
+        topPersonAmount = topOut.amount;
+        pendingNameIds.add(topOut.to);
+      } else if (topIn) {
+        netSign = 1;
+        topPersonId = topIn.from;
+        topPersonAmount = topIn.amount;
+        pendingNameIds.add(topIn.from);
       }
 
       debtPerGroup[gId] = {
-        netDebt: net,
-        topPersonName,
+        netDebt: netSign,
+        topPersonName: "",
         topPersonAmount,
-        creditorCount: creditorPairs.length,
-        debtorCount: debtorPairs.length,
-        debtId,
-        topCreditorId,
-        topCreditorDebtCount,
+        creditorCount: mine.outgoing.length,
+        debtorCount: mine.incoming.length,
+        debtId: undefined,
+        topCreditorId: netSign === -1 ? topPersonId : undefined,
+        topCreditorDebtCount: 0,
       };
+      if (netSign === 1 && topPersonId) {
+        (debtPerGroup[gId] as GroupDebtInfo & { topDebtorId?: string }).topDebtorId = topPersonId;
+      }
+    }
+
+    // Fetch counterparty names
+    if (pendingNameIds.size > 0) {
+      const { data: members } = await supabase
+        .from("members")
+        .select("id, display_name")
+        .in("id", Array.from(pendingNameIds));
+      const nameMap: Record<string, string> = {};
+      members?.forEach((m) => { nameMap[m.id] = m.display_name || "Ẩn danh"; });
+      for (const gId of groupIds) {
+        const info = debtPerGroup[gId];
+        if (!info) continue;
+        const cpId = info.topCreditorId ?? (info as GroupDebtInfo & { topDebtorId?: string }).topDebtorId;
+        if (cpId) info.topPersonName = nameMap[cpId] ?? "Ẩn danh";
+      }
     }
 
     const items: GroupItem[] = (groupData ?? []).map((g) => ({
@@ -328,12 +312,9 @@ export default function HomePage() {
                       <button
                         type="button"
                         onClick={() => {
-                          if (g.debt.netDebt < 0 && g.debt.debtId) {
-                            // Single debt to top creditor — go straight to transfer screen
-                            router.push(`/transfer/${g.debt.debtId}`);
-                          } else if (g.debt.netDebt < 0 && g.debt.topCreditorId && g.debt.topCreditorDebtCount > 1) {
-                            // Multiple debts to same creditor — aggregated transfer (single QR w/ correct total)
-                            router.push(`/transfer/creditor/${g.debt.topCreditorId}?group=${g.id}`);
+                          if (g.debt.netDebt < 0 && g.debt.topCreditorId) {
+                            // Multi-hop settle page — handles full + partial modes, computes amount on-fly
+                            router.push(`/groups/${g.id}/settle/${g.debt.topCreditorId}`);
                           } else {
                             // Nhắc nợ or fallback — open group detail
                             router.push(`/groups/${g.id}`);
