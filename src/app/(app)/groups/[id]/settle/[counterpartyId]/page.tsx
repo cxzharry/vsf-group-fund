@@ -8,19 +8,24 @@
 //     Greedy closes user's direct owing debts; doesn't touch offset or 3rd-parties.
 // Race guard: refetches fresh debts right before mutation. Aborts if plan changed.
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { createBrowserClient } from "@supabase/ssr";
 import { useAuth } from "@/components/auth-provider";
 import { formatVND } from "@/lib/format-vnd";
 import {
   generateVietQRUrl,
-  generateBankDeepLink,
   generateTransferDescription,
 } from "@/lib/vietqr";
 import { toast } from "sonner";
 import { simplifyDebts, transfersForMember } from "@/lib/debt-simplifier";
 import type { Member } from "@/lib/types";
+import {
+  Sheet,
+  SheetContent,
+  SheetTitle,
+  SheetDescription,
+} from "@/components/ui/sheet";
 
 interface RawDebt {
   id: string;
@@ -94,6 +99,8 @@ export default function MultiHopSettlePage() {
   const [submitting, setSubmitting] = useState(false);
   const [mode, setMode] = useState<Mode>("multihop");
   const [amountInput, setAmountInput] = useState<string>("");
+  const [confirmSheetOpen, setConfirmSheetOpen] = useState(false);
+  const billInputRef = useRef<HTMLInputElement>(null);
 
   const load = useCallback(async () => {
     if (!currentMember) return;
@@ -153,20 +160,39 @@ export default function MultiHopSettlePage() {
     });
   }, [counterparty, effectiveAmount, currentMember, mode]);
 
-  const deepLink = useMemo(() => {
-    if (!counterparty || effectiveAmount === 0) return null;
-    if (!counterparty.bank_name || !counterparty.bank_account_no) return null;
-    const desc = generateTransferDescription(
-      mode === "multihop" ? "SETTLE" : "PARTIAL",
-      currentMember?.display_name ?? "User"
-    );
-    return generateBankDeepLink({
-      bankName: counterparty.bank_name,
-      accountNo: counterparty.bank_account_no,
-      amount: effectiveAmount,
-      description: desc,
-    });
-  }, [counterparty, effectiveAmount, currentMember, mode]);
+  /** Try Web Share with QR file → fallback to download. Best-effort. */
+  async function handleShareToZalo() {
+    if (!qrUrl) {
+      toast.error("Chưa có QR");
+      return;
+    }
+    try {
+      const res = await fetch(qrUrl);
+      const blob = await res.blob();
+      const file = new File([blob], "qr-chuyen-khoan.png", { type: "image/png" });
+      const shareText = `Chuyển ${formatVND(effectiveAmount)}đ${counterparty?.bank_name ? ` · ${counterparty.bank_name} ${counterparty.bank_account_no}` : ""}`;
+      const nav = navigator as Navigator & {
+        canShare?: (data: { files?: File[] }) => boolean;
+        share?: (data: { files?: File[]; text?: string }) => Promise<void>;
+      };
+      if (nav.canShare?.({ files: [file] }) && nav.share) {
+        await nav.share({ files: [file], text: shareText });
+        toast.success("Đã share. Mở app TCB để chuyển nhé!");
+        return;
+      }
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "qr-chuyen-khoan.png";
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+      toast.success("Đã lưu QR. Mở Zalo để chia sẻ.");
+    } catch {
+      toast.error("Không share được. Thử lại.");
+    }
+  }
 
   /**
    * Multi-hop mutation: close direct pair + reassign 3rd-party debts to counterparty.
@@ -223,12 +249,13 @@ export default function MultiHopSettlePage() {
     }
   }
 
-  async function handleConfirm() {
+  async function handleConfirm(hasBillProof: boolean) {
     if (!currentMember) return;
     if (effectiveAmount <= 0) {
       toast.error("Nhập số tiền hợp lệ");
       return;
     }
+    setConfirmSheetOpen(false);
     setSubmitting(true);
     try {
       // Race guard: fetch fresh debts before mutating.
@@ -273,6 +300,7 @@ export default function MultiHopSettlePage() {
           amount: effectiveAmount,
           description: mode === "multihop" ? "Tất toán đa chặng" : "Chuyển trực tiếp",
           settle_type: mode,
+          has_bill_proof: hasBillProof,
         },
       });
 
@@ -350,11 +378,6 @@ export default function MultiHopSettlePage() {
 
   const multiHopAvailable = plan.direction === "outgoing" && plan.amount > 0;
   const directAvailable = directPair.gross > 0;
-
-  const qrDescription = generateTransferDescription(
-    mode === "multihop" ? "SETTLE" : "PARTIAL",
-    currentMember?.display_name ?? "User"
-  );
 
   return (
     <div className="flex h-dvh flex-col bg-[#F2F2F7]">
@@ -442,30 +465,32 @@ export default function MultiHopSettlePage() {
 
         {/* QR card */}
         {counterparty.bank_name && counterparty.bank_account_no && effectiveAmount > 0 ? (
-          <div className="flex flex-col items-center gap-4 rounded-2xl bg-white p-5">
+          <div className="flex flex-col items-center gap-3 rounded-2xl bg-white p-5">
             <p className="text-[13px] text-[#8E8E93]">Quét QR để chuyển tiền</p>
             {qrUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img
                 src={qrUrl}
                 alt="VietQR"
-                className="h-[280px] w-[280px] rounded-xl border border-[#E5E5EA] object-contain"
+                className="aspect-square w-full max-w-[300px] rounded-xl border border-[#E5E5EA] object-contain"
               />
             ) : (
-              <div className="flex h-[280px] w-[280px] items-center justify-center rounded-xl border border-[#E5E5EA] bg-[#F2F2F7]">
+              <div className="flex aspect-square w-full max-w-[300px] items-center justify-center rounded-xl border border-[#E5E5EA] bg-[#F2F2F7]">
                 <span className="text-5xl text-[#AEAEB2]">⋯</span>
               </div>
             )}
-            {deepLink && (
-              <a
-                href={deepLink}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-[#3A5CCC] text-[14px] font-bold text-white active:opacity-80"
-              >
-                🏦 Mở app {counterparty.bank_name.split(" ")[0]}
-              </a>
-            )}
+            <button
+              type="button"
+              onClick={handleShareToZalo}
+              className="flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-[#0068FF] text-[14px] font-bold text-white active:opacity-80"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className="h-[18px] w-[18px]">
+                <path d="m22 2-7 20-4-9-9-4Z" />
+                <path d="M22 2 11 13" />
+              </svg>
+              Gửi QR qua Zalo
+            </button>
+            <p className="text-[11px] text-[#8E8E93]">Tự lưu ảnh + mở app TCB</p>
           </div>
         ) : effectiveAmount > 0 ? (
           <div className="rounded-2xl bg-white p-5 text-center">
@@ -502,10 +527,6 @@ export default function MultiHopSettlePage() {
               <span className="text-[13px] text-[#8E8E93]">Chủ tài khoản</span>
               <span className="text-[13px] font-bold text-black">{counterparty.bank_account_name}</span>
             </div>
-            <div className="flex h-9 items-center justify-between">
-              <span className="text-[13px] text-[#8E8E93]">Nội dung</span>
-              <span className="text-[13px] font-bold text-black">{qrDescription}</span>
-            </div>
           </div>
         )}
 
@@ -521,20 +542,73 @@ export default function MultiHopSettlePage() {
       <div className="flex flex-col gap-3 bg-white px-4 pb-[calc(2rem+env(safe-area-inset-bottom))] pt-3">
         <button
           type="button"
-          onClick={handleConfirm}
+          onClick={() => setConfirmSheetOpen(true)}
           disabled={submitting || effectiveAmount <= 0}
           className="flex h-[52px] w-full items-center justify-center rounded-[14px] bg-[#3A5CCC] text-[16px] font-bold text-white transition-opacity active:scale-[0.98] disabled:opacity-50"
         >
-          {submitting ? "Đang xử lý..." : "Tôi đã chuyển khoản"}
-        </button>
-        <button
-          type="button"
-          onClick={() => router.back()}
-          className="w-full text-center text-[15px] text-[#8E8E93]"
-        >
-          Hủy thanh toán
+          {submitting ? "Đang xử lý..." : "Tôi đã chuyển"}
         </button>
       </div>
+
+      {/* Hidden file input for bill upload */}
+      <input
+        ref={billInputRef}
+        type="file"
+        accept="image/*"
+        capture="environment"
+        className="hidden"
+        onChange={(e) => {
+          const file = e.target.files?.[0];
+          if (file) handleConfirm(true);
+          e.target.value = "";
+        }}
+      />
+
+      {/* Confirm action sheet */}
+      <Sheet open={confirmSheetOpen} onOpenChange={setConfirmSheetOpen}>
+        <SheetContent
+          side="bottom"
+          className="rounded-t-[20px] border-0 bg-white px-4 pb-[calc(2rem+env(safe-area-inset-bottom))] pt-5"
+        >
+          <SheetTitle className="text-center text-[15px] font-bold text-black">
+            Bạn đã chuyển khoản chưa?
+          </SheetTitle>
+          <SheetDescription className="text-center text-[12px] text-[#8E8E93]">
+            Chọn cách xác nhận giao dịch
+          </SheetDescription>
+          <div className="mt-3 flex flex-col gap-3">
+            <button
+              type="button"
+              onClick={() => billInputRef.current?.click()}
+              className="flex h-[52px] w-full items-center justify-center gap-2 rounded-[14px] bg-[#3A5CCC] text-[15px] font-bold text-white active:opacity-80"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className="h-[18px] w-[18px]">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                <polyline points="17 8 12 3 7 8" />
+                <line x1="12" x2="12" y1="3" y2="15" />
+              </svg>
+              Upload ảnh hóa đơn
+            </button>
+            <button
+              type="button"
+              onClick={() => handleConfirm(false)}
+              className="flex h-[52px] w-full items-center justify-center gap-2 rounded-[14px] bg-[#F2F2F7] text-[15px] font-bold text-[#3A5CCC] active:opacity-80"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className="h-[18px] w-[18px]">
+                <polyline points="20 6 9 17 4 12" />
+              </svg>
+              Khỏi (tin tôi đi)
+            </button>
+            <button
+              type="button"
+              onClick={() => setConfirmSheetOpen(false)}
+              className="h-[44px] w-full text-center text-[15px] font-bold text-[#FF3B30] active:opacity-60"
+            >
+              Hủy
+            </button>
+          </div>
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }
