@@ -1137,24 +1137,14 @@ export default function GroupDetailPage() {
           <p className={`text-sm font-medium ${debtBanner.textColor}`}>
             {debtBanner.text}
           </p>
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => router.push(`/groups/${id}/settle`)}
-              className="rounded-full bg-white/70 px-3 py-1 text-xs font-semibold text-[#3A5CCC]"
-              aria-label="Gợi ý tất toán nhóm"
-            >
-              💡 Gộp nợ
-            </button>
-            <button
-              type="button"
-              onClick={() => debtBanner.href && router.push(debtBanner.href)}
-              disabled={!debtBanner.href}
-              className={`rounded-full px-3 py-1 text-xs font-semibold ${debtBanner.btnColor}`}
-            >
-              {debtBanner.action}
-            </button>
-          </div>
+          <button
+            type="button"
+            onClick={() => debtBanner.href && router.push(debtBanner.href)}
+            disabled={!debtBanner.href}
+            className={`rounded-full px-3 py-1 text-xs font-semibold ${debtBanner.btnColor}`}
+          >
+            {debtBanner.action}
+          </button>
         </div>
       )}
 
