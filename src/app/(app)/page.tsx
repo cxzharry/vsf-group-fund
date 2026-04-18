@@ -67,13 +67,13 @@ export default function HomePage() {
   const [groups, setGroups] = useState<GroupItem[]>(() => {
     if (typeof window === "undefined") return [];
     try {
-      const cached = sessionStorage.getItem("home_groups_v2");
+      const cached = sessionStorage.getItem("home_groups_v3");
       return cached ? JSON.parse(cached) : [];
     } catch { return []; }
   });
   const [loading, setLoading] = useState(() => {
     if (typeof window === "undefined") return true;
-    return !sessionStorage.getItem("home_groups_v2");
+    return !sessionStorage.getItem("home_groups_v3");
   });
 
   useEffect(() => {
@@ -209,7 +209,7 @@ export default function HomePage() {
     }));
     setGroups(items);
     setLoading(false);
-    try { sessionStorage.setItem("home_groups_v2", JSON.stringify(items)); } catch {}
+    try { sessionStorage.setItem("home_groups_v3", JSON.stringify(items)); } catch {}
   }
 
   if (authLoading) {

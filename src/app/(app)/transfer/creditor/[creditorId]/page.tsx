@@ -167,7 +167,7 @@ export default function CreditorTransferPage() {
     }
 
     try {
-      sessionStorage.removeItem("home_groups_v2");
+      sessionStorage.removeItem("home_groups_v3");
       if (groupId) sessionStorage.removeItem(`group_detail_${groupId}`);
     } catch {}
     toast.success(`Đã đóng ${debts.length} khoản nợ!`);
