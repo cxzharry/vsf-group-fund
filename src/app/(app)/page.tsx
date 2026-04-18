@@ -37,7 +37,7 @@ function buildDebtSubtitle(debt: GroupDebtInfo, memberCount: number): { text: st
     return { text: `${memberCount} thành viên`, color: "text-[#8E8E93]" };
   }
 
-  const amountStr = topPersonAmount.toLocaleString("vi-VN");
+  const amountStr = (topPersonAmount ?? 0).toLocaleString("vi-VN");
 
   if (netDebt < 0) {
     const text = creditorCount === 1
@@ -241,8 +241,8 @@ export default function HomePage() {
               {(() => {
                 // Sum top-person amounts to stay consistent with per-group right column + subtitle.
                 // Prevents "chip says 719, row says 900" mismatch when user has receivables offsetting debts.
-                const totalOwe = groups.filter(g => g.debt.netDebt < 0).reduce((s, g) => s + g.debt.topPersonAmount, 0);
-                const totalOwed = groups.filter(g => g.debt.netDebt > 0).reduce((s, g) => s + g.debt.topPersonAmount, 0);
+                const totalOwe = groups.filter(g => g.debt.netDebt < 0).reduce((s, g) => s + (g.debt.topPersonAmount ?? 0), 0);
+                const totalOwed = groups.filter(g => g.debt.netDebt > 0).reduce((s, g) => s + (g.debt.topPersonAmount ?? 0), 0);
                 return (
                   <>
                     {totalOwe > 0 && (
@@ -323,7 +323,7 @@ export default function HomePage() {
                     <div className="flex shrink-0 flex-col items-end gap-1.5">
                       {/* Show GROSS top-person amount (matches subtitle + group banner). Avoid net which confuses "719 outside vs 900 inside". */}
                       <span className={`text-[15px] font-semibold ${g.debt.netDebt < 0 ? "text-[#FF3B30]" : "text-[#34C759]"}`}>
-                        {g.debt.netDebt < 0 ? "-" : "+"}{g.debt.topPersonAmount.toLocaleString("vi-VN")}đ
+                        {g.debt.netDebt < 0 ? "-" : "+"}{(g.debt.topPersonAmount ?? 0).toLocaleString("vi-VN")}đ
                       </span>
                       <button
                         type="button"
