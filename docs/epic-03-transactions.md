@@ -305,27 +305,28 @@ Entry points:
 - US-E3-1 Manual: bật toggle "Bill mở" trong Create Bill Sheet
 - US-E3-3 AI Quick: chọn option "Bill mở" trong AI Follow-up Card
 
-1. Tạo bill mở: chưa có ai tham gia, chưa có khoản nợ
-2. Check-in: thành viên tap "Tôi có ăn" → được ghi nhận tham gia
-3. Thêm khách: nhập tên khách (không cần tài khoản)
-4. Đóng bill: payer hoặc group admin tap "Đóng bill" → chia đều cho tất cả người đã check-in, tạo khoản nợ, dư cộng vào N người đầu
-5. Chỉ payer HOẶC group admin được đóng bill
-6. Gửi Telegram notify cho tất cả người nợ
+1. Tạo bill mở: fixed participant count `N` đặt lúc tạo (vd 8 người). Per-person = `total / N` cố định. Chưa có khoản nợ.
+2. Check-in: thành viên tap "Tôi có ăn" → avatar hiện trong stack, progress bar update. Per-person KHÔNG đổi theo check-in count.
+3. Thêm khách: nhập tên khách (không cần tài khoản) — count thêm vào N
+4. Không có explicit "Đóng bill" button (decision 2026-04-18). Bill dùng standard edit/delete qua `⋯` menu như bill thường. Debt records tạo khi payer edit/finalize hoặc bill bị delete (soft close).
+5. Edit/delete qua `⋯` menu: payer hoặc group admin có quyền
+6. Gửi Telegram notify cho tất cả người nợ khi debts được tạo
 
 ### Edge cases
 - Check-in 2 lần → chặn, hiện thông báo "Đã check-in rồi"
-- Đóng bill khi 0 check-in → báo lỗi "Chưa có ai check-in"
+- Edit khi 0 check-in → cho edit, không warning (empty state bình thường)
 - Khách check-in → tính vào chia nhưng không bị truy đòi nợ (không có tài khoản)
 - Payer tự check-in → tính phần mình nhưng không nợ chính mình
-- Bill đã đóng → không cho check-in tiếp, card chuyển sang trạng thái "Đã đóng"
+- Bill đủ N người → UI hiện State C (green, "Đủ N người — mỗi người ~Xđ"), không có CTA
 
 ### Acceptance Criteria
 - [ ] AC-E3-5.1: Check-in tạo record + update UI realtime
-- [ ] AC-E3-5.2: Đóng bill tạo debts đúng, remainder distributed
+- [ ] AC-E3-5.2: Per-person = `total / N` cố định (N set lúc tạo), không đổi theo check-in count
 - [ ] AC-E3-5.3: Khách check-in được (không tạo debt)
-- [ ] AC-E3-5.4: Chỉ payer/admin thấy nút "Đóng bill"
+- [ ] AC-E3-5.4: `⋯` menu hiện ở tất cả states (State A/B/C) cho edit/delete
 - [ ] AC-E3-5.5: Check-in trùng → chặn
 - [ ] AC-E3-5.6: Telegram notify gửi sau mỗi event
+- [ ] AC-E3-5.7: KHÔNG có "Đóng bill" button trên card
 
 ---
 

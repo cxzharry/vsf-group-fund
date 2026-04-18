@@ -6,7 +6,8 @@ created_for_prd: nopay-freelunch
 last_updated: 2026-04-17
 used_by_prds:
   - nopay-freelunch
-used_by_uat: []
+used_by_uat:
+  - uat/nopay-freelunch/group-member-vn.md
 ---
 
 # Linh — Thành viên nhóm mắc nợ
