@@ -557,3 +557,65 @@ test.describe("Round 2 — Authenticated Scenarios (Minh persona)", () => {
     expect(overflowX).toBe(false);
   });
 });
+
+// ─────────────────────────────────────────────
+// SETTLE SCREEN — new design markers
+// ─────────────────────────────────────────────
+
+test.describe("Settle screen — new multi-hop design", () => {
+  test("Settle page renders new UI markers (CTA + Zalo button + sheet)", async ({ page }) => {
+    await page.setViewportSize({ width: 375, height: 812 });
+    // Use An (net debtor in UAT seed) so 'Trả nợ' shows up.
+    await loginAs(page, "an+uat@nopay.test", UAT_PASSWORD);
+
+    // Wait for groups list to render (data fetched after auth)
+    try {
+      await page.waitForSelector('a[href*="/groups/"]', { timeout: 12000 });
+    } catch {
+      await screenshot(page, "settle", "no-group-debug");
+      throw new Error("Home page never rendered any group link");
+    }
+
+    // Try to use the home "Trả nợ" button which routes directly to settle.
+    const trảNợBtn = page.locator('button:has-text("Trả nợ")').first();
+    if ((await trảNợBtn.count()) > 0) {
+      await trảNợBtn.click();
+    } else {
+      // Fallback: enter group then look for settle link
+      await page.locator('a[href*="/groups/"]').first().click();
+      await page.waitForLoadState("networkidle");
+      await page.waitForTimeout(800);
+      const settleLink = page.locator('a[href*="/settle/"]').first();
+      if ((await settleLink.count()) === 0) {
+        await screenshot(page, "settle", "no-settle-link-debug");
+        throw new Error("No 'Trả nợ' button on home, no settle link in group");
+      }
+      await settleLink.click();
+    }
+    await page.waitForLoadState("networkidle");
+    await page.waitForTimeout(800);
+
+    expect(page.url()).toContain("/settle/");
+    await screenshot(page, "settle", "settle-loaded");
+
+    // New design markers
+    await expect(page.locator('button:has-text("Tôi đã chuyển")')).toBeVisible();
+    await expect(page.locator('button:has-text("Gửi QR qua Zalo")')).toBeVisible();
+    await expect(page.locator('text=Quét QR để chuyển tiền')).toBeVisible();
+    await expect(page.locator('text=Thông tin chuyển khoản')).toBeVisible();
+
+    // Old direct-mode markers must be gone
+    expect(await page.locator('text=Tất toán sạch').count()).toBe(0);
+    expect(await page.locator('text=Trả 1 phần').count()).toBe(0);
+    expect(await page.locator('text=Hủy thanh toán').count()).toBe(0);
+
+    // Open confirm sheet
+    await page.locator('button:has-text("Tôi đã chuyển")').click();
+    await page.waitForTimeout(300);
+    await screenshot(page, "settle", "settle-sheet-open");
+    await expect(page.locator('text=Bạn đã chuyển khoản chưa?')).toBeVisible();
+    await expect(page.locator('button:has-text("Upload ảnh hóa đơn")')).toBeVisible();
+    await expect(page.locator('button:has-text("Khỏi (tin tôi đi)")')).toBeVisible();
+    await expect(page.locator('button:has-text("Hủy")')).toBeVisible();
+  });
+});
