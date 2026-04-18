@@ -351,10 +351,6 @@ export default function MultiHopSettlePage() {
   const multiHopAvailable = plan.direction === "outgoing" && plan.amount > 0;
   const directAvailable = directPair.gross > 0;
 
-  const bankChips = counterparty.bank_name
-    ? [counterparty.bank_name.split(" ")[0], "VietcomBank", "Momo"]
-    : ["MBBank", "VietcomBank", "Momo"];
-
   const qrDescription = generateTransferDescription(
     mode === "multihop" ? "SETTLE" : "PARTIAL",
     currentMember?.display_name ?? "User"
@@ -446,32 +442,30 @@ export default function MultiHopSettlePage() {
 
         {/* QR card */}
         {counterparty.bank_name && counterparty.bank_account_no && effectiveAmount > 0 ? (
-          <div className="flex flex-col items-center gap-3 rounded-2xl bg-white p-5">
+          <div className="flex flex-col items-center gap-4 rounded-2xl bg-white p-5">
             <p className="text-[13px] text-[#8E8E93]">Quét QR để chuyển tiền</p>
             {qrUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img
                 src={qrUrl}
                 alt="VietQR"
-                className="h-[180px] w-[180px] rounded-xl border border-[#E5E5EA] object-contain"
+                className="h-[280px] w-[280px] rounded-xl border border-[#E5E5EA] object-contain"
               />
             ) : (
-              <div className="flex h-[180px] w-[180px] items-center justify-center rounded-xl border border-[#E5E5EA] bg-[#F2F2F7]">
-                <span className="text-4xl text-[#AEAEB2]">⋯</span>
+              <div className="flex h-[280px] w-[280px] items-center justify-center rounded-xl border border-[#E5E5EA] bg-[#F2F2F7]">
+                <span className="text-5xl text-[#AEAEB2]">⋯</span>
               </div>
             )}
-            <div className="flex items-center gap-2">
-              {bankChips.map((label, i) => (
-                <span
-                  key={i}
-                  className={`rounded-lg px-2.5 py-1 text-[11px] font-medium ${
-                    label === "Momo" ? "bg-[#FFF0F0] text-[#D91C5C]" : "bg-[#EEF2FF] text-[#3A5CCC]"
-                  }`}
-                >
-                  {label}
-                </span>
-              ))}
-            </div>
+            {deepLink && (
+              <a
+                href={deepLink}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-[#3A5CCC] text-[14px] font-bold text-white active:opacity-80"
+              >
+                🏦 Mở app {counterparty.bank_name.split(" ")[0]}
+              </a>
+            )}
           </div>
         ) : effectiveAmount > 0 ? (
           <div className="rounded-2xl bg-white p-5 text-center">
@@ -512,14 +506,6 @@ export default function MultiHopSettlePage() {
               <span className="text-[13px] text-[#8E8E93]">Nội dung</span>
               <span className="text-[13px] font-bold text-black">{qrDescription}</span>
             </div>
-            {deepLink && (
-              <a
-                href={deepLink}
-                className="mt-2 flex h-10 items-center justify-center gap-1 rounded-xl bg-[#F2F2F7] text-[13px] font-medium text-[#1C1C1E]"
-              >
-                🏦 Mở app {counterparty.bank_name.split(" ")[0]}
-              </a>
-            )}
           </div>
         )}
 
