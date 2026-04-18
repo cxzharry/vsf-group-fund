@@ -164,7 +164,7 @@ export default function SettlePage() {
                     </span>
                     <button
                       type="button"
-                      onClick={() => router.push(`/transfer/creditor/${t.to}?group=${id}`)}
+                      onClick={() => router.push(`/groups/${id}/settle/${t.to}`)}
                       className="rounded-full bg-[#3A5CCC] px-3 py-1.5 text-xs font-semibold text-white"
                     >
                       Trả
@@ -242,7 +242,7 @@ export default function SettlePage() {
         <div className="rounded-2xl bg-[#FFF9E6] p-3 text-[11px] leading-relaxed text-[#8A6D1F]">
           <p className="font-semibold">⚠️ Lưu ý</p>
           <p className="mt-1">
-            Khi bạn bấm <b>Trả</b>, hệ thống đóng các nợ trực tiếp với người nhận (pair-net). Số tiền thực tế có thể khác số gợi ý nếu bạn có nợ qua trung gian — phần chênh giữ nguyên đến khi trung gian tất toán.
+            Khi bạn bấm <b>Trả</b>, hệ thống đóng toàn bộ nợ của bạn trong nhóm — các khoản qua trung gian sẽ chuyển giao cho người nhận (multi-hop). Kế hoạch được tính lại mỗi lần có người tất toán.
           </p>
         </div>
       </div>
