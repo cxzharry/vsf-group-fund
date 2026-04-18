@@ -525,9 +525,14 @@ export default function GroupDetailPage() {
       if (data.splitType === "equal" && totalHeadcount > 1) {
         const base = Math.floor(data.amount / totalHeadcount);
         const remainder = data.amount - base * totalHeadcount;
-        const otherParticipants = memberList
-          .filter((m) => m.id !== data.payerId)
-          .slice(0, memberCount - 1);
+        // Bug-6: use selectedMemberIds when available; fallback to DB-order slice (backward compat)
+        const otherParticipants = data.selectedMemberIds
+          ? memberList.filter(
+              (m) => m.id !== data.payerId && data.selectedMemberIds!.includes(m.id)
+            )
+          : memberList
+              .filter((m) => m.id !== data.payerId)
+              .slice(0, memberCount - 1);
 
         // Distribute remainder 1 VND at a time to non-payer members first, then payer
         // Index 0 = payer slot, 1..otherParticipants.length = non-payer members

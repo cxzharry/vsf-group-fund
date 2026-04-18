@@ -46,6 +46,8 @@ export interface BillConfirmData {
   anonSplit?: AnonSplit;
   /** US-E3-10: recipient for transfer bill (only when billType === "transfer") */
   recipientId?: string;
+  /** Bug-6: explicit member selection for equal split (excludes payer self-debt) */
+  selectedMemberIds?: string[];
 }
 
 const AVATAR_COLORS = [
@@ -114,13 +116,21 @@ export function BillConfirmSheet({
   const [recipientId, setRecipientId] = useState<string | null>(null);
   const [showRecipientPicker, setShowRecipientPicker] = useState(false);
   const [showPayerPicker, setShowPayerPicker] = useState(false);
+  // Bug-6: equal split member picker — default all members selected
+  const [selectedMemberIds, setSelectedMemberIds] = useState<string[]>(
+    groupMembers.map((m) => m.id)
+  );
+  const [showMemberPicker, setShowMemberPicker] = useState(false);
+  // Temp state for member picker (multi-select in-progress)
+  const [pendingMemberIds, setPendingMemberIds] = useState<string[]>(groupMembers.map((m) => m.id));
 
   const payer = groupMembers.find((m) => m.id === payerId) ?? currentMember;
   const recipient = groupMembers.find((m) => m.id === recipientId) ?? null;
   const eligibleRecipients = groupMembers.filter((m) => m.id !== payerId);
   const category = inferCategory(description);
   // Total headcount includes member splits + guest + anon for display
-  const totalHeadcount = (customSplits ? Object.keys(customSplits).length : peopleCount)
+  const equalSplitCount = selectedMemberIds.length;
+  const totalHeadcount = (customSplits ? Object.keys(customSplits).length : equalSplitCount)
     + guestSplits.length
     + (anonSplit?.count ?? 0);
   const perPerson = totalHeadcount > 0 && amount > 0 ? Math.floor(amount / totalHeadcount) : 0;
@@ -150,13 +160,14 @@ export function BillConfirmSheet({
         recipientId: recipientId!,
       });
     } else {
+      const isEqualSplit = !isOpenBill && !customSplits;
       await onConfirm({
         amount,
         description: description.trim(),
         splitType: isOpenBill ? "open" : customSplits ? "custom" : "equal",
         peopleCount: isOpenBill
           ? (estimatedPeople ? parseInt(estimatedPeople, 10) : 0)
-          : customSplits ? Object.keys(customSplits).length : peopleCount,
+          : customSplits ? Object.keys(customSplits).length : selectedMemberIds.length,
         payerId,
         billType: isOpenBill ? "open" : "standard",
         category,
@@ -164,6 +175,8 @@ export function BillConfirmSheet({
         // US-E3-2 Case C/D
         guestSplits: guestSplits.length > 0 ? guestSplits : undefined,
         anonSplit: anonSplit ?? undefined,
+        // Bug-6: pass selected member ids for equal split
+        selectedMemberIds: isEqualSplit ? selectedMemberIds : undefined,
       });
     }
     setSubmitting(false);
@@ -335,15 +348,33 @@ export function BillConfirmSheet({
             {!isEdit && !isOpenBill && billType === "split" && (
               <div className="flex items-center justify-between">
                 <span className="text-[13px] text-[#8E8E93]">Chia cho</span>
-                <button
-                  type="button"
-                  onClick={() => setShowSplit(true)}
-                  className="text-[13px] font-medium text-[#3A5CCC] underline underline-offset-2"
-                >
-                  {customSplits
-                    ? `${totalHeadcount} người · ${formatVND(perPerson)}đ/người`
-                    : "Chọn thành viên"}
-                </button>
+                {customSplits ? (
+                  <button
+                    type="button"
+                    onClick={() => setShowSplit(true)}
+                    className="text-[13px] font-medium text-[#3A5CCC] underline underline-offset-2"
+                  >
+                    {`${totalHeadcount} người · ${formatVND(perPerson)}đ/người`}
+                  </button>
+                ) : (
+                  // Bug-6: equal split — tap to open multi-select member picker
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setPendingMemberIds([...selectedMemberIds]);
+                      setShowMemberPicker(true);
+                    }}
+                    className="flex items-center gap-1 text-[13px] font-medium text-[#1C1C1E]"
+                  >
+                    <span>
+                      {equalSplitCount} người
+                      {amount > 0 && equalSplitCount > 0 && (
+                        <span className="text-[#8E8E93]"> · {formatVND(perPerson)}đ/người</span>
+                      )}
+                    </span>
+                    <span className="text-[15px] text-[#C7C7CC]">›</span>
+                  </button>
+                )}
               </div>
             )}
           </div>
@@ -430,6 +461,84 @@ export function BillConfirmSheet({
                 </li>
               ))}
             </ul>
+          </div>
+        </>
+      )}
+
+      {/* Bug-6: Equal split member picker (multi-select) */}
+      {showMemberPicker && (
+        <>
+          <div
+            className="fixed inset-0 z-[60] bg-black/40"
+            onClick={() => setShowMemberPicker(false)}
+            aria-hidden="true"
+          />
+          <div className="fixed inset-x-0 bottom-0 z-[70] max-h-[70vh] flex flex-col rounded-t-[20px] bg-white pb-[env(safe-area-inset-bottom)]">
+            <div className="flex justify-center py-2">
+              <div className="h-1 w-9 rounded-full bg-[#D1D1D6]" />
+            </div>
+            <div className="flex items-center justify-between px-5 pb-2">
+              <h3 className="text-[15px] font-bold text-[#1C1C1E]">Chọn thành viên chia đều</h3>
+              <button
+                type="button"
+                onClick={() => setShowMemberPicker(false)}
+                className="text-[#AEAEB2]"
+                aria-label="Đóng"
+              >
+                ✕
+              </button>
+            </div>
+            <ul className="flex-1 overflow-y-auto px-2">
+              {groupMembers.map((m) => {
+                const checked = pendingMemberIds.includes(m.id);
+                return (
+                  <li key={m.id}>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setPendingMemberIds((prev) =>
+                          prev.includes(m.id) ? prev.filter((id) => id !== m.id) : [...prev, m.id]
+                        );
+                      }}
+                      className={`flex w-full items-center gap-3 rounded-[10px] px-3 py-2.5 text-left transition-colors ${
+                        checked ? "bg-[#EEF2FF]" : "hover:bg-[#F2F2F7]"
+                      }`}
+                    >
+                      <MiniAvatar member={m} size={36} />
+                      <span className="flex-1 text-[15px] font-medium text-[#1C1C1E]">
+                        {m.display_name}
+                        {m.id === currentMember.id && " (bạn)"}
+                      </span>
+                      <span
+                        className={`flex h-5 w-5 items-center justify-center rounded-full border-2 text-[11px] font-bold transition-colors ${
+                          checked
+                            ? "border-[#3A5CCC] bg-[#3A5CCC] text-white"
+                            : "border-[#C7C7CC] bg-white text-transparent"
+                        }`}
+                      >
+                        ✓
+                      </span>
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+            <div className="flex items-center justify-between border-t border-[#F2F2F7] px-5 py-3">
+              <span className="text-[13px] text-[#8E8E93]">
+                Đã chọn {pendingMemberIds.length} / {groupMembers.length} người
+              </span>
+              <button
+                type="button"
+                disabled={pendingMemberIds.length === 0}
+                onClick={() => {
+                  setSelectedMemberIds(pendingMemberIds);
+                  setShowMemberPicker(false);
+                }}
+                className="rounded-[10px] bg-[#3A5CCC] px-5 py-2 text-[14px] font-semibold text-white disabled:opacity-40"
+              >
+                Lưu
+              </button>
+            </div>
           </div>
         </>
       )}
