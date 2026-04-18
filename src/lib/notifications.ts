@@ -80,6 +80,20 @@ export async function notifyOpenBillCheckin(params: {
   );
 }
 
+/** Notify recipient: sender recorded a direct transfer (transfer_card) */
+export async function notifyTransferSent(params: {
+  recipientChatId: string | null;
+  fromName: string;
+  amount: number;
+  description?: string | null;
+}) {
+  const descLine = params.description ? `\nNội dung: ${params.description}` : "";
+  await notifyMember(
+    params.recipientChatId,
+    `💸 <b>${params.fromName}</b> đã chuyển ${formatVND(params.amount)}đ cho bạn${descLine}`
+  );
+}
+
 /** Notify all participants: open bill closed, debts created */
 export async function notifyOpenBillClosed(params: {
   memberChatId: string | null;

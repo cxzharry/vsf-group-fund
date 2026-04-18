@@ -299,7 +299,10 @@ export default function GroupDetailPage() {
         { event: "INSERT", schema: "public", table: "chat_messages", filter: `group_id=eq.${id}` },
         (payload) => {
           setTimeout(() => {
-            setChatMessages((prev) => [...prev, payload.new as ChatMessage]);
+            setChatMessages((prev) => {
+              const incoming = payload.new as ChatMessage;
+              return prev.some((m) => m.id === incoming.id) ? prev : [...prev, incoming];
+            });
           }, 0);
         }
       )
@@ -464,19 +467,23 @@ export default function GroupDetailPage() {
         toast.error("Thiếu người nhận");
         return;
       }
-      const { error: msgError } = await supabase.from("chat_messages").insert({
-        group_id: id,
-        sender_id: currentMember.id,
-        message_type: "transfer_card",
-        content: data.description || "Chuyển tiền",
-        metadata: {
-          from_id: data.payerId,
-          to_id: data.recipientId,
-          amount: data.amount,
-          description: data.description,
-        },
-      });
-      if (msgError) {
+      const { data: newMsg, error: msgError } = await supabase
+        .from("chat_messages")
+        .insert({
+          group_id: id,
+          sender_id: currentMember.id,
+          message_type: "transfer_card",
+          content: data.description || "Chuyển tiền",
+          metadata: {
+            from_member_id: data.payerId,
+            to_member_id: data.recipientId,
+            amount: data.amount,
+            description: data.description,
+          },
+        })
+        .select()
+        .single();
+      if (msgError || !newMsg) {
         toast.error("Lỗi ghi nhận chuyển tiền");
         return;
       }
@@ -494,9 +501,15 @@ export default function GroupDetailPage() {
           },
         }),
       }).catch(() => {});
+      try { sessionStorage.removeItem(`group_detail_${id}`); } catch {}
+      setTimeout(() => {
+        setChatMessages((prev) =>
+          prev.some((m) => m.id === newMsg.id) ? prev : [...prev, newMsg as ChatMessage]
+        );
+        setShowConfirmSheet(false);
+        setPendingIntent(null);
+      }, 0);
       toast.success("Đã ghi nhận chuyển tiền");
-      setShowConfirmSheet(false);
-      setPendingIntent(null);
       return;
     }
 

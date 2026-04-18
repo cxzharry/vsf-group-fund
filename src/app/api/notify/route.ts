@@ -7,6 +7,7 @@ import {
   notifyOpenBillCreated,
   notifyOpenBillCheckin,
   notifyOpenBillClosed,
+  notifyTransferSent,
 } from "@/lib/notifications";
 
 function getSupabase() {
@@ -186,6 +187,21 @@ export async function POST(request: Request) {
           totalCheckins,
         });
       }
+      break;
+    }
+
+    case "transfer_sent": {
+      const { fromId, toId, amount, description } = payload;
+      const [{ data: fromMember }, { data: toMember }] = await Promise.all([
+        supabase.from("members").select("display_name").eq("id", fromId).single(),
+        supabase.from("members").select("display_name, telegram_chat_id").eq("id", toId).single(),
+      ]);
+      await notifyTransferSent({
+        recipientChatId: toMember?.telegram_chat_id ?? null,
+        fromName: fromMember?.display_name ?? "?",
+        amount,
+        description,
+      });
       break;
     }
 
