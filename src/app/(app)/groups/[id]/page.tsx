@@ -498,6 +498,7 @@ export default function GroupDetailPage() {
             toId: data.recipientId,
             amount: data.amount,
             description: data.description,
+            groupId: id,
           },
         }),
       }).catch(() => {});

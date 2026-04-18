@@ -33,16 +33,12 @@ export async function POST(request: Request) {
     case "new_bill": {
       const { billId, billTitle, totalAmount, paidById } = payload;
 
-      const { data: debts } = await supabase
-        .from("debts")
-        .select("debtor_id, amount")
-        .eq("bill_id", billId);
-
-      const { data: creditor } = await supabase
-        .from("members")
-        .select("display_name, telegram_chat_id")
-        .eq("id", paidById)
-        .single();
+      const [{ data: debts }, { data: billRow }, { data: creditor }] = await Promise.all([
+        supabase.from("debts").select("debtor_id, amount").eq("bill_id", billId),
+        supabase.from("bills").select("group_id").eq("id", billId).single(),
+        supabase.from("members").select("display_name, telegram_chat_id").eq("id", paidById).single(),
+      ]);
+      const groupId = billRow?.group_id ?? null;
 
       if (debts) {
         const debtorIds = debts.map((d) => d.debtor_id);
@@ -60,6 +56,8 @@ export async function POST(request: Request) {
             creditorName: creditor?.display_name ?? "?",
             amount: debt.amount,
             billTitle,
+            groupId,
+            billId,
           });
         }
       }
@@ -70,6 +68,8 @@ export async function POST(request: Request) {
         billTitle,
         totalAmount,
         participantCount: (debts?.length ?? 0) + 1,
+        groupId,
+        billId,
       });
 
       break;
@@ -83,13 +83,13 @@ export async function POST(request: Request) {
 
       const { data: debts } = await supabase
         .from("debts")
-        .select("id, creditor_id, debtor_id, amount, bills(title)")
+        .select("id, creditor_id, debtor_id, amount, bills(title, group_id)")
         .in("id", debtIds);
 
       if (!debts || debts.length === 0) break;
 
       // Group by creditor_id (typically 1 creditor from UI, but safe for multi)
-      type DebtRow = { id: string; creditor_id: string; debtor_id: string; amount: number; bills: { title: string } | { title: string }[] | null };
+      type DebtRow = { id: string; creditor_id: string; debtor_id: string; amount: number; bills: { title: string; group_id?: string } | { title: string; group_id?: string }[] | null };
       const byCreditor = new Map<string, DebtRow[]>();
       for (const d of debts as DebtRow[]) {
         if (!byCreditor.has(d.creditor_id)) byCreditor.set(d.creditor_id, []);
@@ -116,6 +116,8 @@ export async function POST(request: Request) {
           const bRel = r.bills;
           return Array.isArray(bRel) ? bRel[0]?.title ?? "Bill" : bRel?.title ?? "Bill";
         });
+        const firstBill = rows[0]?.bills;
+        const groupId = (Array.isArray(firstBill) ? firstBill[0]?.group_id : firstBill?.group_id) ?? null;
 
         await notifyPaymentClaimBatch({
           creditorChatId: creditor?.telegram_chat_id ?? null,
@@ -123,6 +125,7 @@ export async function POST(request: Request) {
           totalAmount: total,
           debtCount: rows.length,
           billTitles: titles,
+          groupId,
         });
       }
       break;
@@ -130,7 +133,7 @@ export async function POST(request: Request) {
 
     case "open_bill_created": {
       // Notify all group members that an open bill was created
-      const { billTitle: obTitle, totalAmount: obAmount, creatorId, groupId } = payload;
+      const { billTitle: obTitle, totalAmount: obAmount, creatorId, groupId, billId: obBillId } = payload;
 
       const { data: creator } = await supabase
         .from("members")
@@ -157,6 +160,8 @@ export async function POST(request: Request) {
             creatorName: creator?.display_name ?? "?",
             billTitle: obTitle,
             totalAmount: obAmount,
+            groupId,
+            billId: obBillId ?? null,
           });
         }
       }
@@ -169,7 +174,7 @@ export async function POST(request: Request) {
 
       const { data: bill } = await supabase
         .from("bills")
-        .select("title, paid_by")
+        .select("title, paid_by, group_id")
         .eq("id", cisBillId)
         .single();
 
@@ -185,13 +190,15 @@ export async function POST(request: Request) {
           memberName,
           billTitle: bill.title,
           totalCheckins,
+          groupId: bill.group_id ?? null,
+          billId: cisBillId,
         });
       }
       break;
     }
 
     case "transfer_sent": {
-      const { fromId, toId, amount, description } = payload;
+      const { fromId, toId, amount, description, groupId: transferGroupId } = payload;
       const [{ data: fromMember }, { data: toMember }] = await Promise.all([
         supabase.from("members").select("display_name").eq("id", fromId).single(),
         supabase.from("members").select("display_name, telegram_chat_id").eq("id", toId).single(),
@@ -201,6 +208,7 @@ export async function POST(request: Request) {
         fromName: fromMember?.display_name ?? "?",
         amount,
         description,
+        groupId: transferGroupId ?? null,
       });
       break;
     }
@@ -211,7 +219,7 @@ export async function POST(request: Request) {
 
       const { data: bill } = await supabase
         .from("bills")
-        .select("title, paid_by")
+        .select("title, paid_by, group_id")
         .eq("id", closedBillId)
         .single();
 
@@ -243,6 +251,8 @@ export async function POST(request: Request) {
               billTitle: bill.title,
               perPersonAmount: debt?.amount ?? 0,
               creditorName: payer?.display_name ?? "?",
+              groupId: bill.group_id ?? null,
+              billId: closedBillId,
             });
           }
         }

@@ -1,5 +1,13 @@
-import { notifyMember } from "@/lib/telegram-bot";
+import { notifyMember, getAppUrl, type TelegramLinkButton } from "@/lib/telegram-bot";
 import { formatVND } from "@/lib/format-vnd";
+
+/** Build "Mở nhóm" inline-keyboard button pointing at /groups/:id, optional bill detail deeplink. */
+function groupLink(groupId?: string | null, opts?: { billId?: string; label?: string }): TelegramLinkButton | undefined {
+  if (!groupId) return undefined;
+  const base = getAppUrl();
+  const url = opts?.billId ? `${base}/groups/${groupId}?billDetail=${opts.billId}` : `${base}/groups/${groupId}`;
+  return { url, label: opts?.label ?? "Mở nhóm" };
+}
 
 /** Notify creditor: new bill created, people owe you */
 export async function notifyNewBill(params: {
@@ -7,12 +15,15 @@ export async function notifyNewBill(params: {
   billTitle: string;
   totalAmount: number;
   participantCount: number;
+  groupId?: string | null;
+  billId?: string | null;
 }) {
   await notifyMember(
     params.creditorChatId,
     `🧾 <b>Bill mới: ${params.billTitle}</b>\n` +
       `Tổng: ${formatVND(params.totalAmount)}đ\n` +
-      `${params.participantCount} người tham gia`
+      `${params.participantCount} người tham gia`,
+    groupLink(params.groupId, { billId: params.billId ?? undefined, label: "Xem bill" })
   );
 }
 
@@ -24,6 +35,7 @@ export async function notifyPaymentClaimBatch(params: {
   totalAmount: number;
   debtCount: number;
   billTitles: string[]; // up to 5; rest truncated
+  groupId?: string | null;
 }) {
   const MAX = 5;
   const shownTitles = params.billTitles.slice(0, MAX);
@@ -32,7 +44,8 @@ export async function notifyPaymentClaimBatch(params: {
   const truncatedTail = extra > 0 ? `\n• … và ${extra} khoản khác` : "";
   await notifyMember(
     params.creditorChatId,
-    `✅ <b>${params.debtorName}</b> đã trả ${formatVND(params.totalAmount)}đ (gộp ${params.debtCount} khoản)\n${lines}${truncatedTail}\nTất cả đã đóng.`
+    `✅ <b>${params.debtorName}</b> đã trả ${formatVND(params.totalAmount)}đ (gộp ${params.debtCount} khoản)\n${lines}${truncatedTail}\nTất cả đã đóng.`,
+    groupLink(params.groupId)
   );
 }
 
@@ -42,12 +55,15 @@ export async function notifyNewDebt(params: {
   creditorName: string;
   amount: number;
   billTitle: string;
+  groupId?: string | null;
+  billId?: string | null;
 }) {
   await notifyMember(
     params.debtorChatId,
     `📢 Bạn nợ <b>${params.creditorName}</b> ${formatVND(params.amount)}đ\n` +
       `Bill: ${params.billTitle}\n` +
-      `Vào app để chuyển khoản.`
+      `Vào app để chuyển khoản.`,
+    groupLink(params.groupId, { billId: params.billId ?? undefined, label: "Trả nợ" })
   );
 }
 
@@ -57,12 +73,15 @@ export async function notifyOpenBillCreated(params: {
   creatorName: string;
   billTitle: string;
   totalAmount: number;
+  groupId?: string | null;
+  billId?: string | null;
 }) {
   await notifyMember(
     params.memberChatId,
     `🧾 <b>${params.creatorName}</b> tạo bill mở: <b>${params.billTitle}</b>\n` +
       `Tổng: ${formatVND(params.totalAmount)}đ\n` +
-      `Vào app để check-in nếu bạn tham gia!`
+      `Vào app để check-in nếu bạn tham gia!`,
+    groupLink(params.groupId, { billId: params.billId ?? undefined, label: "Check-in" })
   );
 }
 
@@ -72,11 +91,14 @@ export async function notifyOpenBillCheckin(params: {
   memberName: string;
   billTitle: string;
   totalCheckins: number;
+  groupId?: string | null;
+  billId?: string | null;
 }) {
   await notifyMember(
     params.creatorChatId,
     `✅ <b>${params.memberName}</b> đã check-in vào bill "<b>${params.billTitle}</b>"\n` +
-      `Hiện có ${params.totalCheckins} người tham gia.`
+      `Hiện có ${params.totalCheckins} người tham gia.`,
+    groupLink(params.groupId, { billId: params.billId ?? undefined, label: "Xem bill" })
   );
 }
 
@@ -86,11 +108,13 @@ export async function notifyTransferSent(params: {
   fromName: string;
   amount: number;
   description?: string | null;
+  groupId?: string | null;
 }) {
   const descLine = params.description ? `\nNội dung: ${params.description}` : "";
   await notifyMember(
     params.recipientChatId,
-    `💸 <b>${params.fromName}</b> đã chuyển ${formatVND(params.amount)}đ cho bạn${descLine}`
+    `💸 <b>${params.fromName}</b> đã chuyển ${formatVND(params.amount)}đ cho bạn${descLine}`,
+    groupLink(params.groupId)
   );
 }
 
@@ -100,11 +124,14 @@ export async function notifyOpenBillClosed(params: {
   billTitle: string;
   perPersonAmount: number;
   creditorName: string;
+  groupId?: string | null;
+  billId?: string | null;
 }) {
   await notifyMember(
     params.memberChatId,
     `🔒 Bill "<b>${params.billTitle}</b>" đã đóng.\n` +
       `Mỗi người: ${formatVND(params.perPersonAmount)}đ → chuyển cho <b>${params.creditorName}</b>\n` +
-      `Vào app để chuyển khoản.`
+      `Vào app để chuyển khoản.`,
+    groupLink(params.groupId, { billId: params.billId ?? undefined, label: "Trả nợ" })
   );
 }
