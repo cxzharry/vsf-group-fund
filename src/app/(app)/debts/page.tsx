@@ -625,13 +625,27 @@ export default function DebtsPage() {
                       try {
                         const resp = await fetch(qrUrl);
                         const blob = await resp.blob();
+                        const filename = `qr-${qrDebt?.creditor?.display_name ?? "payment"}.jpg`;
+                        const file = new File([blob], filename, { type: blob.type || "image/jpeg" });
+                        if (
+                          "canShare" in navigator &&
+                          navigator.canShare?.({ files: [file] }) &&
+                          "share" in navigator
+                        ) {
+                          await navigator.share({ files: [file], title: "VietQR" });
+                          return;
+                        }
                         const url = URL.createObjectURL(blob);
                         const a = document.createElement("a");
                         a.href = url;
-                        a.download = `qr-${qrDebt?.creditor?.display_name ?? "payment"}.png`;
+                        a.download = filename;
                         a.click();
                         URL.revokeObjectURL(url);
-                      } catch { /* ignore */ }
+                      } catch (e) {
+                        if ((e as Error)?.name !== "AbortError") {
+                          /* ignore — user cancelled or fetch failed */
+                        }
+                      }
                     }}
                   >
                     💾 Lưu QR

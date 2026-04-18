@@ -15,6 +15,8 @@ interface BillDetailsSheetProps {
   onEdit: (billId: string) => void;
   onDelete: (billId: string) => void;
   onNudge?: (billId: string) => void;
+  /** Navigate to transfer screen for current user's pending debt on this bill */
+  onPayOwnDebt?: (debtId: string) => void;
 }
 
 const AVATAR_COLORS = [
@@ -64,6 +66,7 @@ export function BillDetailsSheet({
   onEdit,
   onDelete,
   onNudge,
+  onPayOwnDebt,
 }: BillDetailsSheetProps) {
   const sheetRef = useRef<HTMLDivElement>(null);
 
@@ -88,6 +91,21 @@ export function BillDetailsSheet({
 
   const isOwner = bill.paid_by === currentMemberId;
   const pendingDebts = debts.filter((d) => d.status === "pending" || d.status === "partial");
+
+  // Current user's role in this bill
+  const myParticipation = currentMemberId
+    ? participants.find((p) => p.member_id === currentMemberId)
+    : null;
+  const myDebt = currentMemberId
+    ? debts.find((d) => d.debtor_id === currentMemberId)
+    : null;
+  const mySharePaid = myDebt?.status === "confirmed" || myDebt?.remaining === 0;
+  // Amount owed: use debt.remaining (reflects partial payments) else fallback to participant.amount
+  const myRemaining = myDebt?.remaining ?? myParticipation?.amount ?? 0;
+  // Total owed to me (as creditor) if I'm the payer
+  const owedToMe = isOwner
+    ? pendingDebts.reduce((sum, d) => sum + (d.remaining ?? 0), 0)
+    : 0;
 
   return (
     <div
@@ -127,6 +145,58 @@ export function BillDetailsSheet({
             </svg>
           </button>
         </div>
+
+        {/* Your share banner — most important info for viewer */}
+        {currentMemberId && (isOwner || myParticipation) && (
+          <div className="mx-4 mb-1 mt-1 rounded-[12px] px-3 py-3"
+               style={{
+                 backgroundColor: isOwner
+                   ? "#F0FFF4"
+                   : mySharePaid
+                   ? "#F2F2F7"
+                   : "#FFF3F0",
+               }}>
+            <div className="flex items-center justify-between gap-3">
+              <div className="min-w-0">
+                <p className="text-[12px] font-medium uppercase tracking-wide"
+                   style={{
+                     color: isOwner ? "#34C759" : mySharePaid ? "#8E8E93" : "#FF9500",
+                   }}>
+                  {isOwner
+                    ? "Bạn đã ứng"
+                    : mySharePaid
+                    ? "Phần bạn — đã thanh toán"
+                    : `Bạn nợ ${payer?.display_name ?? "?"}`}
+                </p>
+                <p className="mt-0.5 text-[22px] font-bold"
+                   style={{
+                     color: isOwner ? "#34C759" : mySharePaid ? "#8E8E93" : "#FF3B30",
+                   }}>
+                  {formatVND(isOwner ? bill.total_amount : myRemaining)}đ
+                </p>
+                {isOwner && owedToMe > 0 && (
+                  <p className="mt-0.5 text-[12px] text-[#8E8E93]">
+                    Còn {pendingDebts.length} người nợ bạn tổng {formatVND(owedToMe)}đ
+                  </p>
+                )}
+                {!isOwner && !mySharePaid && myParticipation && (
+                  <p className="mt-0.5 text-[12px] text-[#8E8E93]">
+                    Phần bạn {formatVND(myParticipation.amount)}đ trên tổng {formatVND(bill.total_amount)}đ
+                  </p>
+                )}
+              </div>
+              {!isOwner && !mySharePaid && myDebt?.id && onPayOwnDebt && (
+                <button
+                  type="button"
+                  onClick={() => { onPayOwnDebt(myDebt.id); onClose(); }}
+                  className="shrink-0 rounded-[12px] bg-[#FF3B30] px-4 py-2 text-[14px] font-semibold text-white active:opacity-80"
+                >
+                  Trả nợ
+                </button>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* Divider */}
         <div className="mx-4 border-t border-[#E5E5EA]" />

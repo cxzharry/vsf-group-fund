@@ -136,14 +136,32 @@ export default function TransferPage() {
     try {
       const response = await fetch(qrUrl);
       const blob = await response.blob();
+      const filename = `vietqr-${Date.now()}.jpg`;
+      const file = new File([blob], filename, { type: blob.type || "image/jpeg" });
+
+      // Mobile: Web Share API with file triggers native "Save to Photos"
+      if (
+        typeof navigator !== "undefined" &&
+        "canShare" in navigator &&
+        navigator.canShare?.({ files: [file] }) &&
+        "share" in navigator
+      ) {
+        await navigator.share({ files: [file], title: "VietQR chuyển tiền" });
+        return;
+      }
+
+      // Desktop fallback: download to default folder
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = "vietqr.png";
+      a.download = filename;
       a.click();
       URL.revokeObjectURL(url);
-    } catch {
-      toast.error("Không thể tải QR");
+    } catch (err) {
+      // User cancelled share sheet → not an error
+      if ((err as Error)?.name !== "AbortError") {
+        toast.error("Không thể lưu QR");
+      }
     }
   }
 
