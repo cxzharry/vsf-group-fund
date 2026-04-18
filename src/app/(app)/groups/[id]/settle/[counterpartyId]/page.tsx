@@ -70,7 +70,8 @@ export default function MultiHopSettlePage() {
   }, [id, counterpartyId, supabase, currentMember]);
 
   useEffect(() => {
-    load();
+    const t = setTimeout(() => load(), 0);
+    return () => clearTimeout(t);
   }, [load]);
 
   // Recompute plan every render — matches user's invariant:

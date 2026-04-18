@@ -61,7 +61,8 @@ export default function SettlePage() {
   }, [id, supabase]);
 
   useEffect(() => {
-    load();
+    const t = setTimeout(() => load(), 0);
+    return () => clearTimeout(t);
   }, [load]);
 
   const simplified = useMemo(() => simplifyDebts(debts), [debts]);
