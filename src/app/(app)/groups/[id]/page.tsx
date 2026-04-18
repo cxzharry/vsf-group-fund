@@ -79,6 +79,8 @@ export default function GroupDetailPage() {
     amount: number;
     otherMemberId: string;
     debtId?: string;
+    /** Amount owed to/from the named counterparty specifically (not the net across all) */
+    counterpartyAmount: number;
   } | null>(null);
   const [loading, setLoading] = useState(() => {
     if (typeof window === "undefined") return true;
@@ -227,16 +229,32 @@ export default function GroupDetailPage() {
       if (Math.abs(net) >= 1000) {
         let otherMemberId = "";
         let debtId: string | undefined;
+        let counterpartyAmount = 0;
         if (net < 0 && owingData && owingData.length > 0) {
-          const biggest = [...owingData].sort((a, b) => b.remaining - a.remaining)[0];
-          otherMemberId = biggest.creditor_id;
-          debtId = biggest.id;
+          // Group by creditor to get total owed to each person
+          const creditorTotals: Record<string, { total: number; topDebtId: string }> = {};
+          for (const d of owingData) {
+            const cId = d.creditor_id;
+            if (!creditorTotals[cId]) creditorTotals[cId] = { total: 0, topDebtId: d.id };
+            creditorTotals[cId].total += d.remaining;
+          }
+          const topCreditor = Object.entries(creditorTotals).sort((a, b) => b[1].total - a[1].total)[0];
+          otherMemberId = topCreditor[0];
+          debtId = topCreditor[1].topDebtId;
+          counterpartyAmount = topCreditor[1].total;
         } else if (net > 0 && owedData && owedData.length > 0) {
-          const biggest = [...owedData].sort((a, b) => b.remaining - a.remaining)[0];
-          otherMemberId = biggest.debtor_id;
-          debtId = biggest.id;
+          const debtorTotals: Record<string, { total: number; topDebtId: string }> = {};
+          for (const d of owedData) {
+            const dId = d.debtor_id;
+            if (!debtorTotals[dId]) debtorTotals[dId] = { total: 0, topDebtId: d.id };
+            debtorTotals[dId].total += d.remaining;
+          }
+          const topDebtor = Object.entries(debtorTotals).sort((a, b) => b[1].total - a[1].total)[0];
+          otherMemberId = topDebtor[0];
+          debtId = topDebtor[1].topDebtId;
+          counterpartyAmount = topDebtor[1].total;
         }
-        setNetDebt({ amount: net, otherMemberId, debtId });
+        setNetDebt({ amount: net, otherMemberId, debtId, counterpartyAmount });
 
         // Query pending payment confirmations (phase 4 — only when net debt exists)
         const allDebtIds = (owingData ?? []).map((d) => d.id);
@@ -505,16 +523,20 @@ export default function GroupDetailPage() {
       const totalHeadcount = memberCount + guestCount + anonCount;
 
       if (data.splitType === "equal" && totalHeadcount > 1) {
-        const perPerson = Math.floor(data.amount / totalHeadcount);
+        const base = Math.floor(data.amount / totalHeadcount);
+        const remainder = data.amount - base * totalHeadcount;
         const otherParticipants = memberList
           .filter((m) => m.id !== data.payerId)
           .slice(0, memberCount - 1);
 
+        // Distribute remainder 1 VND at a time to non-payer members first, then payer
+        // Index 0 = payer slot, 1..otherParticipants.length = non-payer members
+        const payerAmount = base + (0 < remainder ? 1 : 0);
         // Member participants
         const memberInserts = [
-          { bill_id: newBill.id, member_id: data.payerId, amount: perPerson, guest_name: null, is_anonymous: false },
-          ...otherParticipants.map((m) => ({
-            bill_id: newBill.id, member_id: m.id, amount: perPerson, guest_name: null, is_anonymous: false,
+          { bill_id: newBill.id, member_id: data.payerId, amount: payerAmount, guest_name: null, is_anonymous: false },
+          ...otherParticipants.map((m, i) => ({
+            bill_id: newBill.id, member_id: m.id, amount: base + (i + 1 < remainder ? 1 : 0), guest_name: null, is_anonymous: false,
           })),
         ];
         // Case C: named guests — no debt rows (payer tracks offline)
@@ -528,15 +550,18 @@ export default function GroupDetailPage() {
 
         await supabase.from("bill_participants").insert([...memberInserts, ...guestInserts, ...anonInserts]);
 
-        // Debts only for non-payer members
-        const debtInserts = otherParticipants.map((m) => ({
-          bill_id: newBill.id,
-          debtor_id: m.id,
-          creditor_id: data.payerId,
-          amount: perPerson,
-          remaining: perPerson,
-          status: "pending" as const,
-        }));
+        // Debts only for non-payer members (with remainder distribution: index 0 = payer, 1+ = debtors)
+        const debtInserts = otherParticipants.map((m, i) => {
+          const debtAmount = base + (i + 1 < remainder ? 1 : 0);
+          return {
+            bill_id: newBill.id,
+            debtor_id: m.id,
+            creditor_id: data.payerId,
+            amount: debtAmount,
+            remaining: debtAmount,
+            status: "pending" as const,
+          };
+        });
         if (debtInserts.length > 0) {
           await supabase.from("debts").insert(debtInserts);
         }
@@ -860,9 +885,13 @@ export default function GroupDetailPage() {
       );
 
       if (pendingDebts.length > 0) {
-        const numDebtors = pendingDebts.length;
-        const newPer = Math.floor(data.amount / (numDebtors + 1)); // +1 for payer
-        const remainder = data.amount - newPer * (numDebtors + 1);
+        // Use original total headcount (all debts + 1 payer), NOT just pending debtors.
+        // Confirmed debtors already paid their share; the payer was reimbursed by them.
+        // Redistributing over (pending + 1) would overcharge remaining debtors.
+        const totalDebtors = (existingDebts ?? []).length; // all non-payer participants
+        const totalHeadcountEdit = totalDebtors + 1; // +1 for payer
+        const newPer = Math.floor(data.amount / totalHeadcountEdit);
+        const remainder = data.amount - newPer * totalHeadcountEdit;
 
         for (let i = 0; i < pendingDebts.length; i++) {
           const debt = pendingDebts[i] as { id: string; amount: number; remaining: number };
@@ -1015,7 +1044,8 @@ export default function GroupDetailPage() {
       }
 
       return {
-        text: `Bạn nợ ${otherDisplayName} ${formatVND(Math.abs(netDebt.amount))}đ`,
+        // Show amount owed to this specific person (counterpartyAmount), not the net across all
+        text: `Bạn nợ ${otherDisplayName} ${formatVND(netDebt.counterpartyAmount)}đ`,
         action: "Trả nợ",
         bg: "bg-[#FFF3F0]",
         textColor: "text-[#FF3B30]",
@@ -1024,7 +1054,8 @@ export default function GroupDetailPage() {
       };
     }
     return {
-      text: `${otherDisplayName} nợ bạn ${formatVND(netDebt.amount)}đ`,
+      // Show amount owed by this specific person (counterpartyAmount), not the net across all
+      text: `${otherDisplayName} nợ bạn ${formatVND(netDebt.counterpartyAmount)}đ`,
       action: "Nhắc nợ",
       bg: "bg-[#F0FFF4]",
       textColor: "text-[#34C759]",
