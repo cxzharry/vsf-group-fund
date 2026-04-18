@@ -118,145 +118,145 @@ export default function GroupDetailPage() {
   // ─── data loading ──────────────────────────────────────────────────────────
 
   const load = useCallback(async () => {
-    const { data: groupData } = await supabase
-      .from("groups")
-      .select("*")
-      .eq("id", id)
-      .single();
+    // Phase 1: fetch group + group_members in parallel (independent)
+    const [groupRes, gmRes] = await Promise.all([
+      supabase.from("groups").select("*").eq("id", id).single(),
+      supabase.from("group_members").select("member_id").eq("group_id", id),
+    ]);
+
+    const groupData = groupRes.data;
     if (!groupData) { setLoading(false); return; }
     setGroup(groupData);
 
-    const { data: gm } = await supabase
-      .from("group_members")
-      .select("member_id")
-      .eq("group_id", id);
-
-    const memberIds = (gm ?? []).map((m: { member_id: string }) => m.member_id);
+    const memberIds = (gmRes.data ?? []).map((m: { member_id: string }) => m.member_id);
     setMemberCount(memberIds.length);
 
-    if (memberIds.length > 0) {
-      const { data: memberData } = await supabase
-        .from("members")
+    // Phase 2: fetch members + bills + chat_messages in parallel (all independent)
+    const [memberRes, billRes, msgRes] = await Promise.all([
+      memberIds.length > 0
+        ? supabase.from("members").select("*").in("id", memberIds)
+        : Promise.resolve({ data: [] }),
+      supabase
+        .from("bills")
         .select("*")
-        .in("id", memberIds);
-      const map: Record<string, Member> = {};
-      (memberData ?? []).forEach((m: Member) => (map[m.id] = m));
-      setMembers(map);
-      setMemberList(memberData ?? []);
-    }
+        .eq("group_id", id)
+        .order("created_at", { ascending: true })
+        .limit(50),
+      supabase
+        .from("chat_messages")
+        .select("*")
+        .eq("group_id", id)
+        .order("created_at", { ascending: true })
+        .limit(100),
+    ]);
 
-    const { data: billData } = await supabase
-      .from("bills")
-      .select("*")
-      .eq("group_id", id)
-      .order("created_at", { ascending: true });
-    const fetchedBills: Bill[] = billData ?? [];
+    const memberData = memberRes.data ?? [];
+    const map: Record<string, Member> = {};
+    memberData.forEach((m: Member) => (map[m.id] = m));
+    setMembers(map);
+    setMemberList(memberData);
+
+    const fetchedBills: Bill[] = billRes.data ?? [];
     setBills(fetchedBills);
 
-    if (fetchedBills.length > 0) {
-      const billIds = fetchedBills.map((b) => b.id);
+    const fetchedMessages = msgRes.data ?? [];
+    setChatMessages(fetchedMessages);
 
-      const { data: partData } = await supabase
-        .from("bill_participants")
-        .select("bill_id")
-        .in("bill_id", billIds);
-      const counts: Record<string, number> = {};
-      (partData ?? []).forEach((p: { bill_id: string }) => {
-        counts[p.bill_id] = (counts[p.bill_id] ?? 0) + 1;
-      });
-      setBillParticipantCounts(counts);
+    // Phase 3: fetch bill sub-data + debts in parallel (two typed Promise.all to avoid TS union overload issues)
+    const billIds = fetchedBills.map((b) => b.id);
 
-      const { data: checkinData } = await supabase
-        .from("bill_checkins")
-        .select("*")
-        .in("bill_id", billIds);
-      const checkinMap: Record<string, BillCheckin[]> = {};
-      (checkinData ?? []).forEach((c: BillCheckin) => {
-        if (!checkinMap[c.bill_id]) checkinMap[c.bill_id] = [];
-        checkinMap[c.bill_id].push(c);
-      });
-      setBillCheckins(checkinMap);
-    }
+    // 3a: bill sub-data
+    const [partRes, checkinRes] = billIds.length > 0
+      ? await Promise.all([
+          supabase.from("bill_participants").select("bill_id").in("bill_id", billIds),
+          supabase.from("bill_checkins").select("*").in("bill_id", billIds),
+        ])
+      : [{ data: [] as { bill_id: string }[] }, { data: [] as BillCheckin[] }];
 
-    const { data: msgData } = await supabase
-      .from("chat_messages")
-      .select("*")
-      .eq("group_id", id)
-      .order("created_at", { ascending: true });
-    setChatMessages(msgData ?? []);
+    // 3b: debts for current member
+    const [owingRes, owedRes] = currentMember
+      ? await Promise.all([
+          supabase
+            .from("debts")
+            .select("id, remaining, creditor_id, bill_id, bills!inner(group_id)")
+            .eq("debtor_id", currentMember.id)
+            .eq("bills.group_id", id)
+            .in("status", ["pending", "partial"]),
+          supabase
+            .from("debts")
+            .select("id, remaining, debtor_id, bills!inner(group_id)")
+            .eq("creditor_id", currentMember.id)
+            .eq("bills.group_id", id)
+            .in("status", ["pending", "partial"]),
+        ])
+      : [{ data: null }, { data: null }];
 
+    // Process bill_participants counts
+    const counts: Record<string, number> = {};
+    (partRes.data ?? []).forEach((p: { bill_id: string }) => {
+      counts[p.bill_id] = (counts[p.bill_id] ?? 0) + 1;
+    });
+    setBillParticipantCounts(counts);
+
+    // Process bill_checkins
+    const checkinMap: Record<string, BillCheckin[]> = {};
+    (checkinRes.data ?? []).forEach((c: BillCheckin) => {
+      if (!checkinMap[c.bill_id]) checkinMap[c.bill_id] = [];
+      checkinMap[c.bill_id].push(c);
+    });
+    setBillCheckins(checkinMap);
+
+    // Process debts
     if (currentMember) {
-      const { data: owingData } = await supabase
-        .from("debts")
-        .select("id, remaining, creditor_id, bill_id, bills!inner(group_id)")
-        .eq("debtor_id", currentMember.id)
-        .eq("bills.group_id", id)
-        .in("status", ["pending", "partial"]);
+      const owingData = owingRes.data as Array<{ id: string; remaining: number; creditor_id: string; bill_id?: string }> | null;
+      const owedData = owedRes.data as Array<{ id: string; remaining: number; debtor_id: string }> | null;
 
-      const { data: owedData } = await supabase
-        .from("debts")
-        .select("id, remaining, debtor_id, bills!inner(group_id)")
-        .eq("creditor_id", currentMember.id)
-        .eq("bills.group_id", id)
-        .in("status", ["pending", "partial"]);
-
-      // Build per-bill "Bạn nợ X" map from owingData
+      // Build per-bill "Bạn nợ X" map
       const owedMap: Record<string, number> = {};
-      (owingData ?? []).forEach((d: { bill_id?: string; remaining: number }) => {
+      (owingData ?? []).forEach((d) => {
         if (d.bill_id && d.remaining > 0) {
           owedMap[d.bill_id] = (owedMap[d.bill_id] ?? 0) + d.remaining;
         }
       });
       setUserOwedPerBill(owedMap);
 
-      const totalOwing = (owingData ?? []).reduce(
-        (s: number, d: { remaining: number }) => s + d.remaining,
-        0
-      );
-      const totalOwed = (owedData ?? []).reduce(
-        (s: number, d: { remaining: number }) => s + d.remaining,
-        0
-      );
+      const totalOwing = (owingData ?? []).reduce((s, d) => s + d.remaining, 0);
+      const totalOwed = (owedData ?? []).reduce((s, d) => s + d.remaining, 0);
       const net = totalOwed - totalOwing;
 
       if (Math.abs(net) >= 1000) {
         let otherMemberId = "";
         let debtId: string | undefined;
         if (net < 0 && owingData && owingData.length > 0) {
-          const biggest = (
-            owingData as Array<{ id: string; remaining: number; creditor_id: string }>
-          ).sort((a, b) => b.remaining - a.remaining)[0];
+          const biggest = [...owingData].sort((a, b) => b.remaining - a.remaining)[0];
           otherMemberId = biggest.creditor_id;
           debtId = biggest.id;
         } else if (net > 0 && owedData && owedData.length > 0) {
-          const biggest = (
-            owedData as Array<{ id: string; remaining: number; debtor_id: string }>
-          ).sort((a, b) => b.remaining - a.remaining)[0];
+          const biggest = [...owedData].sort((a, b) => b.remaining - a.remaining)[0];
           otherMemberId = biggest.debtor_id;
           debtId = biggest.id;
         }
         setNetDebt({ amount: net, otherMemberId, debtId });
 
-      // Query pending payment confirmations for debts I owe in this group
-      const allDebtIds = (owingData ?? []).map((d: { id: string }) => d.id);
-      if (allDebtIds.length > 0) {
-        const { data: pendingData } = await supabase
-          .from("payment_confirmations")
-          .select("debt_id")
-          .in("debt_id", allDebtIds)
-          .eq("status", "pending");
-        const pendingSet = new Set((pendingData ?? []).map((p: { debt_id: string }) => p.debt_id));
-        setPendingConfirmDebtIds(pendingSet);
-      } else {
-        setPendingConfirmDebtIds(new Set());
-      }
+        // Query pending payment confirmations (phase 4 — only when net debt exists)
+        const allDebtIds = (owingData ?? []).map((d) => d.id);
+        if (allDebtIds.length > 0) {
+          const { data: pendingData } = await supabase
+            .from("payment_confirmations")
+            .select("debt_id")
+            .in("debt_id", allDebtIds)
+            .eq("status", "pending");
+          setPendingConfirmDebtIds(new Set((pendingData ?? []).map((p: { debt_id: string }) => p.debt_id)));
+        } else {
+          setPendingConfirmDebtIds(new Set());
+        }
       } else {
         setNetDebt(null);
         setPendingConfirmDebtIds(new Set());
       }
     }
 
-    try { sessionStorage.setItem(`group_detail_${id}`, JSON.stringify({ group: groupData, bills: fetchedBills, chatMessages: msgData ?? [] })); } catch {}
+    try { sessionStorage.setItem(`group_detail_${id}`, JSON.stringify({ group: groupData, bills: fetchedBills, chatMessages: fetchedMessages })); } catch {}
     setLoading(false);
   }, [id, supabase, currentMember]);
 
