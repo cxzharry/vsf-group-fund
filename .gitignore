@@ -45,3 +45,12 @@ next-env.d.ts
 
 # Outdated QC test scripts (hardcoded paths)
 cron-c2-bill-creation.mjs
+
+# Playwright test artifacts
+/test-results/
+/playwright-report/
+
+# Ad-hoc QC/test scripts (prefix tmp-, qc-c*, test-qc-c*)
+tmp-*.mjs
+qc-c*.mjs
+test-qc-c*.mjs
