@@ -226,49 +226,55 @@ export default function GroupDetailPage() {
       });
       setUserOwedPerBill(owedMap);
 
-      const totalOwing = (owingData ?? []).reduce((s, d) => s + d.remaining, 0);
-      const totalOwed = (owedData ?? []).reduce((s, d) => s + d.remaining, 0);
-      const net = totalOwed - totalOwing;
+      // Pair-net per counterparty (simplified everywhere):
+      //   pairNet[X] = Σ (X owes me) − Σ (I owe X). Positive → X net-owes me.
+      const pairNet: Record<string, { net: number; myDebtIds: string[]; theirDebtIds: string[] }> = {};
+      for (const d of owingData ?? []) {
+        const cId = d.creditor_id;
+        if (!pairNet[cId]) pairNet[cId] = { net: 0, myDebtIds: [], theirDebtIds: [] };
+        pairNet[cId].net -= d.remaining;
+        pairNet[cId].myDebtIds.push(d.id);
+      }
+      for (const d of owedData ?? []) {
+        const dId = d.debtor_id;
+        if (!pairNet[dId]) pairNet[dId] = { net: 0, myDebtIds: [], theirDebtIds: [] };
+        pairNet[dId].net += d.remaining;
+        pairNet[dId].theirDebtIds.push(d.id);
+      }
+
+      const pairs = Object.entries(pairNet);
+      const creditorPairs = pairs.filter(([, p]) => p.net < -1);
+      const debtorPairs = pairs.filter(([, p]) => p.net > 1);
+      const net = pairs.reduce((s, [, p]) => s + p.net, 0);
 
       if (Math.abs(net) >= 1000) {
         let otherMemberId = "";
         let debtId: string | undefined;
         let counterpartyAmount = 0;
-        let creditorCount = 0;
-        let debtorCount = 0;
         let topCreditorDebtCount = 0;
-        if (net < 0 && owingData && owingData.length > 0) {
-          // Group by creditor to get total owed to each person
-          const creditorTotals: Record<string, { total: number; count: number; firstDebtId: string }> = {};
-          for (const d of owingData) {
-            const cId = d.creditor_id;
-            if (!creditorTotals[cId]) creditorTotals[cId] = { total: 0, count: 0, firstDebtId: d.id };
-            creditorTotals[cId].total += d.remaining;
-            creditorTotals[cId].count += 1;
+
+        if (net < 0 && creditorPairs.length > 0) {
+          const top = creditorPairs.sort((a, b) => a[1].net - b[1].net)[0];
+          otherMemberId = top[0];
+          counterpartyAmount = -top[1].net;
+          topCreditorDebtCount = top[1].myDebtIds.length + top[1].theirDebtIds.length;
+          if (top[1].myDebtIds.length === 1 && top[1].theirDebtIds.length === 0) {
+            debtId = top[1].myDebtIds[0];
           }
-          creditorCount = Object.keys(creditorTotals).length;
-          const topCreditor = Object.entries(creditorTotals).sort((a, b) => b[1].total - a[1].total)[0];
-          otherMemberId = topCreditor[0];
-          counterpartyAmount = topCreditor[1].total;
-          topCreditorDebtCount = topCreditor[1].count;
-          // Only expose single-debt shortcut when top creditor has exactly 1 debt
-          // (otherwise transfer page would show single debt amount ≠ banner total)
-          debtId = topCreditorDebtCount === 1 ? topCreditor[1].firstDebtId : undefined;
-        } else if (net > 0 && owedData && owedData.length > 0) {
-          const debtorTotals: Record<string, { total: number; count: number; firstDebtId: string }> = {};
-          for (const d of owedData) {
-            const dId = d.debtor_id;
-            if (!debtorTotals[dId]) debtorTotals[dId] = { total: 0, count: 0, firstDebtId: d.id };
-            debtorTotals[dId].total += d.remaining;
-            debtorTotals[dId].count += 1;
-          }
-          debtorCount = Object.keys(debtorTotals).length;
-          const topDebtor = Object.entries(debtorTotals).sort((a, b) => b[1].total - a[1].total)[0];
-          otherMemberId = topDebtor[0];
-          counterpartyAmount = topDebtor[1].total;
-          debtId = topDebtor[1].firstDebtId;
+        } else if (net > 0 && debtorPairs.length > 0) {
+          const top = debtorPairs.sort((a, b) => b[1].net - a[1].net)[0];
+          otherMemberId = top[0];
+          counterpartyAmount = top[1].net;
         }
-        setNetDebt({ amount: net, otherMemberId, debtId, counterpartyAmount, creditorCount, debtorCount, topCreditorDebtCount });
+        setNetDebt({
+          amount: net,
+          otherMemberId,
+          debtId,
+          counterpartyAmount,
+          creditorCount: creditorPairs.length,
+          debtorCount: debtorPairs.length,
+          topCreditorDebtCount,
+        });
       } else {
         setNetDebt(null);
       }

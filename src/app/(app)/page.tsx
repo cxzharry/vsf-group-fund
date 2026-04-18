@@ -139,65 +139,66 @@ export default function HomePage() {
       (d.bills as Record<string, unknown>)?.group_id as string | undefined;
 
     for (const gId of groupIds) {
-      // Debts I owe, grouped by creditor
-      const creditorTotals: Record<string, number> = {};
+      // Pair-net per counterparty (simplified view everywhere):
+      //   pairNet[X] = sum(X owes me) - sum(I owe X)
+      //   positive → X net-owes me | negative → I net-owe X | ~0 → settled.
+      const pairNet: Record<string, number> = {};
       const myDebtsInGroup: Array<{ id: string; creditor_id: string }> = [];
+
       (myDebts ?? [])
         .filter((d: Record<string, unknown>) => getGroupId(d) === gId)
         .forEach((d: Record<string, unknown>) => {
           const cId = d.creditor_id as string;
-          creditorTotals[cId] = (creditorTotals[cId] ?? 0) + (d.remaining as number);
+          pairNet[cId] = (pairNet[cId] ?? 0) - (d.remaining as number);
           myDebtsInGroup.push({ id: d.id as string, creditor_id: cId });
         });
-
-      // Debts owed to me, grouped by debtor
-      const debtorTotals: Record<string, number> = {};
       (owedToMe ?? [])
         .filter((d: Record<string, unknown>) => getGroupId(d) === gId)
         .forEach((d: Record<string, unknown>) => {
           const dId = d.debtor_id as string;
-          debtorTotals[dId] = (debtorTotals[dId] ?? 0) + (d.remaining as number);
+          pairNet[dId] = (pairNet[dId] ?? 0) + (d.remaining as number);
         });
 
-      const totalOwing = Object.values(creditorTotals).reduce((s, v) => s + v, 0);
-      const totalOwed = Object.values(debtorTotals).reduce((s, v) => s + v, 0);
-      const net = totalOwed - totalOwing;
+      const creditorPairs = Object.entries(pairNet).filter(([, n]) => n < -1);  // I net-owe
+      const debtorPairs = Object.entries(pairNet).filter(([, n]) => n > 1);     // they net-owe me
+      const net = Object.values(pairNet).reduce((s, n) => s + n, 0);
 
-      // Find top person (largest individual amount) based on net direction
       let topPersonName = "";
       let topPersonAmount = 0;
       let topCreditorId: string | undefined;
-      if (net < 0) {
-        const topCreditor = Object.entries(creditorTotals).sort((a, b) => b[1] - a[1])[0];
-        if (topCreditor) {
-          topCreditorId = topCreditor[0];
-          topPersonName = nameMap[topCreditor[0]] ?? "Ẩn danh";
-          topPersonAmount = topCreditor[1];
-        }
-      } else if (net > 0) {
-        const topDebtor = Object.entries(debtorTotals).sort((a, b) => b[1] - a[1])[0];
-        if (topDebtor) {
-          topPersonName = nameMap[topDebtor[0]] ?? "Ẩn danh";
-          topPersonAmount = topDebtor[1];
-        }
-      }
+      let topCreditorDebtCount = 0;
+      let debtId: string | undefined;
 
-      // Count debts from me to top creditor — if 1, shortcut to transfer page;
-      // if ≥2, route to aggregated per-creditor transfer page so amount matches banner.
-      const topCreditorDebts = topCreditorId
-        ? myDebtsInGroup.filter((d) => d.creditor_id === topCreditorId)
-        : [];
-      const debtId = topCreditorDebts.length === 1 ? topCreditorDebts[0].id : undefined;
+      if (net < 0 && creditorPairs.length > 0) {
+        const top = creditorPairs.sort((a, b) => a[1] - b[1])[0]; // most negative
+        topCreditorId = top[0];
+        topPersonName = nameMap[top[0]] ?? "Ẩn danh";
+        topPersonAmount = -top[1];
+        // Count underlying debts in BOTH directions with this person (aggregated page closes all).
+        const myToThem = myDebtsInGroup.filter((d) => d.creditor_id === topCreditorId).length;
+        const theirToMe = (owedToMe ?? []).filter((d: Record<string, unknown>) =>
+          getGroupId(d) === gId && (d.debtor_id as string) === topCreditorId
+        ).length;
+        topCreditorDebtCount = myToThem + theirToMe;
+        // Single-debt shortcut only when no offsetting + exactly 1 debt to them.
+        if (myToThem === 1 && theirToMe === 0) {
+          debtId = myDebtsInGroup.find((d) => d.creditor_id === topCreditorId)?.id;
+        }
+      } else if (net > 0 && debtorPairs.length > 0) {
+        const top = debtorPairs.sort((a, b) => b[1] - a[1])[0];
+        topPersonName = nameMap[top[0]] ?? "Ẩn danh";
+        topPersonAmount = top[1];
+      }
 
       debtPerGroup[gId] = {
         netDebt: net,
         topPersonName,
         topPersonAmount,
-        creditorCount: Object.keys(creditorTotals).length,
-        debtorCount: Object.keys(debtorTotals).length,
+        creditorCount: creditorPairs.length,
+        debtorCount: debtorPairs.length,
         debtId,
         topCreditorId,
-        topCreditorDebtCount: topCreditorDebts.length,
+        topCreditorDebtCount,
       };
     }
 

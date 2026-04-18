@@ -19,7 +19,7 @@ import {
 import { toast } from "sonner";
 import type { Debt, Member } from "@/lib/types";
 
-interface DebtRow extends Pick<Debt, "id" | "remaining" | "bill_id"> {
+interface DebtRow extends Pick<Debt, "id" | "remaining" | "bill_id" | "debtor_id" | "creditor_id"> {
   bills?: { group_id: string; title: string } | null;
 }
 
@@ -47,32 +47,38 @@ export default function CreditorTransferPage() {
   const load = useCallback(async () => {
     if (!currentMember) return;
 
-    // Fetch creditor + pending debts in parallel
-    // When groupId provided, filter via bills!inner join so we only sum debts in that group
+    // Load debts in BOTH directions so the page can net + settle properly:
+    //   me → creditor (I owe)  AND  creditor → me (offsets net)
+    const pairFilter = `and(debtor_id.eq.${currentMember.id},creditor_id.eq.${creditorId}),and(debtor_id.eq.${creditorId},creditor_id.eq.${currentMember.id})`;
+
     const [creditorRes, debtsRes] = await Promise.all([
       supabase.from("members").select("*").eq("id", creditorId).single(),
       groupId
         ? supabase
             .from("debts")
-            .select("id, remaining, bill_id, bills!inner(group_id, title)")
-            .eq("debtor_id", currentMember.id)
-            .eq("creditor_id", creditorId)
+            .select("id, remaining, bill_id, debtor_id, creditor_id, bills!inner(group_id, title)")
+            .or(pairFilter)
             .eq("bills.group_id", groupId)
             .in("status", ["pending", "partial"])
         : supabase
             .from("debts")
-            .select("id, remaining, bill_id, bills(group_id, title)")
-            .eq("debtor_id", currentMember.id)
-            .eq("creditor_id", creditorId)
+            .select("id, remaining, bill_id, debtor_id, creditor_id, bills(group_id, title)")
+            .or(pairFilter)
             .in("status", ["pending", "partial"]),
     ]);
 
     setCreditor(creditorRes.data ?? null);
-    // bills relation returns array from supabase-js when not using !inner single; normalize
     const normalized = (debtsRes.data ?? []).map((d: Record<string, unknown>) => {
       const billsRaw = d.bills as { group_id: string; title: string } | { group_id: string; title: string }[] | null;
       const bills = Array.isArray(billsRaw) ? billsRaw[0] ?? null : billsRaw;
-      return { id: d.id as string, remaining: d.remaining as number, bill_id: d.bill_id as string, bills };
+      return {
+        id: d.id as string,
+        remaining: d.remaining as number,
+        bill_id: d.bill_id as string,
+        debtor_id: d.debtor_id as string,
+        creditor_id: d.creditor_id as string,
+        bills,
+      };
     });
     setDebts(normalized);
     setLoading(false);
@@ -83,10 +89,18 @@ export default function CreditorTransferPage() {
     return () => clearTimeout(t);
   }, [load]);
 
-  const totalRemaining = useMemo(
-    () => debts.reduce((s, d) => s + d.remaining, 0),
-    [debts]
+  // Split by direction + compute net (what I actually transfer after offsetting).
+  const myDebts = useMemo(
+    () => debts.filter((d) => d.debtor_id === currentMember?.id),
+    [debts, currentMember]
   );
+  const theirDebts = useMemo(
+    () => debts.filter((d) => d.creditor_id === currentMember?.id),
+    [debts, currentMember]
+  );
+  const grossOwed = useMemo(() => myDebts.reduce((s, d) => s + d.remaining, 0), [myDebts]);
+  const grossOffset = useMemo(() => theirDebts.reduce((s, d) => s + d.remaining, 0), [theirDebts]);
+  const totalRemaining = Math.max(0, grossOwed - grossOffset); // net transfer amount
 
   // QR description: use "many" marker since amount covers multiple bills
   const qrUrl = useMemo(() => {
@@ -124,12 +138,13 @@ export default function CreditorTransferPage() {
     if (!currentMember || debts.length === 0) return;
     setSubmitting(true);
 
-    // Batch-close all underlying debts — no creditor confirmation needed.
-    const debtIds = debts.map((d) => d.id);
+    // Settle by netting: close BOTH my debts AND theirs in this pair.
+    // Paying the net amount mutually discharges all underlying debts.
+    const allDebtIds = debts.map((d) => d.id);
     const { error } = await supabase
       .from("debts")
       .update({ remaining: 0, status: "confirmed" })
-      .in("id", debtIds);
+      .in("id", allDebtIds);
 
     if (error) {
       toast.error("Lỗi đóng các khoản nợ");
@@ -137,15 +152,19 @@ export default function CreditorTransferPage() {
       return;
     }
 
-    // Single aggregated Telegram message per creditor — avoids per-bill spam.
-    fetch("/api/notify", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        type: "payment_claim_batch",
-        payload: { debtIds },
-      }),
-    }).catch(() => {});
+    // Notify creditor once — only send IDs where creditor is the counterparty
+    // (so the message mentions bills where they actually received money).
+    const myDebtIds = myDebts.map((d) => d.id);
+    if (myDebtIds.length > 0) {
+      fetch("/api/notify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          type: "payment_claim_batch",
+          payload: { debtIds: myDebtIds },
+        }),
+      }).catch(() => {});
+    }
 
     try {
       sessionStorage.removeItem("home_groups_v2");
@@ -214,6 +233,9 @@ export default function CreditorTransferPage() {
     );
   }
 
+  // Fully offset: no transfer needed, but user can still tap confirm to close both sides.
+  const noTransferNeeded = totalRemaining === 0;
+
   const creditorInitials = creditor?.display_name
     ? creditor.display_name.split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase()
     : "?";
@@ -233,8 +255,8 @@ export default function CreditorTransferPage() {
           </svg>
         </button>
         <div className="flex flex-col items-center">
-          <p className="text-sm font-semibold text-[#1C1C1E]">Chuyển tiền</p>
-          <p className="text-[11px] text-[#AEAEB2]">{debts.length} khoản gộp</p>
+          <p className="text-sm font-semibold text-[#1C1C1E]">{noTransferNeeded ? "Đối trừ" : "Chuyển tiền"}</p>
+          <p className="text-[11px] text-[#AEAEB2]">{debts.length} khoản (nợ ròng)</p>
         </div>
         <div className="h-8 w-8" />
       </header>
@@ -255,20 +277,41 @@ export default function CreditorTransferPage() {
           </div>
         </div>
 
-        {/* Breakdown of underlying debts */}
+        {/* Breakdown: show both sides so user sees how net was derived */}
         <div className="rounded-2xl bg-white p-4 shadow-sm">
           <p className="mb-2 text-xs font-medium text-[#8E8E93]">Chi tiết</p>
           <div className="space-y-1.5">
-            {debts.map((d) => (
+            {myDebts.map((d) => (
               <div key={d.id} className="flex items-center justify-between text-sm">
                 <span className="text-[#1C1C1E]">{d.bills?.title ?? "Bill"}</span>
-                <span className="font-medium text-[#1C1C1E]">{formatVND(d.remaining)}đ</span>
+                <span className="font-medium text-[#FF3B30]">-{formatVND(d.remaining)}đ</span>
               </div>
             ))}
+            {theirDebts.length > 0 && (
+              <>
+                <div className="my-1 border-t border-[#E5E5EA]" />
+                <p className="text-xs text-[#8E8E93]">Trừ đi ({creditor?.display_name ?? "họ"} nợ bạn):</p>
+                {theirDebts.map((d) => (
+                  <div key={d.id} className="flex items-center justify-between text-sm">
+                    <span className="text-[#1C1C1E]">{d.bills?.title ?? "Bill"}</span>
+                    <span className="font-medium text-[#34C759]">+{formatVND(d.remaining)}đ</span>
+                  </div>
+                ))}
+                <div className="my-1 border-t border-[#E5E5EA]" />
+                <div className="flex items-center justify-between text-sm">
+                  <span className="font-semibold text-[#1C1C1E]">Còn phải chuyển</span>
+                  <span className="font-semibold text-[#1C1C1E]">{formatVND(totalRemaining)}đ</span>
+                </div>
+              </>
+            )}
           </div>
         </div>
 
-        {creditor?.bank_name && creditor?.bank_account_no ? (
+        {noTransferNeeded ? (
+          <div className="rounded-2xl bg-[#F0FFF4] p-4 shadow-sm text-center">
+            <p className="text-sm font-medium text-[#34C759]">Đã cân bằng — chỉ cần xác nhận để đóng tất cả khoản nợ.</p>
+          </div>
+        ) : creditor?.bank_name && creditor?.bank_account_no ? (
           <div className="rounded-2xl bg-white p-4 shadow-sm">
             {qrUrl && (
               <div className="mb-3 flex justify-center">
@@ -350,7 +393,7 @@ export default function CreditorTransferPage() {
           disabled={submitting}
           className="flex h-[54px] w-full items-center justify-center rounded-[14px] bg-[#3A5CCC] text-[17px] font-semibold text-white transition-opacity active:scale-[0.98] disabled:opacity-50"
         >
-          {submitting ? "Đang xử lý..." : "Đã chuyển tiền"}
+          {submitting ? "Đang xử lý..." : noTransferNeeded ? "Xác nhận đối trừ" : "Đã chuyển tiền"}
         </button>
       </div>
     </div>
