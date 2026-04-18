@@ -88,6 +88,7 @@ export default function MultiHopSettlePage() {
   );
 
   const [counterparty, setCounterparty] = useState<Member | null>(null);
+  const [groupName, setGroupName] = useState<string>("");
   const [rawDebts, setRawDebts] = useState<RawDebt[]>([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -96,11 +97,13 @@ export default function MultiHopSettlePage() {
 
   const load = useCallback(async () => {
     if (!currentMember) return;
-    const [cpRes, debts] = await Promise.all([
+    const [cpRes, groupRes, debts] = await Promise.all([
       supabase.from("members").select("*").eq("id", counterpartyId).single(),
+      supabase.from("groups").select("name").eq("id", id).single(),
       fetchGroupDebts(supabase, id),
     ]);
     setCounterparty(cpRes.data ?? null);
+    setGroupName(groupRes.data?.name ?? "");
     setRawDebts(debts);
     setLoading(false);
   }, [id, counterpartyId, supabase, currentMember]);
@@ -133,13 +136,6 @@ export default function MultiHopSettlePage() {
 
   const effectiveAmount = mode === "multihop" ? plan.amount : directParsedAmount;
 
-  const myInvolvedDebts = useMemo(
-    () =>
-      rawDebts.filter(
-        (d) => d.debtor_id === currentMember?.id || d.creditor_id === currentMember?.id
-      ),
-    [rawDebts, currentMember]
-  );
 
   const qrUrl = useMemo(() => {
     if (!counterparty || effectiveAmount === 0) return null;
@@ -355,154 +351,202 @@ export default function MultiHopSettlePage() {
   const multiHopAvailable = plan.direction === "outgoing" && plan.amount > 0;
   const directAvailable = directPair.gross > 0;
 
+  const bankChips = counterparty.bank_name
+    ? [counterparty.bank_name.split(" ")[0], "VietcomBank", "Momo"]
+    : ["MBBank", "VietcomBank", "Momo"];
+
+  const qrDescription = generateTransferDescription(
+    mode === "multihop" ? "SETTLE" : "PARTIAL",
+    currentMember?.display_name ?? "User"
+  );
+
   return (
     <div className="flex h-dvh flex-col bg-[#F2F2F7]">
-      <header className="flex h-[52px] shrink-0 items-center justify-between bg-white px-4 shadow-sm">
+      {/* Nav bar */}
+      <header className="flex h-[52px] shrink-0 items-center justify-between bg-white px-4">
         <button
           type="button"
           onClick={() => router.back()}
-          className="flex h-8 w-8 items-center justify-center rounded-full text-[#636366] hover:bg-[#F2F2F7]"
+          className="flex h-6 w-6 items-center justify-center text-[#3A5CCC]"
           aria-label="Quay lại"
         >
           <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
-            strokeWidth={2} stroke="currentColor" className="h-5 w-5">
+            strokeWidth={2} stroke="currentColor" className="h-6 w-6">
             <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5" />
           </svg>
         </button>
-        <div className="flex flex-col items-center">
-          <p className="text-sm font-semibold text-[#1C1C1E]">Tất toán</p>
-          <p className="text-[11px] text-[#AEAEB2]">{counterparty.display_name}</p>
-        </div>
-        <div className="h-8 w-8" />
+        <p className="text-[17px] font-bold text-black">Chuyển khoản</p>
+        <div className="h-6 w-6" />
       </header>
+      <div className="h-px w-full bg-[#E5E5EA]" />
 
-      <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3">
-        {/* Mode tabs — only show if both modes available */}
+      <div className="flex-1 overflow-y-auto bg-[#F2F2F7] px-4 py-5 space-y-4">
+        {/* Mode tabs — my addition when both modes available */}
         {multiHopAvailable && directAvailable && (
-          <div className="flex gap-2 rounded-full bg-[#E5E5EA] p-1">
+          <div className="flex gap-1 rounded-full bg-[#E5E5EA] p-1">
             <button
               type="button"
               onClick={() => setMode("multihop")}
-              className={`flex-1 rounded-full py-2 text-xs font-semibold transition-all ${
-                mode === "multihop" ? "bg-white text-[#3A5CCC] shadow" : "text-[#636366]"
+              className={`flex-1 rounded-full py-2 text-[13px] font-semibold transition-all ${
+                mode === "multihop" ? "bg-white text-[#3A5CCC] shadow-sm" : "text-[#636366]"
               }`}
             >
-              Đa chặng (tất toán sạch)
+              Tất toán sạch
             </button>
             <button
               type="button"
               onClick={switchToDirect}
-              className={`flex-1 rounded-full py-2 text-xs font-semibold transition-all ${
-                mode === "direct" ? "bg-white text-[#3A5CCC] shadow" : "text-[#636366]"
+              className={`flex-1 rounded-full py-2 text-[13px] font-semibold transition-all ${
+                mode === "direct" ? "bg-white text-[#3A5CCC] shadow-sm" : "text-[#636366]"
               }`}
             >
-              Trực tiếp (1 phần)
+              Trả 1 phần
             </button>
           </div>
         )}
 
-        {/* Amount card */}
-        <div className="rounded-2xl bg-white p-4 shadow-sm text-center">
+        {/* Recipient card */}
+        <div className="flex flex-col gap-3 rounded-2xl bg-white p-5">
+          <div className="flex items-center gap-3">
+            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[#3A5CCC] text-base font-bold text-white">
+              {cpInitials}
+            </div>
+            <div className="flex flex-1 flex-col gap-1">
+              <p className="text-[15px] font-semibold text-black">Chuyển cho {counterparty.display_name}</p>
+              {counterparty.bank_name && counterparty.bank_account_no && (
+                <p className="text-[13px] text-[#8E8E93]">
+                  {counterparty.bank_name} · {counterparty.bank_account_no}
+                </p>
+              )}
+            </div>
+          </div>
           {mode === "direct" ? (
-            <>
+            <div>
               <input
                 type="text"
                 inputMode="numeric"
                 value={amountInput}
                 onChange={(e) => setAmountInput(e.target.value)}
-                className="w-full bg-transparent text-center text-3xl font-bold text-[#1C1C1E] outline-none"
-                placeholder="0"
+                className="w-full bg-transparent text-[36px] font-bold leading-tight text-black outline-none"
+                placeholder="0đ"
               />
               <p className="mt-1 text-[11px] text-[#AEAEB2]">
-                Tối đa {formatVND(directPair.gross)}đ (nợ trực tiếp)
+                Tối đa {formatVND(directPair.gross)}đ nợ trực tiếp
               </p>
-            </>
-          ) : (
-            <p className="text-3xl font-bold text-[#1C1C1E]">{formatVND(effectiveAmount)}đ</p>
-          )}
-          <div className="mt-2 flex items-center justify-center gap-2">
-            <p className="text-sm text-[#8E8E93]">cho</p>
-            <div className="flex h-7 w-7 items-center justify-center rounded-full bg-[#EEF2FF] text-xs font-bold text-[#3A5CCC]">
-              {cpInitials}
             </div>
-            <p className="text-sm font-semibold text-[#1C1C1E]">{counterparty.display_name}</p>
-          </div>
-          {mode === "multihop" && (
-            <p className="mt-2 text-[11px] text-[#8A6D1F]">
-              Đóng toàn bộ {myInvolvedDebts.length} nợ của bạn trong nhóm
+          ) : (
+            <p className="text-[36px] font-bold leading-tight text-black">{formatVND(effectiveAmount)}đ</p>
+          )}
+          {groupName && (
+            <p className="text-[13px] text-[#8E8E93]">
+              {mode === "multihop" ? `Tất toán đa chặng trong nhóm ${groupName}` : `Nợ nhóm ${groupName}`}
             </p>
           )}
         </div>
 
         {/* QR card */}
         {counterparty.bank_name && counterparty.bank_account_no && effectiveAmount > 0 ? (
-          <div className="rounded-2xl bg-white p-4 shadow-sm">
-            {qrUrl && (
-              <div className="mb-3 flex justify-center">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={qrUrl} alt="VietQR" className="h-48 w-48 rounded-xl object-contain" />
+          <div className="flex flex-col items-center gap-3 rounded-2xl bg-white p-5">
+            <p className="text-[13px] text-[#8E8E93]">Quét QR để chuyển tiền</p>
+            {qrUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={qrUrl}
+                alt="VietQR"
+                className="h-[180px] w-[180px] rounded-xl border border-[#E5E5EA] object-contain"
+              />
+            ) : (
+              <div className="flex h-[180px] w-[180px] items-center justify-center rounded-xl border border-[#E5E5EA] bg-[#F2F2F7]">
+                <span className="text-4xl text-[#AEAEB2]">⋯</span>
               </div>
             )}
-            <div className="space-y-1.5 text-sm">
-              <div className="flex justify-between">
-                <span className="text-[#AEAEB2]">NH</span>
-                <span className="font-medium text-[#1C1C1E]">{counterparty.bank_name}</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-[#AEAEB2]">STK</span>
-                <div className="flex items-center gap-1.5">
-                  <span className="font-medium text-[#1C1C1E]">{counterparty.bank_account_no}</span>
-                  <button type="button" onClick={handleCopyAccount} className="text-base leading-none" aria-label="Copy STK">📋</button>
-                </div>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-[#AEAEB2]">Chủ TK</span>
-                <span className="font-medium text-[#1C1C1E]">{counterparty.bank_account_name}</span>
-              </div>
+            <div className="flex items-center gap-2">
+              {bankChips.map((label, i) => (
+                <span
+                  key={i}
+                  className={`rounded-lg px-2.5 py-1 text-[11px] font-medium ${
+                    label === "Momo" ? "bg-[#FFF0F0] text-[#D91C5C]" : "bg-[#EEF2FF] text-[#3A5CCC]"
+                  }`}
+                >
+                  {label}
+                </span>
+              ))}
             </div>
-            {deepLink && (
-              <a
-                href={deepLink}
-                className="mt-4 flex w-full items-center justify-center gap-1 rounded-xl bg-[#F2F2F7] py-2.5 text-xs font-medium text-[#1C1C1E] active:bg-[#F2F2F7]"
-              >
-                🏦 Mở app {counterparty.bank_name?.split(" ")[0] ?? "ngân hàng"}
-              </a>
-            )}
           </div>
         ) : effectiveAmount > 0 ? (
-          <div className="rounded-2xl bg-white p-4 shadow-sm text-center">
+          <div className="rounded-2xl bg-white p-5 text-center">
             <p className="text-sm text-[#AEAEB2]">{counterparty.display_name} chưa cài ngân hàng</p>
           </div>
         ) : null}
 
-        {/* Explain */}
-        <div className="rounded-2xl bg-[#FFF9E6] p-3 text-[11px] leading-relaxed text-[#8A6D1F]">
-          {mode === "multihop" ? (
-            <>
-              <p className="font-semibold">⚠️ Tất toán đa chặng</p>
-              <p className="mt-1">
-                Đóng mọi nợ của bạn trong nhóm. Các khoản bạn còn nợ/được nợ qua người khác sẽ chuyển giao cho {counterparty.display_name}. Kế hoạch tính lại mỗi lần bấm Đã chuyển.
-              </p>
-            </>
-          ) : (
-            <>
-              <p className="font-semibold">ℹ️ Trả một phần trực tiếp</p>
-              <p className="mt-1">
-                Chỉ giảm nợ trực tiếp bạn → {counterparty.display_name}. Không chạm khoản họ nợ bạn (nếu có) và không ảnh hưởng người khác.
-              </p>
-            </>
-          )}
-        </div>
+        {/* Bank info card */}
+        {counterparty.bank_name && counterparty.bank_account_no && (
+          <div className="flex flex-col gap-2 rounded-[14px] bg-white p-4">
+            <div className="flex items-center justify-between">
+              <p className="text-[14px] font-bold text-black">Thông tin chuyển khoản</p>
+              <button
+                type="button"
+                onClick={handleCopyAccount}
+                className="flex h-[18px] w-[18px] items-center justify-center text-[#3A5CCC]"
+                aria-label="Copy STK"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+                  strokeWidth={2} stroke="currentColor" className="h-[18px] w-[18px]">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 17.25v3.375c0 .621-.504 1.125-1.125 1.125h-9.75a1.125 1.125 0 0 1-1.125-1.125V7.875c0-.621.504-1.125 1.125-1.125H6.75a9.06 9.06 0 0 1 1.5.124m7.5 10.376h3.375c.621 0 1.125-.504 1.125-1.125V11.25c0-4.46-3.243-8.161-7.5-8.876a9.06 9.06 0 0 0-1.5-.124H9.375c-.621 0-1.125.504-1.125 1.125v3.5m7.5 10.375H9.375a1.125 1.125 0 0 1-1.125-1.125v-9.25m12 6.625v-1.875a3.375 3.375 0 0 0-3.375-3.375h-1.5a1.125 1.125 0 0 1-1.125-1.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H9.75" />
+                </svg>
+              </button>
+            </div>
+            <div className="flex h-9 items-center justify-between">
+              <span className="text-[13px] text-[#8E8E93]">Ngân hàng</span>
+              <span className="text-[13px] font-bold text-black">{counterparty.bank_name}</span>
+            </div>
+            <div className="flex h-9 items-center justify-between">
+              <span className="text-[13px] text-[#8E8E93]">Số tài khoản</span>
+              <span className="text-[13px] font-bold text-black">{counterparty.bank_account_no}</span>
+            </div>
+            <div className="flex h-9 items-center justify-between">
+              <span className="text-[13px] text-[#8E8E93]">Chủ tài khoản</span>
+              <span className="text-[13px] font-bold text-black">{counterparty.bank_account_name}</span>
+            </div>
+            <div className="flex h-9 items-center justify-between">
+              <span className="text-[13px] text-[#8E8E93]">Nội dung</span>
+              <span className="text-[13px] font-bold text-black">{qrDescription}</span>
+            </div>
+            {deepLink && (
+              <a
+                href={deepLink}
+                className="mt-2 flex h-10 items-center justify-center gap-1 rounded-xl bg-[#F2F2F7] text-[13px] font-medium text-[#1C1C1E]"
+              >
+                🏦 Mở app {counterparty.bank_name.split(" ")[0]}
+              </a>
+            )}
+          </div>
+        )}
+
+        {/* Explain — compact */}
+        <p className="px-1 text-[11px] leading-relaxed text-[#8A6D1F]">
+          {mode === "multihop"
+            ? `Đóng mọi nợ của bạn trong nhóm. Các khoản qua trung gian chuyển giao cho ${counterparty.display_name}. Kế hoạch tính lại mỗi lần bấm.`
+            : `Chỉ giảm nợ trực tiếp bạn → ${counterparty.display_name}. Không ảnh hưởng khoản qua người khác.`}
+        </p>
       </div>
 
-      <div className="border-t border-[#E5E5EA] bg-white px-4 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-3">
+      {/* Bottom bar */}
+      <div className="flex flex-col gap-3 bg-white px-4 pb-[calc(2rem+env(safe-area-inset-bottom))] pt-3">
         <button
           type="button"
           onClick={handleConfirm}
           disabled={submitting || effectiveAmount <= 0}
-          className="flex h-[54px] w-full items-center justify-center rounded-[14px] bg-[#3A5CCC] text-[17px] font-semibold text-white transition-opacity active:scale-[0.98] disabled:opacity-50"
+          className="flex h-[52px] w-full items-center justify-center rounded-[14px] bg-[#3A5CCC] text-[16px] font-bold text-white transition-opacity active:scale-[0.98] disabled:opacity-50"
         >
-          {submitting ? "Đang xử lý..." : "Đã chuyển"}
+          {submitting ? "Đang xử lý..." : "Tôi đã chuyển khoản"}
+        </button>
+        <button
+          type="button"
+          onClick={() => router.back()}
+          className="w-full text-center text-[15px] text-[#8E8E93]"
+        >
+          Hủy thanh toán
         </button>
       </div>
     </div>
